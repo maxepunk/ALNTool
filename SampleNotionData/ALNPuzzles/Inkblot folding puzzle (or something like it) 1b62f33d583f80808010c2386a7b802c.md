@@ -1,0 +1,1 @@
+# Inkblot folding puzzle (or something like it)

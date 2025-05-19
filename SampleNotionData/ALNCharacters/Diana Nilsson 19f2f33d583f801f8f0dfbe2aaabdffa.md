@@ -1,0 +1,13 @@
+# Diana Nilsson
+
+Character Logline: "Divorce Lawyer with Party Spirit"
+Events: @Derek Thorn and @Marcus Blackwood start hosting parties at abandoned venues together. @Diana Nilsson helps hook them up with a venue for the very first party.  Derek deals drugs at these parties.  (https://www.notion.so/and-start-hosting-parties-at-abandoned-venues-together-helps-hook-them-up-with-a-venue-for-the-ve-1b52f33d583f806c9040f9f4dddcf970?pvs=21), Glow in the Dark Rave (https://www.notion.so/Glow-in-the-Dark-Rave-1b52f33d583f801a833be1fe0c6fc72c?pvs=21), Matrix Rave (https://www.notion.so/Matrix-Rave-1b52f33d583f80fa984bd75653969577?pvs=21), Sarah and Marcus get married (https://www.notion.so/Sarah-and-Marcus-get-married-1b52f33d583f8018920fe946e6ad7d72?pvs=21), @Diana Nilsson and @Marcus Blackwood have an affair (https://www.notion.so/and-have-an-affair-1b52f33d583f80ecb9bbf1e711125ed5?pvs=21), @Sarah Blackwood reaches out to @Diana Nilsson about her ‘options’ with @Marcus Blackwood  (https://www.notion.so/reaches-out-to-about-her-options-with-1b52f33d583f80cab041c46555994147?pvs=21)
+Character Puzzles: Paternity test percentage (https://www.notion.so/Paternity-test-percentage-1dc2f33d583f80f4a90be432ae28c773?pvs=21)
+Owned Elements: Diana Character Sheet (https://www.notion.so/Diana-Character-Sheet-1b52f33d583f8009ac46eb21a4eb1d21?pvs=21), Diana's emails about divorce (https://www.notion.so/Diana-s-emails-about-divorce-1dc2f33d583f8055a920d0587a4f0b3b?pvs=21), Paternity test for Jessicah (https://www.notion.so/Paternity-test-for-Jessicah-1dc2f33d583f80499589f8e2517f60f2?pvs=21), Diana's locked bag (https://www.notion.so/Diana-s-locked-bag-1dc2f33d583f8071b376c3a8f1d12da1?pvs=21)
+Associated Elements: Derek <> Diana Texts (https://www.notion.so/Derek-Diana-Texts-cf617c35c18545c89822b86a5f8b3d93?pvs=21)
+Tier: Secondary
+Type: Player
+Connections: 7
+Emotion towards CEO & others: Conflicted. She loves Marcus and Derek as brothers… But you know the type of brothers….irredeemable pains in the ass both of them. 
+Overview & Key Relationships: Friends with Marcus and Derek from the Stanford days. She helped the boys put on their very first party, and would regularly drink both of them under the table. Has since become a divorce lawyer. The boys call her the Party Lawyer. She had a brief affair with Marcus a decade ago. Used to date Leila.
+Primary Action: Tries to recapture the spark of the good old days for a while before shifting gears to talking to Sarah about the Divorce

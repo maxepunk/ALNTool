@@ -1,0 +1,1 @@
+# magnet to move ferrous sand away from a note
