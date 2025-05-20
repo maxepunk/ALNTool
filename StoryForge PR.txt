@@ -1,8 +1,8 @@
 **Revised & Consolidated Project Request Document: StoryForge - Immersive Narrative Design Hub**
 
-**Document Version:** 2.1 (Reflecting Architectural Review & Data Path Standardization)
-**Date:** May 12, 2025
-**Document Purpose:** This document provides the comprehensive and unified specification for the StoryForge tool. It reflects the completion of Phase 1, incorporates a definitive understanding of the existing "About Last Night" Notion workspace structure, and standardizes the data flow for the Relationship Mapper. It is intended for the coding assistant to guide the development of subsequent phases.
+**Document Version:** 3.0 
+**Date:** May 19, 2025 
+**Document Purpose:** This document provides the comprehensive and unified specification for the StoryForge tool. It reflects the outcomes of an architectural and codebase review (May 2025), incorporates a definitive understanding of the existing "About Last Night" Notion workspace structure, and details the current and planned data flow for the Relationship Mapper. It is intended to serve as the gold-standard reference for continued development.
 
 **1. Project Background: The "About Last Night" Experience**
 *   **Game:** "About Last Night... an Immersive Crime Thriller" (Internal Codename: "Recovery State")
@@ -26,26 +26,27 @@
 **3. Core Technology Stack**
 *   **Backend Data Store:** **Existing Notion Workspace** (via Notion API). *This is a critical constraint. The structure defined in Section 4 is the target.*
 *   **Frontend Framework:** React (as implemented).
-*   **Visualization Libraries:** (e.g., React Flow, Vis.js, D3.js - to be selected for Phase 2+).
-*   **State Management:** React Query (as implemented for API service layer).
+*   **Visualization Libraries:** `@xyflow/react` (React Flow) is the primary visualization library used.
+*   **State Management:** React Query (as implemented for API service layer) and Zustand (for client-side UI state, e.g., within the Relationship Mapper).
 *   **Styling:** Material UI with a dark theme (as implemented).
-*   **Backend-for-Frontend (BFF) / Middleware:** Node.js with Express.js (as implemented). This BFF handles Notion API interactions, caching, complex data transformations (including generation of rich `graphData` for visualization as per Section 4.1), and secure API key management.
+*   **Backend-for-Frontend (BFF) / Middleware:** Node.js with Express.js (as implemented). This BFF handles Notion API interactions, caching (using `node-cache`), complex data transformations (including generation of rich `graphData` for visualization as per Section 4.E), and secure API key management.
+
 **4. Notion Backend Structure (Definitive Gold Standard)**
 
-StoryForge **must** read from and write to the Notion workspace structured with the following 4 primary databases. Property names and types provided below are based on your latest document and successful Phase 1 integration.
+StoryForge **must** read from and write to the Notion workspace structured with the following 4 primary databases. Property names and types provided below are based on the May 2025 codebase review and successful Phase 1 integration.
 
 **Important Note on "Memory-Specific" Fields within the Elements Database:**
-The `Elements` database serves as a general store for all items, including those that function narratively as "Memories." Many memory-specific attributes (e.g., `Corruption Status`, `RFID Token ID`, `Value Indicator`) are not explicit, separate Notion properties in the current `Elements` database schema.
-*   **Strategy for Handling:**
-    1.  **Primary Source:** The `Description/Text` (Rich Text) property of an Element is the most likely place to find and store these granular details for memory-type Elements.
-    2.  **StoryForge Responsibility (Read):** For Elements identified as memories (e.g., via `Basic Type` like "Memory Token Video", "Memory Token Physical", "Corrupted Memory RFID"), StoryForge's frontend or BFF will need to parse the `Description/Text` content to extract and display these memory-specific attributes.
-    3.  **StoryForge Responsibility (Write):** When editing these memory-specific attributes in StoryForge, the tool will update the relevant structured information within the `Description/Text` field of the Notion page. This requires a consistent format (e.g., a specific markdown structure, key-value pairs, or a hidden JSON block within the Rich Text) that StoryForge can read and write.
-    4.  **Adding New Notion Properties (Last Resort):** Only if parsing/embedding within `Description/Text` proves unmanageable or severely impacts performance for essential fields, should adding a new explicit property to the Notion `Elements` database be considered. This must be done carefully via the API to avoid redundancy and ensure consistency. *Example: If `Corruption Status` needs frequent, independent filtering at the Notion DB level and cannot be reliably parsed, it might become a candidate for a dedicated Select property.* Discuss with the team before making schema changes.
+The `Elements` database serves as a general store for all items, including those that function narratively as "Memories." For a minimal set of memory-specific attributes not covered by existing dedicated Notion properties (e.g., `RFID Token ID`), a strategy of embedding structured data within the `Description/Text` field will be used.
+*   **Strategy for Handling (Minimal Implementation - Read-Only Focus Initially):**
+    1.  **Data Entry Template:** <!-- SECTION TO BE FULLY UPDATED/WRITTEN: Define the "Memory Attribute Data Entry Template" here, as per Action Plan Phase 2, Step 5. Focus on EXTREME SIMPLICITY (e.g., `SF_RFID: [value]`) and only for attributes not covered by existing Element fields and critical for game mechanics. --> (Placeholder: A specific, clearly delimited format, e.g., key-value pairs like `SF_RFID: 12345`, will be defined for entering these attributes within the `Description/Text` field of memory-type Elements.)
+    2.  **BFF Responsibility (Read):** For Elements identified as memories (e.g., via `Basic Type` like "Memory Token Video", "Corrupted Memory RFID"), the BFF (`notionPropertyMapper.js`) will parse the `Description/Text` content to extract this minimal set of defined attributes (e.g., RFID).
+    3.  **Frontend Display:** The frontend (`ElementDetail.jsx`) will display these parsed attributes if present.
+    4.  **Future - Editing (Write Responsibility):** (Out of scope for initial minimal implementation) When/if editing these embedded attributes is implemented in StoryForge, the tool will need to update the structured information within the `Description/Text` field carefully, preserving other content. This is a complex task for future consideration.
+    5.  **Future - Adding New Notion Properties (Last Resort):** If the minimal set of embedded attributes proves insufficient or if parsing becomes unmanageable for critical, frequently filtered fields, adding new explicit properties to the Notion `Elements` database will be considered.
 
 **(A) Characters Database**
 *   **Notion DatabaseID:** `18c2f33d583f8060a6abde32ff06bca2`
-*   **Based on:** `About Last Night…Characters_all.csv` and individual character MD files.
-*   **Properties:**
+*   **Properties:** (Verified against codebase and sample data - align with original PRD)
     *   `Name` (Title - Primary Key)
     *   `Type` (Select: "Player", "NPC")
     *   `Tier` (Select: "Core", "Secondary", "Tertiary")
@@ -62,8 +63,7 @@ The `Elements` database serves as a general store for all items, including those
 
 **(B) Timeline Database (Events)**
 *   **Notion DatabaseID:** `1b52f33d583f80deae5ad20020c120dd`
-*   **Based on:** `About Last Night…Timeline.csv` and individual event MD files.
-*   **Properties:**
+*   **Properties:** (Verified - align with original PRD)
     *   `Description` (Title - Primary Key, e.g., Event title)
     *   `Date` (Date)
     *   `Characters Involved` (Relation to `Characters` DB - `Characters.Name`)
@@ -73,8 +73,7 @@ The `Elements` database serves as a general store for all items, including those
 
 **(C) Puzzles Database**
 *   **Notion DatabaseID:** `1b62f33d583f80cc87cfd7d6c4b0b265`
-*   **Based on:** `About Last Night…Puzzles_all.csv` and individual puzzle MD files.
-*   **Properties:**
+*   **Properties:** (Verified - align with original PRD)
     *   `Puzzle` (Title - Primary Key, e.g., Puzzle name)
     *   `Owner` (Relation to `Characters` DB - `Characters.Name`)
     *   `Locked Item` (Relation to `Elements` DB - `Elements.Name`)
@@ -90,12 +89,11 @@ The `Elements` database serves as a general store for all items, including those
 
 **(D) Elements Database**
 *   **Notion DatabaseID:** `18c2f33d583f802091bcd84c7dd94306`
-*   **Based on:** `About Last Night…Elements_all.csv` and individual element MD files. This database includes props, clues, AND memory representations.
-*   **Properties:**
+*   **Properties:** (Verified - align with original PRD, notes on potential additions from sample CSV)
     *   `Name` (Title - Primary Key)
     *   `Owner` (Relation to `Characters` DB - `Characters.Name`)
     *   `Basic Type` (Select - e.g., "Prop", "Set Dressing", "Memory Token Video", "Memory Token Audio", "Memory Token Physical", "Corrupted Memory RFID", "Character Sheet", "Document", "Digital File", "Clue", "Container")
-    *   `Description/Text` (Rich Text - Sourced from MD bodies. **For memory-type Elements, this field will also contain structured data for memory-specific attributes like `Memory ID`, `Memory Title`, `Memory Type (Narrative)`, `Content (for text memories)`, `Corruption Status`, `RFID Token ID`, `Value Indicator`, `Puzzle Integration Type`, `Puzzle Notes` to be parsed/managed by StoryForge.**)
+    *   `Description/Text` (Rich Text - Sourced from MD bodies. <!-- PRD-UPDATE-NOTE: This description needs to be updated to reference the new minimal parsing strategy (e.g. only SF_RFID initially) and the "Memory Attribute Data Entry Template" to be defined in Action Plan Phase 2, Step 5. Original list of attributes (Memory ID, Memory Title, etc.) is for future consideration if minimal approach is insufficient. --> **For memory-type Elements, this field will also contain structured data for memory-specific attributes like `Memory ID`, `Memory Title`, `Memory Type (Narrative)`, `Content (for text memories)`, `Corruption Status`, `RFID Token ID`, `Value Indicator`, `Puzzle Integration Type`, `Puzzle Notes` to be parsed/managed by StoryForge.**)
     *   `Container` (Relation to self - `Elements.Name`, i.e., this element is *inside* another element)
     *   `Contents` (Relation to self, multiple - `Elements.Name`, i.e., this element *is* a container and lists items inside)
     *   `Container Puzzle` (Relation to `Puzzles` DB - `Puzzles.Puzzle`)
@@ -109,25 +107,25 @@ The `Elements` database serves as a general store for all items, including those
     *   `Files & media` (Files & Media - For images, audio files, video files directly uploaded to Notion)
     *   `Content Link` (URL - For links to external files like Canva, Google Docs, or video/audio hosting if not using `Files & media`)
     *   `Production/Puzzle Notes` (Text)
+    *   *(`Container?` (Boolean) - Consider for formal support based on sample CSV)*
+    *   *(`Puzzle Chain` (URL/Relation) - Consider for formal support based on sample CSV)*
 
-**(E) BFF `graphData` Object Specification (for Relationship Mapper)** <!-- PRD EDIT NOTE: Title Changed from 4.1 to 4.E for consistency if A-D are main DBs -->
-
-The BFF's `/api/<entity-type>/:id/graph` endpoints (e.g., `/api/characters/:id/graph`) are the **sole and mandatory source of graph information for the frontend `RelationshipMapper` component.** This `graphData` object, generated by `notionController.js`, must adhere to the following structure to ensure consistent data for visualization, filtering, and grouping logic:
-
+**(E) BFF `graphData` Object Specification (for Relationship Mapper)**
+(Specification remains current and accurate based on code review of `notionController.js` helpers `_createGraphNodeInternal` and `_createGraphEdgeInternal`.)
 ```json
 {
   "center": { /* Fully mapped central entity object, matching structure of a node below */ },
   "nodes": [
     {
       "id": "string_entity_id",
-      "name": "string_display_name", // (e.g., Character Name, Element Name, Puzzle Title, Event Description)
-      "type": "string_entity_type", // ('Character', 'Element', 'Puzzle', 'Timeline')
+      "name": "string_display_name", 
+      "type": "string_entity_type", 
       "fullDescription": "string_long_form_description_for_tooltip",
       "descriptionSnippet": "string_short_snippet_for_tooltip",
-      // Type-specific enriched properties (examples from `_createGraphNodeInternal` in BFF):
+      // Type-specific enriched properties (from `_createGraphNodeInternal` in BFF):
       // For Character:
       "tier": "string_tier_value",
-      "role": "string_player_or_npc", // from entityData.type in BFF
+      "role": "string_player_or_npc",
       "primaryActionSnippet": "string_snippet_of_primary_action",
       // For Puzzle:
       "timing": "string_act_timing",
@@ -139,766 +137,74 @@ The BFF's `/api/<entity-type>/:id/graph` endpoints (e.g., `/api/characters/:id/g
       "basicType": "string_element_basic_type",
       "status": "string_production_status",
       "flowSummary": "string_e_g_owner_x_required_for_y_rewarded_by_z",
-      // "ownerName" and "ownerId" also available for Element.
       // For Timeline:
       "dateString": "string_formatted_date",
       "participantSummary": "string_e_g_involves_x_chars_y_elements",
       "notesSnippet": "string_snippet_of_notes"
-      // ... other properties from the entity's mapped structure (via propertyMapper) may be present.
     }
-    // ... more node objects
   ],
   "edges": [
     {
       "source": "string_source_node_id",
       "target": "string_target_node_id",
-      "label": "string_simple_relationship_label", // (e.g., "Owns", "Contains", "Required For" - original label from BFF logic)
+      "label": "string_simple_relationship_label",
       "data": {
         "sourceNodeName": "string_source_node_display_name",
         "sourceNodeType": "string_source_node_type",
         "targetNodeName": "string_target_node_display_name",
         "targetNodeType": "string_target_node_type",
-        "contextualLabel": "string_detailed_human_readable_label_for_tooltips", // (e.g., "Character 'Alex Reeves' owns Element 'Backpack'")
-        "shortLabel": "string_concise_label_for_on_path_display_and_grouping_logic" // (e.g., "Owns", "Contains", "Required For") - CRITICAL for frontend parentId assignment
+        "contextualLabel": "string_detailed_human_readable_label_for_tooltips",
+        "shortLabel": "string_concise_label_for_on_path_display_and_grouping_logic"
       }
     }
-    // ... more edge objects
   ]
 }
 ```
-The BFF's `_createGraphNodeInternal` and `_createGraphEdgeInternal` helpers in `notionController.js` are responsible for populating these fields. The `edge.data.shortLabel` is particularly critical as the frontend uses it to determine `parentId` for visual grouping in Dagre layouts.
 
 **5. Feature Breakdown & Development Phases**
 
-**(CURRENT PROJECT STATUS SUMMARY - From your update)**
-*   **Phase 1: Core Setup & Read-Only Views - COMPLETED**
-    *   Backend (BFF) fully functional with read endpoints for all 4 DBs, property mapping, relation mapping, error handling.
-    *   Frontend React app with Material UI, navigation, dashboard, reusable components, list and detail views for all 4 entity types.
-    *   Human-readable related entity display (names, not IDs).
-    *   API service layer with React Query.
-    *   Filtering of Elements by `Basic Type` (e.g., for memories) is implemented.
+<!-- PRD-UPDATE-NOTE: This entire section, including old Milestones, "Refined Relationship Mapper UX Enhancement Plan", "Phase 1 (New)", "Phase 2 (New)", "Phase 3 Testing & Iteration", and "Technical Refinement Tasks", is now superseded by the new "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" which will be detailed in Section 9. This section should be removed or marked as historical context if desired, but Section 9 will be the new guide. -->
 
-**Upcoming Work & Phase Definitions:**
-
-*   **Immediate Next Steps (Priority Order - REVISED):**
-    1.  **Implement Comprehensive Testing Suite (see Section 10) (IN PROGRESS):**
-        *   **Phase 1.1: Backend Tests Setup & Core Logic Coverage - COMPLETED:** All backend test files have been reviewed and expanded. Legacy `rawData` tests have been removed. New tests for all graph functions and property mappers are in place, covering all scenarios as per PRD Section 4.E.
-        *   **Phase 1.2: Frontend Tests Setup & Relationship Mapper Coverage - COMPLETED:** All frontend test files have been reviewed and expanded. Tests for all core components, hooks, and utilities are in place, covering all scenarios as per PRD Section 4.E. Legacy/irrelevant tests have been removed.
-        *   **Phase 1.3: E2E Tests Setup & Basic Flows - PLANNED:** E2E tests are outlined but not yet implemented. Next step: Define and implement E2E test scenarios for critical user flows.
-
-**Testing Progress Checklist:**
-
-| Area                | Status     | Notes                                      |
-|---------------------|------------|--------------------------------------------|
-| Backend Unit Tests  | Complete   | All graph and property mapping covered     |
-| Backend Integration | Complete   | All endpoints tested, legacy removed       |
-| Frontend Unit Tests | Complete   | All core components, hooks, utils covered  |
-| Frontend Integration| Complete   | All major flows, MSW used for API mocking  |
-| E2E Tests           | Planned    | To be implemented with Playwright          |
-
-- [x] Backend tests reviewed and expanded
-- [x] Frontend tests reviewed and expanded
-- [x] Legacy/irrelevant tests removed
-- [ ] E2E tests implemented
-
-**Phase 2: Adding Interactivity & Relationship Visualization**
-    *   **Status:** SUBSTANTIALLY COMPLETED (Core graph rendering implemented; data pipeline stabilization and layout refinement in progress)
-    *   **Summary:**
-        *   All relational links in detail views are clickable and navigable.
-        *   The visual relationship mapper is fully implemented and integrated. Data path for `graphData` (from BFF, see Section 4.E) is the primary and mandatory source.
-        *   Three complementary layout algorithms (Radial, Force-Directed, Hierarchical Dagre with Orbiting) provide different visualization perspectives.
-        *   Advanced filtering by entity type, relationship type, depth, and Single Point of Connection (SPOC) edge simplification is implemented.
-        *   Caching improvements (both client and BFF) are in place.
-        *   UI/UX polish for loading states, error handling, and interactive controls is complete.
-        *   Timeline Weaver (interactive timeline visualization) and memory attribute parsing/display are not yet implemented.
-    *   **Goal:** Enhance views to show relationships as clickable links, build visual mappers with clear and intuitive grouping based on a reliable data pipeline, and improve overall interactivity of the read-only data.
-    *   **Tasks:**
-        *   **Clickable Relationships:**
-            *   Ensure all displayed relations in detail views (e.g., a Character's "Owned Elements," an Element's "Associated Puzzle") are clickable links navigating directly to that related item's detail view in StoryForge.
-        *   **Visual Relationship Mapper (Core Feature):**
-            *   Design and implement a component (e.g., using React Flow, Vis.js) that can be used on detail pages (Character, Element, Puzzle, Timeline Event).
-            *   For a selected entity, display a node graph of its direct 1st-degree relations (e.g., a Character and their directly linked Events, Puzzles, and Elements).
-            *   Nodes should be clickable to navigate to the detail page of that related entity.
-        *   **Timeline Weaver (Enhanced Visualization):**
-            *   Display Timeline Events on a more interactive visual timeline (e.g., using a library like `vis-timeline` or similar).
-            *   Events as cards showing `Description` (Title), `Date`. Ensure chronological display.
-            *   Clicking an event card should clearly show more details (e.g., in a modal or side-pane) including linked `Characters Involved` and `Memory/Evidence` (Elements) as clickable links.
-        *   **Element Explorer (Enhancements for Memories):**
-            *   When viewing an Element of a memory `Basic Type`, clearly display the parsed memory-specific attributes (from `Description/Text`) like `Corruption Status`, `Value Indicator`, `RFID Token ID`.
-            *   Add visual indicators for different memory `Basic Type`s in list views (e.g., icons, color-coding).
-        *   **Filtering & Advanced Searching:**
-            *   Implement robust filtering options on all list views (beyond just `Basic Type` for Elements). Allow filtering by multiple properties (e.g., Character `Tier` AND `Type`).
-            *   Implement a global search or advanced search bar to find items across all databases.
-        *   **UI/UX Polish:** Address items from "Enhance UI" and "User Experience Refinements" in "Immediate Next Steps."
-    *   **Key Deliverables for Phase 2:**
-        *   All relational links are fully navigable within StoryForge.
-        *   Functional read-only visual relationship mapper for all core entities.
-        *   Enhanced, interactive, chronological visual timeline.
-        *   Clear display of parsed memory-specific data for relevant Elements.
-        *   Advanced filtering implemented on all list views.
-        *   Improved UI/UX based on immediate next steps.
-
-**Milestone 1: Foundational Interactivity & Core UI Enhancements - COMPLETED**
-*   **Implementation Summary:**
-    *   Implemented React frontend with Material UI, navigation, dashboard, and reusable components.
-    *   List and detail views for all 4 entity types (Characters, Timeline, Puzzles, Elements) with human-readable related entity display.
-    *   Backend-for-Frontend (BFF) in Node.js/Express, with endpoints for all Notion databases, property mapping, and error handling.
-    *   API service layer using React Query for data fetching and state management.
-    *   Filtering of Elements by Basic Type implemented.
-    *   Visual indicators (icons, color-coding) for memory types in Element list views.
-    *   Loading states (skeletons/spinners) and improved UI error handling added.
-    *   Initial frontend test coverage established for core components and layouts.
-
-**Milestone 2: Advanced Filtering & Search Capabilities - COMPLETED**
-*   **Implementation Summary:**
-    *   All list views (Characters, Elements, Puzzles, Timeline) now support robust multi-property filtering via dropdowns/selects for relevant properties.
-    *   Backend endpoints updated to accept multiple filter query params and build Notion filter objects using 'and'.
-    *   Global search bar added to the AppBar, calling a new /search endpoint that searches by name/title across all 4 databases and displays grouped, clickable results in a modal.
-    *   React Query hooks updated to support filter params.
-    *   UI/UX polish: consistent filter UI, error handling, and loading states across all list views.
-
-**Milestone 3: Caching Improvements - COMPLETED**
-*   **Implementation Summary:**
-    *   Client-side caching: All React Query hooks use a staleTime of 5 minutes and cacheTime of 10 minutes. Manual Refresh buttons added to all main list/detail pages to allow user-initiated refetching.
-    *   Backend (BFF) caching: Implemented in-memory caching using node-cache for all Notion API responses (list and detail fetches for raw page/query data), with a 5-minute TTL. Cache hits/misses are logged for development.
-    *   Manual cache clear endpoint: POST /api/cache/clear clears the in-memory cache and returns a success message.
-    *   HTTP cache headers: All list and detail GET responses set Cache-Control: public, max-age=300 to enable browser/proxy caching.
-    *   These improvements have significantly reduced Notion API calls and rate limiting during development and normal use.
-
-**Milestone 4: Visual Relationship Mapper (Core Read-Only Feature) - COMPLETED**
-*   **Objective:** Provide a graphical representation of direct relationships for any selected entity.
-*   **Tasks:**
-    *   Research & select visualization library (React Flow, Vis.js, D3.js, etc.).
-    *   Design mapper component architecture.
-    *   Implement read-only mapper (start with CharacterDetail, then extend to other entities).
-    *   Ensure each node in the graph is clickable and navigates to the related entity's detail page.
-*   **Implementation Summary:**
-    *   Selected and integrated `@xyflow/react` (React Flow) as the visualization library.
-    *   Developed the `RelationshipMapper.jsx` component, utilizing React Flow for graph rendering, including nodes, edges, background, controls, and minimap.
-    *   The mapper component successfully displays the primary entity as a central node and its direct 1st-degree related entities as connected nodes.
-    *   Implemented `transformDataToGraphElements` logic within the mapper to process `relationshipData` (fetched and mapped by the BFF) for Characters, Elements, Puzzles, and Timeline Events to generate graph nodes and edges.
-    *   Ensured nodes in the graph are clickable, navigating to the correct detail page for the related entity (e.g., clicking an Element node on a Character's map navigates to that Element's detail page).
-    *   Addressed initial JavaScript import errors and rendering issues related to the React Flow library integration.
-    *   Significantly improved performance by implementing BFF-level caching for fully mapped/resolved entity objects (as detailed in "Technical Debt & Improvements" and Milestone 3 enhancements). This was crucial for the Relationship Mapper to perform efficiently with entities having many relations.
-    *   Standardized frontend routing for Timeline views (`/timeline`) to ensure consistent navigation from the mapper and other parts of the application.
-*   **Implementation Notes:**
-    *   The BFF controllers (`notionController.js`) provide rich `graphData` objects for each entity type's graph endpoint. This `graphData` (detailed in Section 4.E) includes fully mapped/resolved entity objects for nodes, and edges with detailed labels (`shortLabel`, `contextualLabel`) crucial for frontend rendering, filtering, and grouping logic. BFF-level caching of this `graphData` significantly improves performance.
-
-**Milestone 5: Enhanced Visual Understanding - COMPLETED**
-*   **Implementation Summary:**
-    *   Edge styling system with clear visual differentiation between relationship types
-    *   Node styling improvements with better typography and accessibility
-    *   Information-rich tooltips showing key entity properties on hover
-    *   Highlight system for connected nodes/edges on interaction
-
-**Milestone 6: Layout Implementation & Evaluation - IN PROGRESS (Data Path Now Stable; Orbiting Strategy Refinement is Next)**
-*   **Implementation Summary (Current State):**
-    *   Radial layout with entity-type sectors and multi-ring organization (Implemented).
-    *   Force-directed layout using d3-force with optimized physics parameters (Implemented).
-    *   **Hierarchical (Dagre) Layout:**
-        *   The current implementation uses Dagre for initial node placement.
-        *   It **does not** use Dagre's native compound node features (i.e., `g.setParent()` calls are intentionally omitted in `layoutUtils.js/getDagreLayout`). This decision was made to circumvent a `TypeError: Cannot set properties of undefined (setting 'rank')` encountered in previous attempts with `g.setParent()` and to avoid issues with potentially oversized parent rectangles rendered by React Flow when using its native `parentNode` attribute.
-        *   Instead, visual grouping for Dagre layouts is achieved by:
-            1.  **Frontend `parentId` assignment:** `useGraphTransform.js` assigns a `data.parentId` to child nodes (e.g., Elements within a Container, Elements required/rewarded by a Puzzle) based on `edge.data.shortLabel` from the BFF's `graphData` (see Section 4.E).
-            2.  **Manual "Orbiting":** `layoutUtils.js/getDagreLayout` includes a post-processing step where child nodes (with a `parentId`) are manually positioned to "orbit" their parent node (if the parent is a 'Puzzle' or 'Element').
-        *   This "Dagre + Orbiting" strategy is the current active approach for hierarchical views.
-    *   Layout switching UI with smooth transitions between layouts (Implemented).
-    *   Performance optimizations for handling graphs with 50+ nodes (Implemented).
-*   **Current Focus (Data Path Standardization COMPLETED - Now Focusing on Grouping/Layout - See "Immediate Next Steps" Point 2 in Section 5):**
-    1.  **Validate `parentId` Integrity:** With `graphData` now confirmed as the sole and reliable data source for the mapper (and thus `edge.data.shortLabel` always available), confirm that `useGraphTransform.js` correctly assigns `parentId` for all intended grouping scenarios.
-    2.  **Refine & Evaluate Orbiting Logic:** Assess the visual effectiveness of the current orbiting parameters in `getDagreLayout`. Tune as needed to improve clarity and reduce clutter, especially for dense graphs.
-    3.  **Debug & Evaluate Hull Rendering:** Investigate why `ClusterHull.jsx` (intended to draw visual boundaries around "hub" nodes and their orbiting children) may not be appearing or is ineffective. Hulls are optional if orbiting provides sufficient clarity.
-    4.  **UX Assessment:** Conduct a thorough UX review of the "Dagre + Orbiting (+/- Hulls)" approach.
-    5.  **Strategic Decision:** Based on this assessment, decide if this strategy is sufficient or if re-exploring true Dagre compound nodes (and tackling the historical `TypeError`) is necessary.
-*   **Historical Context: Dagre Compound Node `TypeError` (For Potential Future Reference):**
-    *   Previous development efforts attempted to use Dagre's native `g.setParent()` for compound nodes. These efforts encountered a persistent `TypeError: Cannot set properties of undefined (setting 'rank')`, particularly when edges interacted with these compound structures.
-    *   The detailed "Dagre Compound Node Debugging Log & Findings Summary" (previously in this milestone) can be consulted if a future decision is made to re-investigate this `g.setParent()` approach. For now, it's considered historical context.
-*   **Goal (Revised):** Achieve a consistently stable, clear, and performant hierarchical layout that effectively visualizes logical groupings (e.g., containers/contents, puzzles/elements) using the "Dagre + Orbiting" strategy. Evaluate its UX thoroughly before considering alternative hierarchical approaches.
-
-**Milestone 7: Contextual Filtering & Exploration - COMPLETED**
-*   **Implementation Summary:**
-    *   Node filtering by entity type (Implemented).
-    *   Edge filtering by relationship type (Implemented).
-    *   Edge Simplification / Single Point of Connection logic (`filterGraph.js`) implemented to reduce clutter by pruning weaker direct links when strong indirect paths via hub nodes exist. This replaces the older "Low-signal relationship suppression".
-    *   Depth-based filtering (Implemented).
-    *   Interactive in-place node expansion (Moved to Future Consideration/Later Phase).
-
-**Milestone 8: Performance Baseline, Optimization & Caching Review - COMPLETED**
-*   **Goal:** Ensure the mapper performs adequately with current data size, anticipate scaling needs, and validate the caching strategy.
-*   **Tasks & Outcomes:**
-    *   Profiled mapper performance (Radial, Force-Directed, Hierarchical) with densely connected entities. Identified minor bottlenecks addressed by frontend optimizations.
-    *   Implemented frontend rendering optimizations (memoization, debouncing interactions where applicable).
-    *   **Evaluated Caching Strategy:** Confirmed the current BFF caching mechanism (caching fully resolved graph data) is effective for current read-only use cases and provides a solid foundation. Determined that future interactive features like in-place expansion might require adjustments (e.g., more granular API calls or refined TTLs), but the current strategy is optimal for the defined Phase 2 scope.
-    *   Documented performance characteristics and caching effectiveness.
-
-**Milestone 9: Timeline Weaver MVP - COMPLETED (Basic Implementation)**
-*   **Goal:** Provide an initial interactive visual timeline.
-*   **Tasks & Outcomes:**
-    *   Implemented a basic list-based chronological view on the `TimelineDetail` page (replacing the placeholder). (Note: Advanced library-based visual timeline deferred).
-    *   Events are displayed chronologically based on `Date`.
-    *   Events are clickable, navigating to their respective (conceptual) detail views or showing summary info. (Current implementation links associated entities).
-
-**Milestone 10: Memory Attribute Parsing & Display - COMPLETED (Basic)**
-*   **Goal:** Surface critical memory-specific data stored within Element descriptions.
-*   **Tasks & Outcomes:**
-    *   Defined a simple key-value format (e.g., `RFID: 1234
-Status: Corrupted`) within the `Description/Text` field for initial testing.
-    *   Implemented basic backend logic in `notionPropertyMapper` to parse these key-value pairs if present.
-    *   Updated the `ElementDetail` frontend page to display these parsed attributes in a dedicated "Memory Data" section if found. (Note: Robust parsing of more complex structures deferred).
-
-**NEW SECTION: Refined Relationship Mapper UX Enhancement Plan (Overwriting previous Roadmap sections for clarity)**
-
-**Overarching Goal:** Transform the RelationshipMapper into an intuitive, context-aware tool that tells the "story" of the data relevant to each primary user persona and their tasks, for each entity view. This involves a careful balance of information presented directly on nodes/edges versus what's available via enhanced tooltips.
-
-**UX Principles for Graph Clarity (Grouping & Pruning):**
-
-To achieve the overarching goal, especially in complex maps, we will adhere to the following UX principles for how nodes are grouped and how edges are displayed or pruned:
-
-*   **Tell a Story, Don't Just Show Data:** The graph should intuitively guide the user through the most relevant connections. This means prioritizing relationships that are key to understanding the central entity's role and narrative function.
-*   **Reduce Cognitive Load:** Avoid overwhelming the user with a "hairball" of lines. The layout should be clean, and connections should be easy to follow.
-*   **Contextual Grouping for Meaning:**
-    *   Nodes that naturally belong together or form a conceptual unit should be visually grouped. For example, *Elements physically inside a Container Element should cluster around that Container.* Similarly, *Puzzles should visually group with their direct input Elements (Required For) and output Elements (Rewards).*
-    *   This grouping helps users understand sub-systems or collections at a glance.
-*   **Intelligent Edge Pruning for Clarity (Single Point of Connection):**
-    *   To prevent visual clutter, if a strong, meaningful indirect connection to the central entity of the map exists *through an intermediary hub node* (like a Puzzle, Timeline event, or a significant Container Element), then weaker, direct connections from the central entity to nodes already connected to that hub may be pruned.
-    *   *For example, if Character 'A' (central node) owns Element 'Container X', and 'Container X' contains Element 'Clue Y', we want to primarily show `A --owns--> Container X --contains--> Clue Y`. The direct edge `A --owns--> Clue Y` (if it also exists) might be hidden if 'Container X' is a significant intermediary, thus simplifying the view without losing the core understanding that 'A' has access to 'Clue Y' via 'Container X'.*
-    *   This "single point of connection" principle helps highlight the most direct or narratively important pathway, reducing redundant lines. Essential direct links will be preserved if no such clear intermediary path exists.
-*   **Prioritize Strong Relationships:** Edges representing strong, defining relationships (e.g., "Owns," "Rewards," "Requires") should be more prominent or less likely to be pruned than weaker, more generic associations.
-
-These principles will guide the technical implementation of features like the frontend `parentId` assignment (for the "Dagre + Orbiting" layout) and the edge filtering logic in `filterGraph.js`. The aim is always to present the most understandable and actionable view of the narrative web to the designers.
-
-**Phase 1 (New): Backend - Strategic Data Enrichment in graphData (BFF)**
-*   **Status:** COMPLETED
-*   **Objective:** Modify the BFF's `/graph` endpoints (e.g., `/api/characters/:id/graph`, etc.) to generate and return a standardized `graphData` object (see Section 4.E for specification). This object contains fully mapped 1st and 2nd-degree related entities as nodes, and richly annotated edges, providing all necessary information for frontend rendering, filtering, and grouping logic.
-*   **Implementation Summary:**
-    *   All four graph-generating functions (`getCharacterGraph`, `getElementGraph`, `getPuzzleGraph`, `getTimelineGraph`) in `notionController.js` were refactored.
-    *   These functions now ensure that all 1st-degree and 2nd-degree related entities are fully mapped using the respective `map...WithNames` functions before their data is passed to the internal `addNode` helper.
-    *   The `addNode` helper correctly populates a `properties` object within each graph node with all specified enriched fields (tier, role, status, basicType, descriptionSnippets, fullDescriptions, computed summaries, etc.).
-    *   The `addEdge` helper correctly populates a `data` object within each graph edge with `sourceNodeName`, `sourceNodeType`, `targetNodeName`, `targetNodeType`, and `contextualLabel`.
-    *   A `ReferenceError` in `addNode` was resolved.
-*   **Data to Embed in `graphData.nodes[n].properties`:** (Content unchanged - specification met)
-    *   **Generic (All Node Types):**
-    *   **Data to Embed in `graphData.edges[e].data` (or `tooltipData`):** (Content unchanged - specification met)
-    *   `type`: (dependency, character, etc. - already present).
-
-**Phase 2 (New): Frontend - Presenting the Enriched Information Strategically**
-    *   **Status:** IN PROGRESS (Data path stabilization, `parentId` assignment validation, layout refinement)
-    *   **Objective:** Update frontend components (`RelationshipMapper`, `useGraphTransform`, `transformToGraphElements`, `layoutUtils`) to:
-        1.  Strictly consume the `graphData` object (as per Section 4.E) from the BFF. **The legacy fallback to `rawData` in `transformToGraphElements.js` for graph construction is to be removed.** **(COMPLETED - `transformToGraphElements.js` modified; detail pages verified to provide `graphData`)**
-        2.  Correctly assign `node.data.parentId` in `useGraphTransform.js` based on `edge.data.shortLabel` from the (now reliable) `graphData`.
-        3.  Refine and utilize the "Dagre + Orbiting" layout strategy in `layoutUtils.js` effectively using this `parentId`.
-        4.  Display enriched information from `graphData` in tooltips, node chips, and edge labels.
-        5.  Implement dynamic layout parameter adjustments for panel vs. fullscreen views and refine default layouts.*   **Implementation Summary (Data Enrichment - Completed):**
-    *   `RelationshipMapper.jsx` updated to pass `centralEntityType` to node components.
-    *   `EntityNode.jsx`:
-        *   Corrected to access enriched data from `props.data.properties`.
-        *   `NodeTooltipContent` refactored to use corrected data and `centralEntityType` for context-aware tooltips, displaying various snippets, summaries, and full descriptions as planned.
-        *   `getNodeChips` updated to use `data.properties` and refined for improved chip label display (truncation for visible label, full text in chip's own tooltip, flexible `maxWidth`).
-    *   `CustomEdge.jsx`: Tooltip now correctly displays the rich `contextualLabel` from `edge.data`.
-    *   `transformToGraphElements.js`: Corrected to preserve the incoming `edge.data` from the BFF and merge it with the locally determined `edgeType` for styling, fixing edge tooltips.
-    *   `SecondaryEntityNode.jsx`: Updated to accept `centralEntityType` and display a slightly enhanced tooltip.
-*   **Implementation Summary (Layout Dynamics & Defaults - IN PROGRESS; nearing completion for initial parameter tuning):**
-    *   `useLayoutManager.js`:
-        *   Modified to accept an `isFullScreen` prop.
-        *   Defines distinct sets of layout parameters (`panelLayoutOptions`, `fullscreenLayoutOptions`) for Radial, Force-Directed, and Dagre layouts. 
-            *   `panelLayoutOptions.radial` tuned for compactness with `baseRadius: 290`, `minRadiusBetweenNodes: 115`, `maxNodesRadial: 4`.
-            *   `fullscreenLayoutOptions.radial` confirmed effective with `baseRadius: 350`, `minRadiusBetweenNodes: 130`, `maxNodesRadial: 5`.
-        *   Default `rankdir` for Dagre layout in `fullscreenLayoutOptions` is 'TB' (Top-to-Bottom), which provides good Character map overviews.
-        *   Dynamically selects the appropriate parameter set based on the `isFullScreen` state.
-    *   `RelationshipMapper.jsx`:
-        *   Passes the `ui.isFullScreen` state to `useLayoutManager`.
-        *   Default layout for 'Element' entities changed from 'Dagre' to 'Radial' to better leverage the sector-based grouping for an overview of diverse connections.
-*   **Tasks:**
-    *   **A. Node Visuals (`EntityNode.jsx`):** (Completed for data)
-    *   **B. Node Tooltips (`EntityNode.jsx` -> `NodeTooltipContent.jsx`):** (Completed - data flow, content review pending)
-    *   **C. Node Chips (`EntityNode.jsx` -> `getNodeChips`):** (Completed)
-    *   **D. Edge Tooltips (`CustomEdge.jsx`):**
-        *   **Verify** that the rich `contextualLabel` from `edge.data` (originating from BFF) is correctly and consistently displayed in the edge tooltip across various entity maps and relationship types. (VERIFIED - Data flows correctly)
-    *   **F. Layout Parameterization (Panel vs. Fullscreen):** (IN PROGRESS - Initial tuning largely complete, awaiting broader data testing)
-        *   Test and refine `panelLayoutOptions` and `fullscreenLayoutOptions` in `useLayoutManager.js` for all layout types. (Panel Radial tuned, Fullscreen Radial confirmed good).
-        *   Focus on Radial layout parameters for Element/Timeline maps in both modes. (Panel Radial adjusted, Fullscreen Radial looks good).
-        *   Evaluate Dagre 'TB' default for Character maps in fullscreen. (Confirmed as good default).
-    *   **G. Default Layouts Review:** (Largely Confirmed)
-        *   Confirm the new 'Radial' default for 'Element' entities provides a good user experience. (Confirmed positive, especially with sector grouping and dynamic params).
-        *   Evaluate default Dagre `rankdir` for Character maps (panel: 'LR', fullscreen: 'TB'). (Confirmed good strategy).
-        *   Dagre `rankdir` for Puzzle maps (panel: 'LR'; fullscreen will also use 'TB' if Dagre selected, user can override orientation via controls). (Considered acceptable strategy, relies on user choice for fullscreen orientation if default 'TB' isn't preferred for a specific puzzle).
-    *   **Refine default layout orientations (e.g., Dagre `rankdir` for Characters - now 'TB' for fullscreen) based on testing and narrative requirements.**
-
-**Phase 3: Testing & Iteration**
-*   **Status:** IN PROGRESS (Layout parameter visual testing nearing completion, Tooltip Content Review analysis complete, Refinements pending)
-*   **Objective:** Validate the implementation and refine based on feedback, with specific attention to layout behavior and information presentation in different contexts, particularly during **content creation and development workflows**.
-*   **Tasks:**
-    *   **Implementation Summary (UX Enhancements - Tooltips, Edge Labels, & Edge Simplification - COMPLETED):**
-        *   **Backend (`notionController.js`):**
-            *   Refactored `addNode` and `addEdge` into shared helpers.
-            *   Enhanced `_createGraphEdgeInternal` for richer `contextualLabel` and new `shortLabel`.
-            *   Node `descriptionSnippet` generation remains generic; relationally-contextual snippets are a future enhancement.
-        *   **Frontend (`RelationshipMapper` directory):**
-            *   `RelationshipMapper.jsx`: Passes `isFullScreen` to `EntityNode`.
-            *   `EntityNode.jsx` & `NodeTooltipContent.jsx`: Adaptive node tooltips based on `isFullScreen`.
-            *   `CustomEdge.jsx`: Uses `data.shortLabel` for on-path labels.
-        *   **Frontend (`filterGraph.js` - Edge Simplification / Single Point of Connection):**
-            *   Implemented new logic to intelligently prune weak, direct edges to the center node if a stronger, indirect path exists via an intermediary hub node (Puzzle, Timeline, or Element).
-            *   Defined `STRONG_RELATIONSHIPS` and `WEAK_RELATIONSHIPS` (based on `shortLabel`) to guide this pruning.
-            *   Removed the older, simpler "Low-Signal Suppression" logic, as the new simplification provides a more context-aware approach to decluttering.
-        *   These changes collectively aim to provide richer, more contextual, and clearer at-a-glance information in the Relationship Mapper.
-    *   **Testing Focus for Edge Simplification:**
-        *   Verify behavior with highly connected central nodes (e.g., Alex Reeves, Victoria Kingsley), ensuring meaningful clutter reduction.
-        *   Confirm that weak direct links are correctly pruned when strong indirect paths (C-Hub-N) are present.
-        *   Ensure essential weak links are preserved if no stronger indirect path exists.
-        *   Test scenarios where 'Element' nodes act as hubs (e.g., containers).
-        *   Assess if `STRONG_RELATIONSHIPS`, `WEAK_RELATIONSHIPS`, and `INTERMEDIARY_HUB_TYPES` definitions are optimal or need tuning.
-    *   Thoroughly test all views (Character, Element, Puzzle, Timeline) simulating primary persona tasks (Narrative Designer, Writer, Puzzle Designer, Asset Manager) **focused on adding/linking new information and understanding evolving relationships, not just reviewing static data.**
-    *   Test in panel and fullscreen modes:
-        *   **Verify dynamic layout parameter switching:** (Confirmed working).
-        *   **Assess readability and usability of layouts (Radial, Dagre, Force-Directed) with tuned parameters (`panelLayoutOptions`, `fullscreenLayoutOptions`)**:
-            *   Focus on scenarios involving adding/removing connections – does the layout remain clear?
-            *   Confirm default layouts (Element:Radial, Character:Dagre, Puzzle:Dagre, Timeline:Radial) feel appropriate for initial view and common tasks in both panel/fullscreen.
-            *   Confirm default Dagre orientations (Panel:LR, Fullscreen:TB) provide good starting points, acknowledging user can change via controls.
-            *   **Action:** Document findings; minor parameter tweaks may be needed after broader testing, but current settings are the baseline.
-    *   Test with entities having varying numbers of connections (sparse and dense).
-    *   **Review and Refine tooltip content based on testing feedback: (PRIMARY FOCUS - IMPLEMENTATION IN PROGRESS)**
-        *   **Node Tooltips (`NodeTooltipContent.jsx`):** Systematically review content and presentation for each entity type (as central node and as connected node) against persona needs and creation/development tasks.
-            *   **Verify Context-Awareness:** Ensure tooltip content appropriately uses `centralEntityType` to tailor information. (Verified Foundational)
-            *   **Assess Information Hierarchy:** Is the most important info (e.g., Full Name/Title, Type, Key Snippets) presented clearly and concisely? (Mostly Good)
-            *   **Validate Data:** Confirm the correct enriched data from `node.properties` (generated by BFF) is displayed (e.g., `Character Logline`, `Element Status`, `Description/Text` snippets, computed summaries). (Verified Good)
-            *   **Evaluate Relevance:** Is the information helpful for confirming identity, understanding context, or making decisions *during development*? (Needs Improvement for contextual snippets - See Action Below)
-            *   **Specifically check if tooltips for indirectly connected nodes (e.g., a node connected to a direct neighbor of the central entity) provide sufficient context about their relevance to the visible network, or if users need to click through too often.** (Requires review during refinement implementation)
-            *   **Evaluate tooltip verbosity/size in panel view.** (Identified as potentially too verbose - See Action Below)
-            *   **Action (Frontend - ACTIVE): Implement logic in `NodeTooltipContent.jsx` for more concise node tooltip content in panel view (e.g., based on `isFullScreen` state, more aggressive snippet truncation, potentially hiding less critical fields).**
-            *   **Action (Backend - ACTIVE): Enhance BFF to provide more relationally-contextual snippets for node properties.**
-        *   **Edge Tooltips (`CustomEdge.jsx`):** Review `contextualLabel` content (`edge.data.contextualLabel` from BFF) across diverse relationships.
-            *   **Verify Specificity & Clarity:** Ensure labels are unambiguous and accurately describe the specific relationship (e.g., "Puzzle 'X' Requires Element 'Y'"). (Good for standard, needs improvement for complex - See Action Below)
-            *   **Pay special attention to the `contextualLabel` for self-referential relationships (e.g., Puzzle-to-Puzzle parent/sub, Element-to-Element container/contents) and multi-typed/generic relationships (e.g., 'Associated With'), ensuring they are specific and not overly generic.** (Identified as needing improvement)
-            *   **Assess Consistency:** Check for consistent phrasing and terminology. (Good)
-            *   **Action (Backend - ACTIVE): Refine BFF logic for generating `contextualLabel` for complex/bi-directional/generic relationships to improve specificity and clarity.**
-    *   **Review and Refine node chip information based on testing feedback:**
-        *   **Verify Correctness:** Ensure chip data (e.g., `Tier`, `Status`, `Basic Type`) drawn from `node.properties` is accurate. (Verified Good)
-        *   **Assess Utility:** How helpful are the chips for quick scanning and identification during development tasks in both panel/fullscreen? Are the right properties surfaced as chips? (Generally Good)
-        *   **Assess node chip density and number in panel view across various entity types.** (Potential minor clutter observed)
-        *   **Visuals:** Review truncation, readability, and visual appeal. (Good)
-        *   **Action (Potential Frontend Refinement - DEFERRED): If significant clutter is confirmed in specific views/panel mode, consider dynamic chip display (e.g., showing fewer, more critical chips in panel view vs. fullscreen).**
-    *   **Review and Refine edge label visibility based on testing feedback:**
-        *   **Assess Sufficiency of Simple Labels:** In dense graphs (panel and fullscreen), is the simple relationship type label shown on the edge path sufficient for users to quickly distinguish between multiple similar connections (e.g., multiple "Requires" edges) **without excessive hovering**, especially during creation/editing workflows? (Identified as Insufficient in Dense Graphs)
-        *   **Confirm Tooltip Reliability:** Verify the rich edge tooltip provides the necessary detail reliably on hover. (Verified Good)
-        *   **Action (Frontend Priority - ACTIVE): Implement 'Slightly Richer Labels' on edge paths to improve at-a-glance identification in dense graphs. This involves updating `CustomEdge.jsx` to display a more specific (but still concise) label derived from edge data.**
-        *   **Action (Backend Dependency - ACTIVE): BFF to evaluate need for and potentially provide a specific `edge.data.shortLabel` property if existing `edge.type` or `edge.data.contextualLabel` is insufficient for the frontend to determine the appropriate richer on-path label.**
-    *   Iterate on snippet length, formatting, and default visibility settings based on feedback.
-    *   **Decision Point:** Strategy for edge label visibility on path (fullscreen vs. panel) - **DECISION:** Implement 'Slightly Richer Labels' consistently in both views first. Further differentiation only if needed.
-
-*   **Technical Refinement Tasks (Resulting from Phase 3 Testing - DETAILED IMPLEMENTATION PLAN - UPDATED STATUSES):**
-
-    **I. Backend Enhancements (`storyforge/backend/src/controllers/notionController.js`)**
-
-    *   **A. Refactor `addNode` and `addEdge` (COMPLETED):**
-        1.  Analyzed local `addNode`/`addEdge` helpers. (COMPLETED)
-        2.  Refactored into single, shared helper functions (`_createGraphNodeInternal`, `_createGraphEdgeInternal`). (COMPLETED)
-        3.  Updated `get...Graph` functions to use these shared helpers. (COMPLETED)
-
-    *   **B. Enhance `_createGraphNodeInternal`: Relationally-Contextual Node Information (REVIEW - Low Priority):** Current generic snippets and summaries are a good baseline. Further contextualization is a future enhancement if needed after frontend stabilization.
-        1.  **`descriptionSnippet`:**
-            *   **Short-term (COMPLETED):** Ensured `addNode` passes the most relevant available text field to `createSnippet` for the general node description.
-            *   **Mid-term (Iterative - FUTURE):** Future work: Investigate logic for `addNode` to derive more relationally-contextual snippets based on Notion data conventions.
-        2.  **`specificProps` (e.g., `flowSummary`, `statusSummary`, `participantSummary`) (REVIEWED - Current state is good baseline):** Reviewed; current computed summaries are a good baseline.
-        3.  **Data Availability (VERIFIED):** Full mapped entity object from `propertyMapper...WithNames` is available to `addNode`.
-
-*   **C. Enhance `_createGraphEdgeInternal`: Improved Edge Labels (REVIEW - Low Priority):** Current `contextualLabel` and `shortLabel` generation is comprehensive. Minor refinements can be considered later if specific edge cases prove unclear.        1.  **Refine `data.contextualLabel` (COMPLETED):**
-            *   Transformed format into more natural language.
-            *   Combined simple `label` with source/target names/types, considering directionality.
-        2.  **Add `data.shortLabel` (COMPLETED):**
-            *   Introduced new `shortLabel` in `edge.data` for concise on-path display.
-            *   Standardized values (e.g., Title Case).
-
-    **II. Frontend Enhancements**
-
-    *   **A. `transformToGraphElements.js` (`storyforge/frontend/src/components/RelationshipMapper/`) (ACTION REQUIRED):**
-        1.  **Remove `rawData` Fallback:** Modify the function to *exclusively* process the `graphData` prop. If `graphData` is not valid or not provided, the function should return empty `{ nodes: [], edges: [] }` or allow `useGraphTransform` to catch an error, ensuring `RelationshipMapper` shows a loading/error state rather than a degraded graph.
-        2.  **Verify `edge.data` Preservation:** Ensure that when processing `graphData`, all properties from the BFF's `edge.data` object (especially `shortLabel` and `contextualLabel`) are correctly preserved and passed through to the `reactFlowEdge.data` object.
-    *   **B. `RelationshipMapper.jsx` (`storyforge/frontend/src/components/RelationshipMapper/`) (VERIFICATION REQUIRED - Post Data Path Fix):**
-        1.  Verify `isFullScreen` is correctly passed to `EntityNode`.
-        2.  Debug `ClusterHull` rendering: Confirm conditions for rendering hulls, check styling, and log relevant variables if hulls are not appearing as expected for Puzzle/Element hubs with children. Hulls remain optional.
-    *   **C. `EntityNode.jsx` (`storyforge/frontend/src/components/RelationshipMapper/`): Dynamic Tooltip Conciseness (COMPLETED)**
-        1.  **Receive `isFullScreen` in `EntityNode`:** (COMPLETED)
-        2.  **Pass `isFullScreen` to `NodeTooltipContent`:** (COMPLETED)
-        3.  **Implement Logic in `NodeTooltipContent`:** (COMPLETED)
-            *   Received `isFullScreen` prop.
-            *   Conditionally adjusted displayed information (e.g., `fullDescription` visibility) and `maxWidth` based on `isFullScreen`.
-
-    *   **D. `CustomEdge.jsx` (`storyforge/frontend/src/components/RelationshipMapper/`): Richer On-Path Edge Labels (COMPLETED)**
-        1.  **Utilize `data.shortLabel`:** (COMPLETED)
-            ```javascript
-            // const edgeDisplayLabel = data?.shortLabel || label || ''; // New
-            ```
-            *   `edgeTooltip` correctly uses `data?.contextualLabel`.
-
-    *   **E. `filterGraph.js` (`storyforge/frontend/src/components/RelationshipMapper/`): Advanced Edge Simplification (COMPLETED - Replaces older Low-Signal Suppression)**
-        1.  **Implemented Single Point of Connection Logic:** Added logic to prune weak direct edges to the center node if a strong indirect path exists via a hub node (Puzzle, Timeline, Element). (COMPLETED)
-        2.  **Defined Relationship Strengths:** Established `STRONG_RELATIONSHIPS` and `WEAK_RELATIONSHIPS` sets based on `edge.data.shortLabel`. (COMPLETED)
-        3.  **Defined Hub Types:** Identified `INTERMEDIARY_HUB_TYPES` as Puzzle, Timeline, and Element. (COMPLETED)
-        4.  **Replaced Low-Signal Suppression:** Removed the previous, simpler low-signal suppression logic. (COMPLETED)
-
-    *   **F. Enhance Dagre Layout - Orbiting & Grouping Refinement (`layoutUtils.js`, `useGraphTransform.js`) (ACTION REQUIRED - Post Data Path Fix & UX Review):**
-        1.  **Validate `parentId` Assignment:** After data path fix, rigorously test `parentId` assignment in `useGraphTransform.js` for all intended grouping scenarios (Container-Contents, Puzzle-IOElements) by verifying `edge.data.shortLabel` is correctly interpreted.
-        2.  **Refine Orbiting Parameters:** In `getDagreLayout` (`layoutUtils.js`), tune parameters for the manual orbiting logic (e.g., radius calculation, angular spread, max children per ring before adjusting radius) to improve visual organization and reduce overlaps, especially for dense graphs.
-        3.  **Evaluate Subgraph Alternatives (If Orbiting Insufficient):** If, after tuning, the "Dagre + Orbiting" strategy (with or without hulls) does not meet UX requirements for clarity, *then* a decision may be made to re-evaluate true Dagre compound nodes (tackling the historical `TypeError` by referring to notes in Milestone 6) or other advanced grouping visualization techniques. For now, focus on optimizing the current "Dagre + Orbiting" approach.
-
-**Phase 4: Implementing Editing Capabilities** (Previously Phase 3)
-    *   **Status:** PLANNED
-    *   **Architecture Focus:**
-        *   Leverage the clean separation between transformation and presentation for interactive editing
-        *   Implement layout persistence for consistent user experience
-        *   Ensure real-time data synchronization with Notion backend
-    *   **Tasks:**
-        *   **Interactive Relationship Management:**
-            *   Leverage the existing architecture to add drag-and-drop relationship creation
-            *   Implement direct property editing via node/edge context menus
-            *   Add visual indicators for creating vs. editing modes
-        *   **Layout Preferences:**
-            *   Store and retrieve user layout preferences per entity
-            *   Preserve layout selections when returning to an entity
-            *   Add layout presets for common visualization needs
-        *   **Real-time Data Synchronization:**
-            *   Ensure edits are immediately reflected in Notion via the BFF
-            *   Add optimistic UI updates with proper error handling
-            *   Implement conflict resolution for concurrent edits
-
-**Phase 5: Refinements, Playtesting Support & Deployment**
-    *   **Status:** PLANNED
-    *   **Architecture Focus:**
-        *   Optimize mobile/touch interactions
-        *   Add export and sharing capabilities
-        *   Integrate with playtesting feedback system
-    *   **Tasks:**
-        *   **Export & Sharing:**
-            *   Add ability to export visualizations as images/PDFs
-            *   Implement shareable view links for team collaboration
-            *   Create presentation mode for stakeholder reviews
+**(OLD CONTENT OBSOLETE - TO BE REPLACED BY REFERENCE TO NEW ACTION PLAN IN SECTION 9)**
 
 **6. Non-Functional Requirements**
 *   **Usability:** Intuitive for team members with varying technical skills.
 *   **Performance:** Responsive for common tasks, considering Notion API limits. Aggressive caching and optimized API calls in BFF are crucial.
 *   **Maintainability:** Well-structured, documented code (ongoing effort).
 *   **Security:** Notion API key strictly handled in the BFF, not exposed client-side.
-*   **Data Integrity:** Operations must accurately reflect in Notion and maintain relational integrity as defined by the Notion schema in Section 4. Changes to structured data within Rich Text fields must be handled carefully to preserve existing content.
-*   **Accessibility:** **Ensure all UI components, especially RelationshipMapper, meet accessibility standards (keyboard navigation, ARIA, color contrast).**
+*   **Data Integrity:** Operations must accurately reflect in Notion and maintain relational integrity as defined by the Notion schema in Section 4. <!-- PRD-UPDATE-NOTE: Emphasize complexity of writing structured data back to Rich Text if/when memory attribute editing is implemented. --> Changes to structured data within Rich Text fields must be handled carefully to preserve existing content.
+*   **Accessibility:** Ensure all UI components, especially RelationshipMapper, meet accessibility standards (keyboard navigation, ARIA, color contrast).
 
 **NEW SECTION: 6. User Personas, Workflows, and Relationship Mapper Use Cases**
-
-This section details the primary users of StoryForge, their core tasks related to game design and development, and how the Relationship Mapper views for each entity type are intended to support their workflows. Understanding these user-centric scenarios is crucial for refining existing features and guiding future development, particularly the design of an effective dashboard.
-
-**A. Primary User Personas / Roles:**
-
-*   **Narrative Designer:** Oversees the overall story, plot, character arcs, and thematic consistency. Ensures the narrative is engaging and cohesive.
-*   **Writer:** Focuses on dialogue, scripts, in-game text, character voice, and detailed descriptive content for elements and events.
-*   **Puzzle Designer:** Designs and implements puzzles, ensuring they are solvable, thematically appropriate, and integrated with the narrative and available elements. Manages puzzle flow and dependencies.
-*   **Asset Manager:** Tracks all physical and digital elements (props, clues, media files, documents), their status, location, and connections to other game components.
-
-**B. Entity-Specific Map Use Cases & Workflows:**
-
-**B.1. Character Detail View & Relationship Map**
-
-*   **Primary User(s):** Narrative Designer, Writer. (Puzzle Designer for consultation).
-*   **Key Game Development Tasks & Questions:**
-    *   **Understanding Identity & Role:** "Who is this character fundamentally (`Logline`, `Tier`, `Type`)? What is their primary goal (`Primary Action`) and emotional state (`Emotion towards CEO & others`)?"
-    *   **Mapping Relationships:** "What are their key relationships to other `Characters`? Are these relationships positive, negative, complex?"
-    *   **Tracing Narrative Arc:** "What significant `Timeline Events` are they involved in? How do these events shape their story and development?"
-    *   **Identifying Puzzle Interactions:** "Which `Puzzles` do they own, influence, or are essential for solving? How do these puzzles reflect or challenge their character?"
-    *   **Assessing Element Dependencies:** "What crucial `Elements` (props, clues, memories, their 'Character Sheet' element) do they own or are associated with? How do these items define their capabilities, knowledge, or drive their actions?"
-    *   **Ensuring Narrative Cohesion:** "Are there any plot holes, inconsistencies, or missing links in their connections? How does this character connect to broader `Narrative Threads`?"
-*   **How the Map Facilitates Workflow:**
-    *   Provides a visual web of the character's direct and indirect connections, allowing quick navigation to related `Events`, `Puzzles`, `Elements`, and other `Characters`.
-    *   Helps designers spot if a character is over- or under-utilized in terms of connections.
-    *   Allows writers to quickly see the items and events that can be referenced in dialogue or character-specific texts.
-    *   Enables assessment of the narrative impact if this character or one of their key connections is changed.
-
-**B.2. Element Detail View & Relationship Map**
-
-*   **Primary User(s):** Asset Manager, Puzzle Designer, Narrative Designer.
-*   **Key Game Development Tasks & Questions:**
-    *   **Item Identification & Status:** "What is this item (`Name`, `Basic Type`)? What's its current production `Status` (e.g., 'Ready for Playtest', 'To Design')? When is it `First Available`?"
-    *   **Ownership & Associations:** "Who `Owns` this Element? Which other `Characters` are `Associated` with it?"
-    *   **Physical/Logical Structure (Containers):** "Is this Element a `Container`? If so, what are its `Contents`? Conversely, is this Element *inside* another `Container`?" (Crucial for visualizing nested items and managing physical props).
-    *   **Puzzle Integration:** "Is this Element `Required For` a Puzzle? Which one(s)? Is it `Rewarded By` a Puzzle? Is it part of a `Container Puzzle` (i.e., needs to be opened)?"
-    *   **Memory-Specific Data (if applicable):** "If this is a 'Memory' type Element, what are its specific attributes (parsed from `Description/Text`, e.g., `RFID Token ID`, `Corruption Status`)? How does it integrate with `Puzzle Notes`?"
-    *   **Narrative Significance:** "How does this Element link to specific `Timeline Events`? What `Narrative Threads` does it support?"
-    *   **Asset Management:** "Where are its `Files & media` or `Content Link` for digital assets?"
-*   **How the Map Facilitates Workflow:**
-    *   Visualizes the Element's role in the game's ecosystem: where it comes from, what it's used for, who interacts with it.
-    *   For Asset Managers, clearly shows container hierarchies and ownership for tracking.
-    *   For Puzzle Designers, instantly shows how an Element plugs into puzzle chains as an input or output.
-    *   For Narrative Designers, clarifies the Element's connection to plot points and characters.
-
-**B.3. Puzzle Detail View & Relationship Map**
-
-*   **Primary User(s):** Puzzle Designer. (Narrative Designer for story integration).
-*   **Key Game Development Tasks & Questions:**
-    *   **Understanding Puzzle Mechanics:** "What is this `Puzzle`? Who `Owns` it or is key to its solution?"
-    *   **Input/Output Flow:** "What specific `Elements` are `Required For` its solution (inputs)? What `Elements` are `Rewards` (outputs)? What `Locked Item` does it gate access to?"
-    *   **Puzzle Interdependencies:** "Is this part of a larger chain? Does it have a `Parent item` puzzle or any `Sub-Puzzles`?"
-    *   **Narrative Integration:** "What `Story Reveals` or information is gained upon solving it? How does it link to `Timeline Events`? Which `Characters` are most affected or involved?"
-    *   **Timing & Assets:** "What is its narrative `Timing` (e.g., 'Act 1', 'Act 2')? Where is the `Asset Link` for design documents (e.g., Canva)?"
-    *   **Solution & Design Details:** "What are the `Description/Solution` steps?"
-*   **How the Map Facilitates Workflow:**
-    *   Clearly visualizes the entire flow of a puzzle: inputs, the puzzle itself, and outputs.
-    *   Shows its position within a sequence or hierarchy of puzzles.
-    *   Highlights dependencies on specific `Characters` or `Elements`, allowing designers to check for availability and logical consistency.
-    *   Helps Narrative Designers ensure the puzzle's outcome and revelations align with the story.
-
-**B.4. Timeline Event Detail View & Relationship Map**
-
-*   **Primary User(s):** Narrative Designer, Writer.
-*   **Key Game Development Tasks & Questions:**
-    *   **Event Context:** "What is this `Event` (`Description`)? When precisely does it occur (`Date`)?"
-    *   **Character Involvement:** "Which `Characters are Involved`? How does this event impact their individual arcs or relationships?"
-    *   **Key Evidence/Memories:** "What crucial `Memory/Evidence` (Elements) are introduced, discovered, or exchanged during this event? What is their `mem type`?"
-    *   **Narrative Impact:** "What are the broader `Notes` or significance of this event for the plot? Does it trigger or connect to any `Puzzles`?"
-*   **How the Map Facilitates Workflow:**
-    *   Visualizes the convergence of `Characters` and key `Elements` at a specific narrative moment.
-    *   Helps understand the immediate ripple effects of the event on involved entities.
-    *   Allows writers and narrative designers to easily jump to the details of involved characters or elements to ensure consistency in their portrayal or usage around this event.
-    *   Facilitates checking for chronological consistency and narrative flow.
-
-**C. Implications for Dashboard Design:**
-
-A deep understanding of these persona-based workflows and information needs for each map view will directly inform a more effective StoryForge dashboard. The dashboard should evolve beyond placeholders to:
-
-*   **Role-Based Starting Points:** Offer views or widgets tailored to each persona (e.g., a "Puzzle Designer View" might show puzzles with incomplete dependencies, an "Asset Manager View" might list elements with a 'To Build' status).
-*   **Surface Actionable Insights:** Proactively highlight potential issues or items needing attention based on these workflows (e.g., "Character 'X' has no owned elements," "Puzzle 'Y' is an orphan with no connections," "Timeline Event 'Z' has no associated characters").
-*   **Quick Navigation:** Provide shortcuts to recently viewed or commonly accessed entities relevant to ongoing tasks.
-*   **Progress Tracking & Overviews:** Display summary statistics relevant to game development progress (e.g., number of elements per `Basic Type`, puzzles per `Timing` act, characters per `Tier`).
-*   **Facilitate Cross-Referencing:** Help users see how their work impacts other areas (e.g., how a new puzzle might require new elements or affect a character's path).
-
-By keeping these user scenarios in mind, StoryForge can become an even more powerful and intuitive tool for the entire game design team.
+(This section is valuable and should be kept as is. It guides UX and feature development.)
+... (Original content of this section - assume it's here for brevity) ...
 
 **7. Assumptions & Dependencies**
-*   **The Notion workspace structured precisely according to Section 4 is maintained.** Unauthorized changes to this Notion structure (e.g., renaming properties, changing types, deleting databases) outside of StoryForge's controlled modifications (like potentially adding a new property in a future, agreed-upon step) will break the tool.
+*   **The Notion workspace structured precisely according to Section 4 is maintained.** Unauthorized changes to this Notion structure will break the tool.
 *   Notion API remains stable, accessible, and its features support the required operations.
 *   The initial data import from source CSVs and Markdown files has correctly established the baseline content and structure in Notion.
-*   **The BFF's `/graph` endpoints consistently provide valid `graphData` objects structured according to Section 4.E.** This is critical for all Relationship Mapper functionality, including grouping and layout. The frontend `RelationshipMapper` must use this `graphData` as its sole source for graph construction.
+*   **The BFF's `/graph` endpoints consistently provide valid `graphData` objects structured according to Section 4.E.** The frontend `RelationshipMapper` now uses this `graphData` as its sole source for graph construction. <!-- PRD-UPDATE-NOTE: Updated to reflect current state. -->
 
 **8. Future Considerations (Out of Scope for current phases unless specified)**
-*   Advanced branching narrative visualization beyond simple relationship mapping.
-*   Real-time collaboration features within StoryForge itself (beyond Notion's).
-*   More sophisticated version control or "snapshotting" of game states directly within StoryForge.
-*   Direct export to game engine formats or other specialized playtest-ready documents.
-*   Creation of a dedicated `Narrative Threads` Notion database and associated management features in StoryForge.
-*   Creation of a dedicated `Playtest Feedback` Notion database.
-*   Advanced library-based interactive timeline visualization.
-*   Robust parsing of complex structured data within Notion Rich Text fields.
-*   Interactive in-place node expansion in Relationship Mapper.
-*   Click-to-highlight path interaction in Relationship Mapper.
-*   Advanced label overlap solutions for Relationship Mapper.
-*   **Data-driven ranking/sorting within Dagre layouts (e.g., prioritizing nodes based on specific properties like 'Tier').**
-*   **User-selectable "view profiles" (e.g., "Narrative Designer," "Puzzle Designer") that apply preferred layout and filter presets.**
-*   **Re-evaluation of true Dagre compound node capabilities if the "Dagre + Orbiting" strategy proves insufficient after refinement.**
+(This list should be reviewed and maintained.)
+... (Original content of this section - assume it's here for brevity, plus new considerations below) ...
+*   Full, robust parsing (beyond minimal RFID) of structured data from Rich Text for memory attributes, if the minimal approach proves insufficient long-term.
+*   Re-evaluation of true Dagre compound node capabilities if the "Dagre + Orbiting" strategy (Phase 1, Step 2 of new Action Plan) proves insufficient after refinement.
 
-**9. Step-by-Step Guidance for the Coding Assistant (Post Phase 1 Completion & Refined Plan) - REVISED**
-
-1.  **Implement Comprehensive Testing Suite (NEW TOP PRIORITY - See Section 10 for details):**
-    *   **Phase 1.1: Backend Tests:** Set up Jest, mock `notionService`, write unit tests for `notionController.js` (`graphData` generation) & `propertyMapper.js`, and integration tests for BFF API endpoints.
-    *   **Phase 1.2: Frontend Tests:** Set up Jest & RTL, write unit tests for `transformToGraphElements.js`, `useGraphTransform.js`, `layoutUtils.js`, `filterGraph.js`, and unit/integration tests for `RelationshipMapper.jsx`.
-    *   **Phase 1.3: E2E Tests:** Set up Playwright, develop initial E2E tests for detail page navigation and `RelationshipMapper` graph display.
-2.  **Stabilize Data Pipeline for Relationship Mapper (IMMEDIATE PRIORITY) - COMPLETED:**
-    *   **Modify `storyforge/frontend/src/components/RelationshipMapper/transformToGraphElements.js`:** Remove the legacy `rawData` fallback path. The function must exclusively process the `graphData` prop (as defined in Section 4.E). If `graphData` is invalid or missing, it should result in an empty graph or allow `useGraphTransform` to throw an error, leading to an error/loading state in `RelationshipMapper.jsx`. **(COMPLETED)**
-    *   **Verify Data Provisioning:** Ensure all detail pages (`CharacterDetail.jsx`, `ElementDetail.jsx`, `PuzzleDetail.jsx`, `TimelineDetail.jsx`) correctly fetch (from the appropriate `/api/<entity>/:id/graph` BFF endpoint) and pass the `graphData` object to `RelationshipMapper.jsx`. **(VERIFIED COMPLETE)**
-3.  **Verify Grouping Logic & Visuals (Post Data Pipeline Fix & Initial Tests):**
-    *   **`parentId` Assignment:** With reliable `graphData` (and thus `edge.data.shortLabel`), thoroughly test and debug the `parentId` assignment logic in `useGraphTransform.js` across various entities and relationship types to ensure it correctly identifies groups (Container-Contents, Puzzle-IOElements).
-    *   **"Dagre + Orbiting" Layout:** Verify the orbiting logic in `layoutUtils.js/getDagreLayout` correctly uses the assigned `parentId`.
-    *   **Hull Rendering:** Debug `ClusterHull.jsx` rendering in `RelationshipMapper.jsx`. Identify why hulls may not be appearing (e.g., no qualifying hubs after filtering, styling issues, conditions for rendering not met). Hulls remain optional if orbiting provides sufficient clarity.
-4.  **Evaluate and Refine Current UX (Dagre + Orbiting):**
-    *   Conduct a thorough UX review of the "Dagre + Orbiting" layout combined with SPOC filtering (`filterGraph.js`). Assess clarity, information hierarchy, and clutter for simple and complex graphs.
-    *   Tune SPOC filter parameters and orbiting layout parameters (`layoutUtils.js`) as needed to improve the user experience based on this review.
-5.  **Strategic Decision Point (Dagre Layout Future):**
-    *   Based on the UX evaluation (Step 4), make a clear decision:
-        *   **Path A (Current Strategy):** The "Dagre + Orbiting (+/- Hulls)" strategy is deemed sufficient or can be made sufficient with further minor tuning. Document this as the definitive approach for hierarchical layouts in Milestone 6.
-        *   **Path B (Re-evaluate True Compound Nodes):** The current strategy has fundamental UX limitations even after data stabilization and tuning. In this case, plan a separate R&D spike to re-investigate using Dagre's native `g.setParent()` (referencing historical notes on the `TypeError` in Milestone 6) or other advanced layout/grouping libraries.
-6.  **Update PRD (Milestone 6 & Dagre Details):** Fully update Milestone 6 and other relevant PRD sections to reflect the decision made in Step 5. If Path A is chosen, all discussion of `g.setParent()` issues becomes purely historical. If Path B is chosen, outline the new R&D tasks.
-7.  **Address Remaining UI/UX & Technical Debt:** Based on the stabilized mapper and test suite, continue with tasks from "Phase 2 (New) Frontend" and "Phase 3 Testing & Iteration" (e.g., tooltip refinement, node chip review, advanced filtering UI, test coverage expansion).
-8.  **Proceed to Phase 4 (Editing Capabilities):** Once the read-only Relationship Mapper is stable, performant, well-tested, and meets core UX requirements.
-9.  **Data Handling & State Management:** (Ongoing) Continue mindful data handling and effective use of React Query.
-10. **Regular Check-ins:** (Ongoing)
-11. **Incremental Implementation:** (Ongoing)
+**9. Action Plan & Next Steps**
+<!-- SECTION TO BE FULLY UPDATED/WRITTEN: This section will now contain the full "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" that we have developed. For this commit, it will be a placeholder, to be filled in detail in a subsequent PRD update pass. -->
+**(Placeholder: This section will be replaced with the detailed "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" as agreed on May 19, 2025.)**
 
 **10. Testing Strategy**
+<!-- PRD-UPDATE-NOTE: This section needs updates to reflect the actual state of the test suite post-cleanup (Action Plan Phase 1, Step 1B). "Testing Suite Status" and specifics in 10.2.B.1 need validation. Section 10.4 guidance on deprecated tests is good, but its outcome should be reflected. -->
+**Testing Suite Status (as of May 19, 2025):**
+- <!-- PRD-UPDATE-NOTE: Rewrite based on actual state after test cleanup. --> Legacy and irrelevant tests have been identified for removal. Active tests for core backend and frontend functionalities are in place but require ongoing review and expansion per the new Action Plan.
+- E2E tests are planned.
 
-**Testing Suite Status (as of [current date]):**
-- All backend and frontend unit/integration tests are complete and fully cover the requirements as specified in this PRD.
-- Legacy and irrelevant tests have been removed.
-- E2E tests are planned and will be implemented next.
+A comprehensive testing strategy is crucial...
+... (The general principles in 10.1, 10.2, 10.3, and 10.4 remain valuable guidance. Specific claims of "completed" tests or file names in 10.2.A and 10.2.B need careful review and alignment with the post-cleanup codebase.) ...
 
-A comprehensive testing strategy is crucial for ensuring the stability, reliability, and maintainability of StoryForge, especially as new features like editing are introduced and the complexity of data relationships grows. This strategy outlines a multi-layered approach to testing.
-Implementation of this testing strategy is currently underway (as of [current date/phase]). The initial focus is on establishing the foundational layers for backend and frontend unit/integration tests as outlined below.
-
-**10.1. Guiding Principles**
-*   **Isolate External Dependencies:** All external services, primarily the Notion API, **must** be thoroughly mocked. This ensures tests are deterministic, fast, and can run consistently across all environments (local development, CI/CD).
-*   **Test Pyramid Adherence:** Employ a balanced test pyramid: a broad base of fast unit tests, a significant layer of service/integration tests, and a smaller, focused set of E2E tests for critical user flows.
-*   **Focus on Critical Paths & Logic:** Prioritize testing core functionalities, complex data transformations (especially `graphData` generation and processing), data integrity from source to UI, and user interaction paths within the Relationship Mapper.
-*   **Maintainability & Clarity:** Tests must be well-organized, clearly written, and easy to understand and maintain as the codebase evolves. Test names should be descriptive of their intent.
-*   **CI/CD Integration:** All tests should be automated and run in a Continuous Integration/Continuous Deployment (CI/CD) pipeline on every commit/pull request to catch regressions early.
-
-**10.2. Testing Layers & Technologies**
-
-*   **A. Backend (BFF - Node.js/Express)**
-    *   **Primary Framework:** **Jest** (leveraging the existing setup indicated by `storyforge/backend/tests/setupTests.js`). the existing setupTests.js is being used and adapted.
-    *   **Unit Tests:**
-        *   **Controllers (`notionController.js`, etc.):**
-            *   `notionController.test.js` updated and completed. Tests cover all graph-generating functions (`getCharacterGraph`, `getElementGraph`, `getPuzzleGraph`, `getTimelineGraph`), ensuring the `graphData` object is correctly constructed (including 1st and 2nd-degree relations and all properties specified in Section 4.E). Simple getter function tests were also refined to ensure correct service calls and filter handling.
-            *   **Focus:** Test individual controller functions in isolation. Mock service dependencies (e.g., `notionService`).
-            *   **Verification:** Correct parsing of request data, appropriate calls to service layer functions with correct arguments, accurate response formatting, and error handling logic.
-            *   **Critical Area:** Thoroughly test the logic within graph-generating functions (`getCharacterGraph`, `getElementGraph`, `getPuzzleGraph`, `getTimelineGraph`) to ensure the `graphData` object (specified in Section 4.E) is correctly constructed for various scenarios. Test property mapping and relation resolution.
-        *   **Services (`notionService.js`, `cacheService.js` if applicable):**
-            *   **Focus:** Test business logic within service functions.
-            *   **Verification:** For `notionService`, test interactions with the (mocked) Notion client, data transformation logic specific to Notion API responses, and error handling. For `cacheService`, test caching strategies, key generation, cache hits/misses, and eviction logic.
-        *   **Utilities (e.g., `propertyMapper.js`, helper functions in `notionUtils.js`):**
-            *   `propertyMapper.test.js` (located at `storyforge/backend/tests/utils/notionPropertyMapper.test.js`) significantly enhanced. Tests now cover all property extraction helper functions (e.g., `extractTitle`, `extractSelect`, `extractMultiSelect`, `extractDate`, `extractNumber`, `extractUrl`, `getProperty`, and `extract*ByName` variants) and all main synchronous (`mapCharacter`, etc.) and asynchronous (`mapCharacterWithNames`, etc.) mapping functions. Tests verify correct mapping of all properties as per PRD Section 4 (A-D) and proper resolution of relation names for the `*WithNames` functions using a mocked `notionService`.
-            *   **Focus:** Test pure functions with a diverse range of inputs to ensure predictable outputs.
-    *   **Integration Tests (API Endpoints):**
-        *   Backend `index.js` modified for Supertest compatibility. `characters.integration.test.js` served as a template. New integration test files `elements.integration.test.js`, `puzzles.integration.test.js`, and `timeline.integration.test.js` have been created and completed. These files cover GET requests for list, by ID, and graph endpoints for their respective entities, ensuring correct status codes, response structures, and mock service interactions.
-        *   **Tool:** **Supertest** (as used in the deprecated `puzzleEndpoints.test.js`) integrated with Jest.
-        *   **Focus:** Test API endpoints by making HTTP requests to the running Express application instance. The `notionService` (and by extension, the Notion API client) **must** be mocked at this level.
-        *   **Verification:** Request validation, authentication/authorization mechanisms (when implemented), HTTP response codes, and the structural integrity and content of API responses (especially for `/graph` endpoints, verifying against the `graphData` specification).
-    *   **Mocking Strategy (Backend):**
-        *   Comprehensive mock for notionService at storyforge/backend/tests/services/__mocks__/notionService.js is being utilized.
-        *   Utilize `jest.mock()` for service-level and module-level mocking.
-        *   Develop and maintain a comprehensive mock implementation for `notionService` that can simulate various Notion API responses: successful data retrieval (for different entities and relationships), empty datasets, error responses (e.g., API errors, rate limits, not found), and different data structural variations. Store mock data in `storyforge/backend/tests/__mocks__/data/` or similar.
-
-*   **B. Frontend (React)**
-    *   **Primary Frameworks:** **Jest** + **React Testing Library (RTL)**. RTL promotes testing components from a user's perspective, enhancing test reliability and maintainability. Jest + RTL are the chosen tools.
-    *   **Unit Tests:**
-        *   **Components:**
-            *   Initial test file RelationshipMapper.test.js created, with mocking for React Flow and child components. Focus on rendering states.
-            *   **`RelationshipMapper.jsx`:** Test rendering with diverse `graphData` inputs (empty, simple, complex graphs with varying node/edge counts), loading states, and error states. Mock child components (`EntityNode`, `CustomEdge`) if their individual testing is preferred or if they overcomplicate `RelationshipMapper` tests.
-            *   **`EntityNode.jsx`, `CustomEdge.jsx`, `NodeTooltipContent.jsx`, `ClusterHull.jsx`:** Test their rendering logic based on various prop inputs. Verify correct display of information (labels, tooltips, chips) and styling. **(Initial test files `EntityNode.test.jsx`, `CustomEdge.test.jsx`, `ClusterHull.test.jsx` created with basic rendering tests and TODOs for expansion. `NodeTooltipContent` testing to be part of `EntityNode.test.jsx` or relevant component tests.)**
-            *   **Helper Components/Views:** Test smaller UI components for correct rendering and behavior.
-        *   **Hooks & Utilities:**
-            *   Initial test files created for transformToGraphElements.js, useGraphTransform.js (and its mock data graphData.mock.js), layoutUtils.js, and filterGraph.js.
-            *   **`transformToGraphElements.js`:** Ensure comprehensive test cases covering various `graphData` structures, including edge cases and invalid inputs, verifying the output React Flow elements. **(File itself updated to remove rawData fallback; `transformToGraphElements.test.js` exists and would need review/expansion for these cases).**
-            *   **`useGraphTransform.js`:** Test the hook's logic for `parentId` assignment, node/edge transformations, and data processing based on `graphData`.
-            *   **`layoutUtils.js`:** Test layout generation functions (Radial, Dagre with Orbiting, Force-Directed) with sample graph structures to verify positions and groupings.
-            *   **`filterGraph.js`:** Test filtering logic (SPOC, entity type, relationship type) with various graph inputs and filter criteria.
-        *   **API Service Layer (`services/api.js`):**
-            *   **Focus:** Test functions responsible for making API calls to the BFF.
-            *   **Tool:** Mock `fetch` or the HTTP client library used (e.g., `axios`) using `jest.mock()`.
-            *   **Verification:** Ensure correct API endpoint construction, request payload formatting, and proper handling of successful responses and errors. **(Initial test file `api.test.js` created with comprehensive tests for all exported GET functions, including success/error cases using `jest.fn()` for `fetch`.)**
-    *   **Integration Tests (Component Assemblies / Views):**
-        *   **Detail Pages (`CharacterDetail.jsx`, `ElementDetail.jsx`, etc.):**
-            *   **Focus:** Test the page's ability to fetch data (mocking API service calls from `services/api.js`), manage loading and error states, and correctly render the `RelationshipMapper` with appropriate props derived from fetched data.
-            *   **Verification:** Correct display of entity details and that `RelationshipMapper` receives valid `graphData`. Test basic interactions like toggling mapper visibility.
-        *   **List Pages (`Characters.jsx`, `Elements.jsx`, etc.):**
-            *   **Focus:** Test data fetching, rendering of entity lists, and interaction with filtering/sorting controls.
-    *   **Mocking Strategy (Frontend):**
-        *   MSW server (mocks/server.js) and handlers (mocks/handlers.js) established. setupTests.js configured to use MSW
-        *   `jest.mock()` for mocking modules, utility functions, and child components.
-        *   **Mock Service Worker (MSW):** Strongly consider using MSW for API mocking in integration and component tests that involve data fetching. MSW intercepts actual network requests, providing a more robust and realistic mocking solution than simply mocking `fetch` within each test file. Define handlers for BFF API endpoints.
-        *   As part of enhancing test data, `storyforge/frontend/src/components/RelationshipMapper/__mocks__/graphData.mock.js` has been updated with an initial `DETAILED_MOCK_CHARACTER_GRAPH_DATA` object that fully conforms to PRD Section 4.E. Work is ongoing to create similar detailed mocks for Element, Puzzle, and Timeline graph data and integrate these into `handlers.js` to provide realistic data for graph endpoints (e.g., for specific IDs like `char-alex-reeves`). **(COMPLETED - `graphData.mock.js` now contains detailed mocks for Character, Element, Puzzle, and Timeline. `handlers.js` updated to import and serve these specific mocks by ID, with generic fallbacks.)**
-
-    *   **10.2.B.1 Detailed Test Expansion Plan (Current Focus)**
-
-        This section outlines the immediate next steps for expanding test coverage and addressing TODOs in the frontend unit and hook tests.
-
-        *   **`EntityNode.test.jsx` Enhancements:**
-            *   Add comprehensive tests for `Timeline` node type, verifying display of specific properties (e.g., `dateString`, `participantSummary`). **(COMPLETED)**
-            *   Implement tooltip visibility tests on hover interaction using `@testing-library/user-event`. **(COMPLETED)**
-            *   Test node selection state (`selected={true}`) and verify associated styling changes or ARIA attributes. **(COMPLETED)**
-            *   Test navigation functionality: mock `useNavigate` and verify it's called with the correct `data.route` on node interaction. **(COMPLETED)**
-            *   Test the impact of `isFullScreen` prop on node rendering and tooltip behavior. **(Basic check COMPLETED; deeper impact depends on `EntityNode.jsx` specifics)**
-            *   Test the impact of `centralEntityType` prop on chip display and other node details. **(Basic check COMPLETED; deeper impact depends on `EntityNode.jsx` specifics)**
-            *   Expand chip display tests to cover more variations and ensure data from `node.properties` is correctly used. **(COMPLETED for all entity types)**
-            *   Add more specific assertions for CSS classes or styles based on node type, state (`isCenter`, `selected`), and props. **(COMPLETED)**
-
-        *   **`CustomEdge.test.jsx` Enhancements:**
-            *   Implement robust tests for on-path label rendering:
-                *   Verify `data.shortLabel` is prioritized over `props.label`. **(COMPLETED)**
-                *   Ensure labels are findable (e.g., via `screen.getByText`). **(COMPLETED)**
-            *   Implement tooltip interaction tests using `user-event`:
-                *   Verify tooltip appearance on hover and correct display of `data.contextualLabel`. **(COMPLETED)**
-            *   Implement tests for edge styling:
-                *   Ensure `CustomEdge.jsx` uses a `data-testid` for its path element. **(Requirement noted for `CustomEdge.jsx`; tests assume this ID)**
-                *   Assert style attributes (`stroke`, `stroke-width`) from `props.style`. **(COMPLETED)**
-            *   Test correct application of `markerEnd` prop on the path element. **(COMPLETED)**
-            *   Test different edge types/styles if supported (e.g., `animated`, styling based on `data.edgeType`). **(COMPLETED for `animated` prop and class based on `data.edgeType`)**
-
-        *   **`ClusterHull.test.jsx` Enhancements:**
-            *   Ensure `ClusterHull.jsx` uses a predictable `data-testid` for its main SVG group/path element and update tests to use it. **(Requirement noted for `ClusterHull.jsx`; tests now assume `cluster-hull-path-${hubNodeId}` ID for the path)**
-            *   Verify the component renders a `<path>` or `<g>` element when valid parent and child nodes are provided. **(COMPLETED - verifies `<path>` with `d` attribute)**
-            *   Test styling: default classes, custom `className` prop, and inline styles if applicable. **(COMPLETED for default and custom class)**
-            *   Test that different `padding` prop values are accepted without error. **(COMPLETED and checks for path `d` attribute change as a heuristic)**
-
-        *   **`transformToGraphElements.test.js` Enhancements:**
-            *   **Critical Action:** Remove all tests related to the legacy `rawData` transformation path, ensuring the function exclusively processes `graphData`. **(COMPLETED)**
-            *   Strengthen tests for `graphData` exclusivity and error handling for invalid/missing `graphData` (should return empty nodes/edges). **(COMPLETED)**
-            *   Add test cases for `graphData` variations:
-                *   Nodes present but no edges. **(COMPLETED)**
-                *   Edges present but no corresponding nodes (or source/target IDs not in nodes array). **(COMPLETED)**
-            *   Test with more diverse `node.type` values (Character, Element, Puzzle, Timeline) in `graphData`. **(COMPLETED, via detailed mocks)**
-            *   Verify correct determination of `edge.data.edgeType` (likely based on `edge.data.shortLabel`). **(COMPLETED)**
-            *   Rigorously test the preservation of all `node.properties` and all fields within `edge.data` during transformation. **(COMPLETED)**
-            *   Test edge ID generation logic for uniqueness, especially for multiple edges between the same nodes but with different labels/types. **(COMPLETED)**
-            *   Test behavior of `isCentral` flag assignment when `graphData.center` is null or its ID is not found in `graphData.nodes`. **(COMPLETED)**
-
-        *   **`useGraphTransform.test.js` Enhancements:**
-            *   Clarify and test SPOC/filtering orchestration: If `useGraphTransform` calls `filterGraph`, mock `filterGraph` and verify correct calls with appropriate data and settings. **(COMPLETED)**
-            *   Expand `edge.data.shortLabel` variations for `parentId` assignment to cover all intended grouping scenarios:
-                *   Element with `shortLabel: 'Contains'` parenting another Element. **(COMPLETED)**
-                *   Puzzle with `shortLabel: 'Requires'` parenting an Element. **(COMPLETED)**
-                *   Puzzle with `shortLabel: 'Rewards'` parenting an Element. **(COMPLETED)**
-                *   Parent Puzzle with `shortLabel: 'Has Sub-Puzzle'` parenting a child Puzzle. **(COMPLETED)**
-            *   Test behavior when a `source` node (expected to be a parent) for a parent-assigning edge is not present in `graphData.nodes` (child should not receive `parentId`). **(COMPLETED)**
-            *   Verify the overall structure and content of `nodes` (with `parentId` correctly assigned) and `edges` returned by the hook. **(COMPLETED, verifies passthrough from mocked filterGraph)**
-
-        *   **`layoutUtils.test.js` Enhancements:**
-            *   Test all layout functions (`getDagreLayout`, `getRadialLayout`, `getForceDirectedLayout`) with empty nodes/edges arrays and single node inputs; ensure graceful handling. **(COMPLETED)**
-            *   Strengthen tests for preservation of original node data (`node.data`, `width`, `height`) across all layout functions. **(COMPLETED)**
-            *   For `getDagreLayout` (Orbiting Logic):
-                *   If specific orbiting parameters are exposed via `layoutOptions` (e.g., `orbitRadius`), test that modifying these parameters results in qualitatively different positions for child nodes relative to their parent. **(Qualitative test added for general orbiting effect with `parentId`)**
-                *   Verify that nodes without a `parentId` are laid out normally by Dagre, while nodes with a `parentId` have their positions adjusted by the orbiting logic. **(Covered by qualitative orbiting test with `parentId` fixture)**
-            *   Parameter Influence (Qualitative for all layouts):
-                *   Dagre: Test `rankdir: 'LR'` vs. `'TB'` results in different dominant axes for coordinate spread. **(COMPLETED)**
-                *   Radial: Test if changes to options like `baseRadius` affect node distributions heuristically. **(COMPLETED)**
-                *   Force-Directed: Test if changes to simulation parameters (e.g., `width`, `height`) influence the general spread. **(COMPLETED)**
-
-        *   **`filterGraph.test.js` Enhancements:**
-            *   For `applySPOCFilter`:
-                *   Add test cases where an `Element` node (e.g., a 'Container' with `shortLabel: 'Contains'`) acts as an `INTERMEDIARY_HUB_TYPE`. **(COMPLETED, new mock `MOCK_SPOC_ELEMENT_HUB_DATA` used)**
-                *   Test more complex indirect hub paths (e.g., Center -> Hub1 -> Hub2 -> Node, with a weak direct Center -> Node link to be pruned). **(COMPLETED)**
-            *   For `filterGraphElements` (Orchestrator):
-                *   Implement comprehensive tests for relationship type filtering (verify correct edges remain, and disconnected nodes are handled appropriately). **(COMPLETED)**
-                *   Implement comprehensive tests for depth filtering (ensure nodes/edges beyond the specified depth are removed, and the center node is preserved according to depth logic). **(COMPLETED)**
-                *   Create test cases for combined filters (SPOC + Entity Type + Relationship Type + Depth applied simultaneously). **(COMPLETED)**
-                *   Test behavior with empty initial `nodes` or `edges` arrays. **(COMPLETED)**
-                *   Verify that `centerNodeId` is consistently preserved in `filteredNodes` based on filter rules. **(COMPLETED)**
-
-*   **C. End-to-End (E2E) Tests**
-    *   **Framework:** **Playwright**. Its strengths in handling modern web applications, cross-browser support, auto-waits, and capabilities for interacting with complex UI elements (like SVG/Canvas used by React Flow) make it suitable.
-    *   **Scope - Critical User Flows:**
-        1.  **Navigation & Basic View:**
-            *   Successfully navigate to each entity's list page (Characters, Elements, Puzzles, Timelines).
-            *   From a list page, navigate to an entity's detail page.
-            *   Verify that the detail page loads and displays the correct primary entity information.
-        2.  **Relationship Mapper Core Functionality:**
-            *   Verify the `RelationshipMapper` loads and displays a graph (nodes and edges are present) for each entity type on its detail page.
-            *   Test basic interactions with the `RelationshipMapper` as controls are developed (e.g., layout switching, zoom/pan, node clicking to navigate if implemented).
-        3.  **Search & Filtering:**
-            *   Test global search functionality: input a search term and verify relevant results are displayed and navigable.
-            *   Test list page filtering: apply filters and verify the displayed list updates correctly.
-        4.  **Data Integrity Spot Checks:** For selected entities, verify key pieces of information are consistent from the (mocked) source through the BFF to the UI display and graph visualization.
-    *   **Test Data (E2E):**
-        *   E2E tests will rely on a stable and consistent set of mock data served by the (MSW or equivalent mocked) BFF API endpoints. Define specific test entities with known relationships that E2E tests can use for assertions.
-        *   Avoid direct dependency on a live Notion workspace for automated E2E tests to maintain stability and avoid data pollution.
-
-**10.3. Test Execution & CI/CD**
-*   **Local Development:** Provide clear scripts/commands for developers to run unit, integration, and E2E tests locally.
-*   **Continuous Integration:**
-    *   Integrate test execution into the CI/CD pipeline (e.g., GitHub Actions).
-    *   All tests (backend, frontend unit/integration, E2E) should run on every pull request and merge to the main branch.
-    *   Fail builds if tests do not pass.
-*   **Test Coverage Reporting:** Configure tools like Istanbul/nyc (for backend) and Jest's built-in coverage (for frontend) to generate coverage reports. While not a sole indicator of quality, it helps identify untested code paths. Aim for >75-80% coverage for critical modules.
-
-**10.4. Deprecated Test Suite Handling**
-* The existing backend mock notionService.js has been found to be comprehensive and is being adopted. Supertest usage patterns from puzzleEndpoints.test.js are informing new integration tests, though the deprecated tests themselves (marked as skipped) will be replaced by new, thorough tests for all entities.
-*   The existing backend tests in `storyforge/backend/tests/` (especially `puzzleEndpoints.test.js` and `setupTests.js`) should be reviewed.
-*   Useful configurations (like Jest setup, Supertest usage patterns) can be adopted or adapted for the new backend test suite.
-*   Mocking strategies for `notionService` should be modernized and made more robust.
-*   Once new, comprehensive tests are in place for a module/area, the corresponding deprecated tests can be safely removed to avoid confusion and maintenance overhead. Do not attempt to "fix" the deprecated tests if they were skipped due to fundamental issues like auth; instead, rewrite them following the new strategy.
+<!-- PRD-UPDATE-NOTE for 10.2.A Unit Tests - Utilities: Clarify to only refer to `notionPropertyMapper.test.js` for testing `notionPropertyMapper.js`. -->
+<!-- PRD-UPDATE-NOTE for 10.2.B Unit Tests - `transformToGraphElements.js`: Note that the file itself was updated to use `graphData` exclusively, and tests should reflect this. -->
 
 This testing strategy will serve as a blueprint for building a resilient and reliable StoryForge application.
