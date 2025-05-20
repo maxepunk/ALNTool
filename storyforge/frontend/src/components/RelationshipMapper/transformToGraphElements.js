@@ -1,64 +1,37 @@
-/**
- * transformToGraphElements.js
- * Pure function to transform raw Notion/BFF entity data or BFF-precomputed graph data
- * into React Flow-compatible nodes and edges for the RelationshipMapper.
- *
- * @param {Object} options
- *   - entityType: string (e.g., 'Character', 'Element', etc.)
- *   - entityId: string (ID of the central entity)
- *   - entityName: string (optional, for labeling)
- *   - rawData: object (Notion/BFF entity data, optional)
- *   - graphData: object (BFF-precomputed graph, optional)
- *   - viewMode: string (optional, for future expansion)
- * @returns {Object} { nodes: Array, edges: Array }
- */
 import { MarkerType } from '@xyflow/react';
 
-// Define edge styles based on relationship type (can be moved/shared later)
 const edgeStyles = {
-  dependency: { // For puzzles, requirements, rewards
-    stroke: '#f57c00', // Orange
+  dependency: { 
+    stroke: '#f57c00', 
     strokeWidth: 2.2,
     animated: true,
   },
-  containment: { // For elements inside other elements
-    stroke: '#03a9f4', // Light Blue
+  containment: { 
+    stroke: '#03a9f4', 
     strokeWidth: 1.5,
     strokeDasharray: '5, 5',
   },
-  character: { // For character involvement/ownership
-    stroke: '#3f51b5', // Indigo
+  character: { 
+    stroke: '#3f51b5', 
     strokeWidth: 1.8,
   },
-  timeline: { // For links to timeline events
-    stroke: '#d81b60', // Pink
+  timeline: { 
+    stroke: '#d81b60', 
     strokeWidth: 1.8,
   },
-  association: { // Generic association
-    stroke: '#4caf50', // Green
+  association: { 
+    stroke: '#4caf50', 
     strokeWidth: 1.5,
   },
   default: {
-    stroke: '#90a4ae', // Grey
+    stroke: '#90a4ae', 
     strokeWidth: 1.2,
   },
 };
 
-// Function to determine edge category based on relationType passed to addEdge
-// Note: 'nodes' argument is not available here directly like in useGraphTransform's getEdgeType.
-// We are relying on the 'relationType' passed to addEdge.
-const determineEdgeCategory = (relationType) => {
-  const type = relationType?.toLowerCase() || '';
-  if (type === 'dependency') return 'dependency';
-  if (type === 'containment') return 'containment';
-  if (type === 'character') return 'character';
-  if (type === 'timeline') return 'timeline';
-  if (type === 'association') return 'association';
-  return 'default';
-};
+// Unused determineEdgeCategory function has been removed.
 
 function transformToGraphElements({ entityType, entityId, entityName, rawData, graphData, viewMode = 'default' }) {
-  // --- Helper: Map BFF graph data to React Flow format ---
   if (graphData && Array.isArray(graphData.nodes) && Array.isArray(graphData.edges)) {
     const mapNode = (n, isCenter = false) => ({
       id: n.id,
@@ -80,15 +53,48 @@ function transformToGraphElements({ entityType, entityId, entityName, rawData, g
     }
     const baseNodesForEdgeType = nodes;
     const edges = graphData.edges.map((e, idx) => {
-      // Standardize edge type for filtering/styling
-      const label = e.label?.toLowerCase() || '';
+      const shortLabel = e.data?.shortLabel?.toLowerCase() || '';
+      const originalLabel = e.label?.toLowerCase() || '';
       let edgeType = 'default';
-      if (label.includes('puzzle') || label.includes('required') || label.includes('reward') || label.includes('lock')) edgeType = 'dependency';
-      else if (label.includes('contain') || label.includes('inside')) edgeType = 'containment';
-      else if (baseNodesForEdgeType.find(n => n.id === e.source)?.data?.type === 'Character' || baseNodesForEdgeType.find(n => n.id === e.target)?.data?.type === 'Character') edgeType = 'character';
-      else if (baseNodesForEdgeType.find(n => n.id === e.source)?.data?.type === 'Timeline' || baseNodesForEdgeType.find(n => n.id === e.target)?.data?.type === 'Timeline') edgeType = 'timeline';
+
+      if (shortLabel === 'requires' || shortLabel === 'rewards' || shortLabel === 'required by' || shortLabel === 'reward from' || shortLabel === 'unlocks' || shortLabel === 'locked in' || shortLabel === 'has sub-puzzle' || shortLabel === 'sub-puzzle of') {
+        edgeType = 'dependency';
+      } else if (shortLabel === 'contains' || shortLabel === 'inside') {
+        edgeType = 'containment';
+      } else if (shortLabel === 'owns' || shortLabel === 'owned by' || shortLabel === 'associated with') {
+        const sourceNodeType = baseNodesForEdgeType.find(n => n.id === e.source)?.data?.type;
+        const targetNodeType = baseNodesForEdgeType.find(n => n.id === e.target)?.data?.type;
+        if (sourceNodeType === 'Character' || targetNodeType === 'Character') {
+            edgeType = 'character';
+        } else {
+            edgeType = 'association';
+        }
+      } else if (shortLabel === 'participates in' || shortLabel === 'involves' || shortLabel === 'appears in' || shortLabel === 'evidence for') {
+        const sourceNodeType = baseNodesForEdgeType.find(n => n.id === e.source)?.data?.type;
+        const targetNodeType = baseNodesForEdgeType.find(n => n.id === e.target)?.data?.type;
+         if (sourceNodeType === 'Timeline' || targetNodeType === 'Timeline') {
+            edgeType = 'timeline';
+        } else {
+            edgeType = 'association'; 
+        }
+      }
+      else if (edgeType === 'default') { 
+        if (originalLabel.includes('puzzle') || originalLabel.includes('required') || originalLabel.includes('reward') || originalLabel.includes('lock')) {
+            edgeType = 'dependency';
+        } else if (originalLabel.includes('contain') || originalLabel.includes('inside')) {
+            edgeType = 'containment';
+        } else {
+            const sourceNodeType = baseNodesForEdgeType.find(n => n.id === e.source)?.data?.type;
+            const targetNodeType = baseNodesForEdgeType.find(n => n.id === e.target)?.data?.type;
+            if (sourceNodeType === 'Character' || targetNodeType === 'Character') {
+                edgeType = 'character';
+            } else if (sourceNodeType === 'Timeline' || targetNodeType === 'Timeline') {
+                edgeType = 'timeline';
+            }
+        }
+      }
       
-      const style = { ...(edgeStyles[edgeType] || edgeStyles.default) }; // Use defined styles
+      const style = { ...(edgeStyles[edgeType] || edgeStyles.default) };
 
       return {
         id: e.id || `edge-${idx}`,
@@ -109,16 +115,15 @@ function transformToGraphElements({ entityType, entityId, entityName, rawData, g
           strokeDasharray: style.strokeDasharray,
         },
         data: { 
-          ...(e.data || {}), // Spread the original data from BFF first
-          type: edgeType      // Add/overwrite with the locally determined edgeType for styling
+          ...(e.data || {}),
+          type: edgeType 
         },
       };
     });
     return { nodes, edges };
   }
 
-  // If graphData is not valid or not provided, return empty.
   return { nodes: [], edges: [] };
 }
 
-export default transformToGraphElements; 
+export default transformToGraphElements;
