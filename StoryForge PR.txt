@@ -1,6 +1,6 @@
 **Revised & Consolidated Project Request Document: StoryForge - Immersive Narrative Design Hub**
 
-**Document Version:** 3.2
+**Document Version:** 3.2.1
 **Date:** May 19, 2025
 **Document Purpose:** This document provides the comprehensive and unified specification for the StoryForge tool. It reflects the outcomes of an architectural and codebase review (May 2025), incorporates a definitive understanding of the existing "About Last Night" Notion workspace structure, details the current and planned data flow for the Relationship Mapper, includes detailed User Personas and Use Cases, and contains the current detailed Action Plan for ongoing development. It is intended to serve as the gold-standard reference.
 
@@ -297,17 +297,17 @@ This section outlines the current, active plan for StoryForge refinement and adv
                 *   **Status: COMPLETED** (Merged to master on May 19, 2025)
             *   **Frontend Tests:**
                 *   Delete or heavily refactor `storyforge/frontend/src/components/RelationshipMapper/RelationshipMapper.test.jsx` (currently tests outdated `relationshipData` prop). Migrate valuable interaction tests to a `graphData`-centric approach.
-                *   **Status: PENDING**
+                *   **Status: COMPLETED (Marked for manual deletion on May 19, 2025)**
             *   **Frontend Utils:**
                 *   Investigate and likely delete `storyforge/frontend/src/components/RelationshipMapper/relationshipUtils.js` (contains remnants of an old client-side graph construction approach, likely unused).
-                *   **Status: PENDING**
+                *   **Status: COMPLETED (Marked for manual deletion on May 19, 2025)**
             *   **Frontend Dependencies:**
                 *   Remove `react-flow-renderer` from `storyforge/frontend/package.json`.
                 *   **Status: COMPLETED** (Merged to master on May 19, 2025)
                 *   Remove duplicate `@xyflow/react` from the root `package.json`.
                 *   **Status: COMPLETED** (Merged to master on May 19, 2025)
-                *   Verify/correct Playwright version (e.g., `^1.52.0` noted as potential typo) in `storyforge/frontend/package.json`. If incorrect, update to current stable (e.g., `^1.44.0` or as advised by team).
-                *   **Status: PENDING (Verification needed by team)**
+                *   Verify/correct Playwright version in `storyforge/frontend/package.json`.
+                *   **Status: COMPLETED (Verified on May 19, 2025 - version is current and correct)**
             *   **Frontend Logic:**
                 *   Review and refine edge styling logic in `storyforge/frontend/src/components/RelationshipMapper/transformToGraphElements.js`.
                 *   **Status: COMPLETED** (Merged to master on May 19, 2025)
