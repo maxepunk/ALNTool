@@ -1,6 +1,6 @@
 **Revised & Consolidated Project Request Document: StoryForge - Immersive Narrative Design Hub**
 
-**Document Version:** 3.0 
+**Document Version:** 3.0
 **Date:** May 19, 2025 
 **Document Purpose:** This document provides the comprehensive and unified specification for the StoryForge tool. It reflects the outcomes of an architectural and codebase review (May 2025), incorporates a definitive understanding of the existing "About Last Night" Notion workspace structure, and details the current and planned data flow for the Relationship Mapper. It is intended to serve as the gold-standard reference for continued development.
 
@@ -38,7 +38,7 @@ StoryForge **must** read from and write to the Notion workspace structured with 
 **Important Note on "Memory-Specific" Fields within the Elements Database:**
 The `Elements` database serves as a general store for all items, including those that function narratively as "Memories." For a minimal set of memory-specific attributes not covered by existing dedicated Notion properties (e.g., `RFID Token ID`), a strategy of embedding structured data within the `Description/Text` field will be used.
 *   **Strategy for Handling (Minimal Implementation - Read-Only Focus Initially):**
-    1.  **Data Entry Template:** <!-- SECTION TO BE FULLY UPDATED/WRITTEN: Define the "Memory Attribute Data Entry Template" here, as per Action Plan Phase 2, Step 5. Focus on EXTREME SIMPLICITY (e.g., `SF_RFID: [value]`) and only for attributes not covered by existing Element fields and critical for game mechanics. --> (Placeholder: A specific, clearly delimited format, e.g., key-value pairs like `SF_RFID: 12345`, will be defined for entering these attributes within the `Description/Text` field of memory-type Elements.)
+    1.  **Data Entry Template:**  (Placeholder: A specific, clearly delimited format, e.g., key-value pairs like `SF_RFID: 12345`, will be defined for entering these attributes within the `Description/Text` field of memory-type Elements.)
     2.  **BFF Responsibility (Read):** For Elements identified as memories (e.g., via `Basic Type` like "Memory Token Video", "Corrupted Memory RFID"), the BFF (`notionPropertyMapper.js`) will parse the `Description/Text` content to extract this minimal set of defined attributes (e.g., RFID).
     3.  **Frontend Display:** The frontend (`ElementDetail.jsx`) will display these parsed attributes if present.
     4.  **Future - Editing (Write Responsibility):** (Out of scope for initial minimal implementation) When/if editing these embedded attributes is implemented in StoryForge, the tool will need to update the structured information within the `Description/Text` field carefully, preserving other content. This is a complex task for future consideration.
@@ -93,7 +93,7 @@ The `Elements` database serves as a general store for all items, including those
     *   `Name` (Title - Primary Key)
     *   `Owner` (Relation to `Characters` DB - `Characters.Name`)
     *   `Basic Type` (Select - e.g., "Prop", "Set Dressing", "Memory Token Video", "Memory Token Audio", "Memory Token Physical", "Corrupted Memory RFID", "Character Sheet", "Document", "Digital File", "Clue", "Container")
-    *   `Description/Text` (Rich Text - Sourced from MD bodies. <!-- PRD-UPDATE-NOTE: This description needs to be updated to reference the new minimal parsing strategy (e.g. only SF_RFID initially) and the "Memory Attribute Data Entry Template" to be defined in Action Plan Phase 2, Step 5. Original list of attributes (Memory ID, Memory Title, etc.) is for future consideration if minimal approach is insufficient. --> **For memory-type Elements, this field will also contain structured data for memory-specific attributes like `Memory ID`, `Memory Title`, `Memory Type (Narrative)`, `Content (for text memories)`, `Corruption Status`, `RFID Token ID`, `Value Indicator`, `Puzzle Integration Type`, `Puzzle Notes` to be parsed/managed by StoryForge.**)
+    *   `Description/Text` (Rich Text - Sourced from MD bodies.  **For memory-type Elements, this field will also contain structured data for memory-specific attributes like `Memory ID`, `Memory Title`, `Memory Type (Narrative)`, `Content (for text memories)`, `Corruption Status`, `RFID Token ID`, `Value Indicator`, `Puzzle Integration Type`, `Puzzle Notes` to be parsed/managed by StoryForge.**)
     *   `Container` (Relation to self - `Elements.Name`, i.e., this element is *inside* another element)
     *   `Contents` (Relation to self, multiple - `Elements.Name`, i.e., this element *is* a container and lists items inside)
     *   `Container Puzzle` (Relation to `Puzzles` DB - `Puzzles.Puzzle`)
@@ -112,7 +112,7 @@ The `Elements` database serves as a general store for all items, including those
 
 **(E) BFF `graphData` Object Specification (for Relationship Mapper)**
 (Specification remains current and accurate based on code review of `notionController.js` helpers `_createGraphNodeInternal` and `_createGraphEdgeInternal`.)
-```json
+'''json
 {
   "center": { /* Fully mapped central entity object, matching structure of a node below */ },
   "nodes": [
@@ -159,11 +159,11 @@ The `Elements` database serves as a general store for all items, including those
     }
   ]
 }
-```
+'''
 
 **5. Feature Breakdown & Development Phases**
 
-<!-- PRD-UPDATE-NOTE: This entire section, including old Milestones, "Refined Relationship Mapper UX Enhancement Plan", "Phase 1 (New)", "Phase 2 (New)", "Phase 3 Testing & Iteration", and "Technical Refinement Tasks", is now superseded by the new "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" which will be detailed in Section 9. This section should be removed or marked as historical context if desired, but Section 9 will be the new guide. -->
+
 
 **(OLD CONTENT OBSOLETE - TO BE REPLACED BY REFERENCE TO NEW ACTION PLAN IN SECTION 9)**
 
@@ -172,39 +172,40 @@ The `Elements` database serves as a general store for all items, including those
 *   **Performance:** Responsive for common tasks, considering Notion API limits. Aggressive caching and optimized API calls in BFF are crucial.
 *   **Maintainability:** Well-structured, documented code (ongoing effort).
 *   **Security:** Notion API key strictly handled in the BFF, not exposed client-side.
-*   **Data Integrity:** Operations must accurately reflect in Notion and maintain relational integrity as defined by the Notion schema in Section 4. <!-- PRD-UPDATE-NOTE: Emphasize complexity of writing structured data back to Rich Text if/when memory attribute editing is implemented. --> Changes to structured data within Rich Text fields must be handled carefully to preserve existing content.
+*   **Data Integrity:** Operations must accurately reflect in Notion and maintain relational integrity as defined by the Notion schema in Section 4.  Changes to structured data within Rich Text fields must be handled carefully to preserve existing content.
 *   **Accessibility:** Ensure all UI components, especially RelationshipMapper, meet accessibility standards (keyboard navigation, ARIA, color contrast).
 
 **NEW SECTION: 6. User Personas, Workflows, and Relationship Mapper Use Cases**
-(This section is valuable and should be kept as is. It guides UX and feature development.)
-... (Original content of this section - assume it's here for brevity) ...
+(This section is valuable and should be kept as is.)
+... (Original content of this section) ...
 
 **7. Assumptions & Dependencies**
 *   **The Notion workspace structured precisely according to Section 4 is maintained.** Unauthorized changes to this Notion structure will break the tool.
 *   Notion API remains stable, accessible, and its features support the required operations.
 *   The initial data import from source CSVs and Markdown files has correctly established the baseline content and structure in Notion.
-*   **The BFF's `/graph` endpoints consistently provide valid `graphData` objects structured according to Section 4.E.** The frontend `RelationshipMapper` now uses this `graphData` as its sole source for graph construction. <!-- PRD-UPDATE-NOTE: Updated to reflect current state. -->
+*   **The BFF's `/graph` endpoints consistently provide valid `graphData` objects structured according to Section 4.E.** The frontend `RelationshipMapper` now uses this `graphData` as its sole source for graph construction. 
 
 **8. Future Considerations (Out of Scope for current phases unless specified)**
 (This list should be reviewed and maintained.)
-... (Original content of this section - assume it's here for brevity, plus new considerations below) ...
+... (Original content of this section, plus new considerations below) ...
 *   Full, robust parsing (beyond minimal RFID) of structured data from Rich Text for memory attributes, if the minimal approach proves insufficient long-term.
 *   Re-evaluation of true Dagre compound node capabilities if the "Dagre + Orbiting" strategy (Phase 1, Step 2 of new Action Plan) proves insufficient after refinement.
 
 **9. Action Plan & Next Steps**
-<!-- SECTION TO BE FULLY UPDATED/WRITTEN: This section will now contain the full "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" that we have developed. For this commit, it will be a placeholder, to be filled in detail in a subsequent PRD update pass. -->
-**(Placeholder: This section will be replaced with the detailed "Revised Action Plan: StoryForge Refinement & Advancement (Phases 1, 2, 3)" as agreed on May 19, 2025.)**
+
+(Placeholder for the new detailed Action Plan)
 
 **10. Testing Strategy**
-<!-- PRD-UPDATE-NOTE: This section needs updates to reflect the actual state of the test suite post-cleanup (Action Plan Phase 1, Step 1B). "Testing Suite Status" and specifics in 10.2.B.1 need validation. Section 10.4 guidance on deprecated tests is good, but its outcome should be reflected. -->
+
 **Testing Suite Status (as of May 19, 2025):**
-- <!-- PRD-UPDATE-NOTE: Rewrite based on actual state after test cleanup. --> Legacy and irrelevant tests have been identified for removal. Active tests for core backend and frontend functionalities are in place but require ongoing review and expansion per the new Action Plan.
+-  Legacy and irrelevant tests have been identified for removal. Active tests for core backend and frontend functionalities are in place but require ongoing review and expansion per the new Action Plan.
 - E2E tests are planned.
 
 A comprehensive testing strategy is crucial...
 ... (The general principles in 10.1, 10.2, 10.3, and 10.4 remain valuable guidance. Specific claims of "completed" tests or file names in 10.2.A and 10.2.B need careful review and alignment with the post-cleanup codebase.) ...
 
-<!-- PRD-UPDATE-NOTE for 10.2.A Unit Tests - Utilities: Clarify to only refer to `notionPropertyMapper.test.js` for testing `notionPropertyMapper.js`. -->
-<!-- PRD-UPDATE-NOTE for 10.2.B Unit Tests - `transformToGraphElements.js`: Note that the file itself was updated to use `graphData` exclusively, and tests should reflect this. -->
+
 
 This testing strategy will serve as a blueprint for building a resilient and reliable StoryForge application.
+
+---
