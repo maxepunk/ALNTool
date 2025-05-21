@@ -129,7 +129,7 @@ export default function useGraphTransform({
   nodeFilters = {},
   edgeFilters = {},
   suppressLowSignal = true,
-  layoutType = 'radial',
+  layoutType = 'dagre', // Will be fixed to 'dagre' as other layouts are removed
   layoutOptions = {},
 }) {
   /**
@@ -149,7 +149,9 @@ export default function useGraphTransform({
 
       // --- Step 2 (NEW ORDER): Assign parentId for Dagre grouping ---
       let nodesWithParentId = baseNodes;
-      if (layoutType === 'dagre' && baseNodes && baseNodes.length > 0) { // Only do this for dagre
+      // This parentId assignment is primarily for Dagre's compound node feature.
+      // It will become the default behavior as other layout types are removed.
+      if (layoutType === 'dagre' && baseNodes && baseNodes.length > 0) {
         const nodesForGrouping = baseNodes.map(n => ({
           ...n,
           data: { ...(n.data || {}) }, 
@@ -202,37 +204,34 @@ export default function useGraphTransform({
           depth,
           nodeFilters,
           edgeFilters,
-          suppressLowSignal, // This parameter is still here from the function signature
+          suppressLowSignal, 
         }
       );
 
       // Step 4 (NEW ORDER): Layout
       let layoutedNodes, layoutedEdges;
       const finalLayoutOptions = { ...layoutOptions };
-      // Use filteredNodes for layout, which already incorporates parentId logic's effects via filterGraph
       const finalNodesForLayout = filteredNodes; 
 
-      if (layoutType === 'force-directed') {
+      // Layout logic will be simplified to only use Dagre as per PRD.
+      // For now, the structure is kept, but only the 'dagre' path will be effectively used.
+      if (layoutType === 'force-directed') { // This path will be removed
         ({ nodes: layoutedNodes, edges: layoutedEdges } = getForceDirectedLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
       } else if (layoutType === 'dagre') {
         ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
-      } else {
+      } else { // This path (customRadial) will also be removed
         ({ nodes: layoutedNodes, edges: layoutedEdges } = getCustomRadialLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
       }
 
-      // After layout, if Dagre was used, map parentId from data to the node's parentNode attribute for React Flow
-      let finalReactFlowNodes = layoutedNodes;
-      // Temporarily comment out to prevent React Flow from drawing its own parent boxes for Dagre layouts,
-      // as we want to move towards custom hulls with the orbiting strategy.
-      // if (layoutType === 'dagre') {
-      //   finalReactFlowNodes = layoutedNodes.map(n => {
-      //     if (n.data && n.data.parentId && finalNodesForLayout.find(p => p.id === n.data.parentId)) {
-      //       // Ensure the parent node still exists after all transformations before assigning parentNode
-      //       return { ...n, parentNode: n.data.parentId };
-      //     }
-      //     return n;
-      //   });
-      // }
+      // After layout, map parentId from data to the node's parentNode attribute for React Flow.
+      // This is crucial for Dagre compound node rendering via React Flow's parentNode mechanism.
+      let finalReactFlowNodes = layoutedNodes.map(n => {
+        if (n.data && n.data.parentId && finalNodesForLayout.find(p => p.id === n.data.parentId)) {
+          // Ensure the parent node still exists after all transformations (especially filtering) before assigning parentNode
+          return { ...n, parentNode: n.data.parentId };
+        }
+        return n;
+      });
 
       return { nodes: finalReactFlowNodes, edges: layoutedEdges, error: null };
     } catch (err) {
@@ -255,4 +254,4 @@ export default function useGraphTransform({
   ]);
 
   return { nodes, edges, error };
-} 
+}
