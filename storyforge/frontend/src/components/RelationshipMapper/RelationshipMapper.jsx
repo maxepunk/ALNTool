@@ -10,10 +10,8 @@ import {
   useEdgesState,
   useReactFlow,
   ReactFlowProvider,
-  Panel,
+  // Panel, // Panel is no longer used directly, custom panel is implemented
 } from '@xyflow/react';
-// Do not import style here as we're importing it globally in main.jsx
-// import '@xyflow/react/dist/style.css';
 import { 
   Box, 
   Typography, 
@@ -26,15 +24,15 @@ import {
   Modal,
   useTheme,
   Chip,
-  Fade,
-  Menu,
-  MenuItem,
+  // Fade, // No longer used for layout toggles
+  // Menu, // No longer used for layout toggles
+  // MenuItem, // No longer used for layout toggles
   Divider,
-  ListItemIcon,
-  ListItemText,
+  // ListItemIcon, // No longer used for layout toggles
+  // ListItemText, // No longer used for layout toggles
   Slider,
-  ToggleButtonGroup,
-  ToggleButton,
+  // ToggleButtonGroup, // No longer used for layout selection
+  // ToggleButton, // No longer used for layout selection
   Snackbar,
 } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
@@ -43,96 +41,58 @@ import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import InfoIcon from '@mui/icons-material/Info';
-import PersonIcon from '@mui/icons-material/Person';
-import EventIcon from '@mui/icons-material/Event';
-import ExtensionIcon from '@mui/icons-material/Extension';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import CloseIcon from '@mui/icons-material/Close';
-import TuneIcon from '@mui/icons-material/Tune';
-import SchemaIcon from '@mui/icons-material/Schema';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import HubIcon from '@mui/icons-material/Hub';
-import WaterfallChartIcon from '@mui/icons-material/WaterfallChart';
+// Icons for removed layout selectors (SchemaIcon, AccountTreeIcon, HubIcon) can be removed if not used elsewhere
+// import SchemaIcon from '@mui/icons-material/Schema';
+// import AccountTreeIcon from '@mui/icons-material/AccountTree';
+// import HubIcon from '@mui/icons-material/Hub';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import CloseIcon from '@mui/icons-material/Close';
 
 // Node types
 import EntityNode from './EntityNode';
 import FallbackGraph from './FallbackGraph';
 import SecondaryEntityNode from './SecondaryEntityNode';
-import { ClusterHull } from './ClusterHull';
+// import { ClusterHull } from './ClusterHull'; // Removed ClusterHull
 // Edge types
 import CustomEdge from './CustomEdge';
 
-// Layout algorithm
+// Layout algorithm related hooks
 import useGraphTransform from './useGraphTransform';
-import useLayoutManager from './useLayoutManager';
+import useLayoutManager from './useLayoutManager'; // Now simplified
 import useRelationshipMapperUIState from './useRelationshipMapperUIState';
 
-// Create an inner component that uses the ReactFlow hooks
 const RelationshipMapperContent = ({ 
   title,
   entityType, 
   entityId, 
   entityName,
-  relationshipData,
+  // relationshipData, // This prop is part of graphData now or unused
   graphData,
   isLoading,
   error
 }) => {
   const ui = useRelationshipMapperUIState({ entityId });
+  const layoutManager = useLayoutManager(); // Simplified call, no initialLayout needed
 
-  // Determine the default layout based on entity type
-  let initialLayoutType;
-  switch (entityType) {
-    case 'Puzzle':
-      initialLayoutType = 'dagre'; // Hierarchical for flow
-      break;
-    case 'Element':
-      initialLayoutType = 'radial'; // Changed default to Radial for Elements
-      break;
-    case 'Character':
-      initialLayoutType = 'dagre'; // USE DAGRE FOR CHARACTERS (was radial)
-      break;
-    case 'Timeline':
-      initialLayoutType = 'radial'; // Overview of direct links
-      break;
-    default:
-      initialLayoutType = 'radial'; // Fallback default
-  }
-  
-  // Pass the determined initial layout and isFullScreen state to the manager
-  const layoutManager = useLayoutManager({ 
-    initialLayout: initialLayoutType, 
-    isFullScreen: ui.isFullScreen // Pass isFullScreen state here
-  });
-
-  // *** Add this log ***
-  console.log('RelationshipMapper RawData:', relationshipData);
   console.log('RelationshipMapper GraphData:', graphData);
   console.log('EntityType:', entityType);
-  // ********************
-
-  // Log edges from BFF graphData
-  if (graphData && graphData.edges) {
-    console.log('RelationshipMapper: Edges from BFF (graphData.edges):', JSON.stringify(graphData.edges.slice(0, 5), null, 2)); // Log first 5
-  }
 
   const { nodes: transformedNodes, edges: transformedEdges, error: graphError } = useGraphTransform({
     entityType,
     entityId,
     entityName,
-    rawData: relationshipData,
-    graphData,
+    // rawData: relationshipData, // Pass graphData directly or ensure it contains all necessary info
+    graphData, // Assuming graphData from BFF is the sole source now
     viewMode: ui.viewMode,
     depth: ui.depth,
     nodeFilters: ui.nodeFilters,
     edgeFilters: ui.edgeFilters,
     suppressLowSignal: !ui.showLowSignal,
-    layoutType: layoutManager.layoutType,
-    layoutOptions: layoutManager.options,
+    layoutType: layoutManager.layoutType, // Will be 'dagre'
+    layoutOptions: layoutManager.options, // Standardized Dagre options
   });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -140,19 +100,6 @@ const RelationshipMapperContent = ({
   const reactFlowInstance = useReactFlow();
   const navigate = useNavigate();
   const theme = useTheme();
-
-  // Log transformedEdges
-  useEffect(() => {
-    if (transformedEdges) {
-      console.log('RelationshipMapper: Transformed Edges (from useGraphTransform):', JSON.stringify(transformedEdges.slice(0, 5), null, 2)); // Log first 5
-    }
-  }, [transformedEdges]);
-
-  const nodeTypes = useMemo(() => ({ 
-    entityNode: EntityNode,
-    secondaryNode: SecondaryEntityNode 
-  }), []);
-  const edgeTypes = useMemo(() => ({ custom: CustomEdge }), []);
 
   useEffect(() => {
     if (transformedNodes) {
@@ -166,16 +113,20 @@ const RelationshipMapperContent = ({
     }
   }, [transformedEdges, setEdges]);
   
-  // Auto-fit view when nodes/layout change, after a brief delay for rendering
+  const nodeTypes = useMemo(() => ({ 
+    entityNode: (props) => <EntityNode {...props} centralEntityType={entityType} isFullScreen={ui.isFullScreen} />,
+    secondaryNode: SecondaryEntityNode 
+  }), [entityType, ui.isFullScreen]); // Add dependencies
+  const edgeTypes = useMemo(() => ({ custom: CustomEdge }), []);
+
   useEffect(() => {
     if (nodes && nodes.length > 0 && reactFlowInstance) {
       const timer = setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.25, duration: 300 });
-      }, 100); // Adjust delay as needed
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [nodes, layoutManager.layoutType, reactFlowInstance, ui.isFullScreen]);
-
+  }, [nodes, layoutManager.layoutType, reactFlowInstance, ui.isFullScreen]); // layoutType dependency remains for now, but will be fixed
 
   const onNodeClick = useCallback((event, node) => {
     if (node.data?.route && node.id !== entityId) {
@@ -205,10 +156,10 @@ const RelationshipMapperContent = ({
     );
   }
 
-  if (error) {
+  if (error || !graphData) { // Also check for graphData presence
     return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity="error">Error loading relationship data: {error.message || 'Unknown error'}</Alert>
+        <Alert severity=\"error\">Error loading relationship data: {error?.message || 'No data received'}</Alert>
       </Paper>
     );
   }
@@ -216,74 +167,53 @@ const RelationshipMapperContent = ({
   if (graphError) {
     return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity="warning" sx={{mb: 2}}>
-           Error processing graph data: {graphError.message || 'Could not render graph.'}
-        </Alert>
-        <Typography variant="body2" sx={{mb: 1}}>Displaying fallback data if available:</Typography>
-        <FallbackGraph 
-          entityType={entityType} 
-          entityName={entityName} 
-          relationshipData={graphData || relationshipData} // Prefer graphData if it exists, else raw
-        />
+        <Alert severity=\"warning\" sx={{mb: 2}}>Error processing graph data: {graphError.message || 'Could not render graph.'}</Alert>
+        <Typography variant=\"body2\" sx={{mb: 1}}>Displaying fallback data if available:</Typography>
+        <FallbackGraph entityType={entityType} entityName={entityName} relationshipData={graphData} />
       </Paper>
     );
   }
   
-  // If no nodes after attempting to load and process, show a message or fallback.
-  // Check specifically if transformedNodes is null (initial state) or empty after processing.
   if (!transformedNodes || transformedNodes.length === 0) {
      return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity="info" sx={{mb: 2}}>No direct relationships found or data available to visualize for this entity.</Alert>
-        {(graphData || relationshipData) && 
-          <FallbackGraph 
-            entityType={entityType} 
-            entityName={entityName} 
-            relationshipData={graphData || relationshipData} 
-          />}
+        <Alert severity=\"info\" sx={{mb: 2}}>No direct relationships found or data available to visualize for this entity.</Alert>
+        {graphData && <FallbackGraph entityType={entityType} entityName={entityName} relationshipData={graphData} />}
       </Paper>
     );
   }
 
   return (
     <Paper sx={{
-      // Base styles
       width: '100%', 
-      position: 'relative', // Default position
+      position: 'relative', 
       overflow: 'hidden', 
       display: 'flex', 
       flexDirection: 'column',
-      height: '600px', // Default height
-      
-      // Apply fullscreen styles conditionally
+      height: '600px', 
       ...(ui.isFullScreen && {
-        position: 'fixed', // Take out of flow
+        position: 'fixed', 
         top: 0,
         left: 0,
-        height: '100vh', // Full viewport height
-        width: '100vw',  // Full viewport width
-        zIndex: theme.zIndex.modal + 1, // Ensure it's above most other elements
-        m: 0, // Remove margin in fullscreen
-        borderRadius: 0, // Remove border radius in fullscreen
+        height: '100vh',
+        width: '100vw', 
+        zIndex: theme.zIndex.modal + 1, 
+        m: 0, 
+        borderRadius: 0, 
       }),
-      
-      // Merge with any styles from the hook (e.g., transitions)
       ...ui.containerStyles 
     }}>
       <Box sx={{
-        p: 2, 
+        p: 1.5, // Adjusted padding
         pb: 0, 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        // Add a background in fullscreen for better visibility if theme is light
+        borderBottom: `1px solid ${theme.palette.divider}`,
         ...(ui.isFullScreen && { bgcolor: 'background.paper' })
       }}>
-        <Typography variant="h6">{title || `${entityName}'s Relationship Map`}</Typography>
-        <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
-          <IconButton onClick={ui.toggleFullScreen} size="small">
-            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-          </IconButton>
+        <Typography variant=\"h6\" sx={{fontSize: '1.1rem'}}>{title || `${entityName}'s Map`}</Typography> {/* Simplified title */} 
+        <Tooltip title={ui.isFullScreen ? \"Exit Fullscreen\" : \"Fullscreen Mode\"}>\n          <IconButton onClick={ui.toggleFullScreen} size=\"small\">\n            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}\n          </IconButton>
         </Tooltip>
       </Box>
       <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}> 
@@ -298,46 +228,21 @@ const RelationshipMapperContent = ({
             onPaneClick={onPaneClick}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            fitView={false} // Manual fitView via useEffect or button
-            fitViewOptions={{ padding: 0.25, duration: 300 }}
-            minZoom={0.05}
+            fitView={false}
+            fitViewOptions={{ padding: 0.25, duration: 300 }}\n            minZoom={0.05}
             maxZoom={4}
-            proOptions={{ hideAttribution: true }}
-            elevateEdgesOnSelect
+            proOptions={{ hideAttribution: true }}\n            elevateEdgesOnSelect
             panOnScroll
             selectionOnDrag
           >
-            <Background 
-              color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} 
-              gap={24} 
-              size={1.2} 
-              variant="dots" 
-            />
-            <Controls showInteractive={false} position="bottom-left" />
-            <MiniMap 
-              nodeColor={(n) => n.data?.isCenter ? theme.palette.primary.main : (EntityNode.nodeStyles?.[n.data?.type]?.color || theme.palette.text.secondary)}
-              nodeStrokeWidth={2}
-              pannable
-              zoomable
-              style={{ 
-                backgroundColor: theme.palette.background.paper, 
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: theme.shape.borderRadius,
-              }}
-              maskColor={theme.palette.mode === 'dark' ? 'rgba(40,40,40,0.7)' : 'rgba(245,245,245,0.7)'}
-            />
-
-            <Modal 
-              open={ui.infoOpen} 
-              onClose={ui.closeInfoModal} 
-              aria-labelledby="info-modal-title" 
-              aria-describedby="info-modal-description"
-              disableEnforceFocus // Added to potentially resolve aria-hidden conflict
-            >
+            <Background color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} gap={24} size={1.2} variant=\"dots\" />
+            <Controls showInteractive={false} position=\"bottom-left\" />
+            <MiniMap nodeColor={(n) => n.data?.isCenter ? theme.palette.primary.main : (theme.palette.text.secondary)} style={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }} maskColor={theme.palette.mode === 'dark' ? 'rgba(40,40,40,0.7)' : 'rgba(245,245,245,0.7)'}/>
+            <Modal open={ui.infoOpen} onClose={ui.closeInfoModal} aria-labelledby=\"info-modal-title\" aria-describedby=\"info-modal-description\" disableEnforceFocus>
               <Paper sx={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: {xs: '90%', sm: 450, md: 500}, bgcolor: 'background.paper', boxShadow: 24, p: {xs: 2, sm: 3, md: 4}, borderRadius: 2 }}>
-                <Typography id="info-modal-title" variant="h6" component="h2">Relationship Mapper Guide</Typography>
-                <Typography id="info-modal-description" sx={{ mt: 2 }} component="div">
-                  <p>This map visualizes connections between your story entities.</p>
+                <Typography id=\"info-modal-title\" variant=\"h6\" component=\"h2\">Relationship Mapper Guide</Typography>
+                <Typography id=\"info-modal-description\" sx={{ mt: 2 }} component=\"div\">
+                  <p>This map visualizes connections using a hierarchical layout.</p>
                   <strong>Navigation:</strong>
                   <ul>
                     <li>Click on a node (entity) to navigate to its detail page.</li>
@@ -347,157 +252,61 @@ const RelationshipMapperContent = ({
                   <strong>Controls (Panel):</strong>
                   <ul>
                     <li><strong>View:</strong> Zoom in/out, or fit all items to the screen.</li>
-                    <li><strong>Layout:</strong> Switch between Radial, Force-Directed, and Hierarchical (Dagre) layouts. Dagre layout offers different orientations (Top-to-Bottom, Left-to-Right etc.).</li>
-                    <li><strong>Exploration Depth:</strong> Control how many levels of connections are shown from the central entity.</li>
-                    <li><strong>Filter Nodes/Edges:</strong> Toggle visibility of specific entity types or relationship types.</li>
-                    <li><strong>Signal Strength:</strong> Show or hide items deemed 'low signal' (less critical connections).</li>
+                    {/* Removed Layout selection from help text */}
+                    <li><strong>Exploration Depth:</strong> Control how many levels of connections are shown.</li>
+                    <li><strong>Filter Nodes/Edges:</strong> Toggle visibility of specific entity types or relationships.</li>
+                    <li><strong>Signal Strength:</strong> Show or hide items deemed less critical connections.</li>
                   </ul>
                 </Typography>
-                <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant="contained">Got it!</Button>
+                <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant=\"contained\">Got it!</Button>
               </Paper>
             </Modal>
-  
-            <Snackbar
-              open={ui.snackbar.open}
-              autoHideDuration={ui.snackbar.duration || 6000}
-              onClose={ui.closeSnackbar}
-              message={ui.snackbar.message}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-              action={
-                <IconButton size="small" aria-label="close" color="inherit" onClick={ui.closeSnackbar}>
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              }
-              sx={{ '.MuiSnackbarContent-root': { backgroundColor: ui.snackbar.severity ? `${ui.snackbar.severity}.main` : undefined } }}
-            />
+            <Snackbar open={ui.snackbar.open} autoHideDuration={ui.snackbar.duration || 6000} onClose={ui.closeSnackbar} message={ui.snackbar.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} action={<IconButton size=\"small\" aria-label=\"close\" color=\"inherit\" onClick={ui.closeSnackbar}><CloseIcon fontSize=\"small\" /></IconButton>} sx={{ '.MuiSnackbarContent-root': { backgroundColor: ui.snackbar.severity ? `${ui.snackbar.severity}.main` : undefined } }}/>
           </ReactFlow>
-
-          {/* Cluster hull overlay */}
-          {nodes && nodes.length > 0 && (
-            <Box sx={{position:'absolute',left:0,top:0,width:'100%',height:'100%',pointerEvents:'none'}}>
-              {nodes.filter(n=>n.data && (n.data.type==='Puzzle' || n.data.type==='Element') && nodes.some(c=>c.data?.parentId===n.id)).map(hubNode=>{
-                const children = nodes.filter(c=>c.data?.parentId===hubNode.id);
-                return <ClusterHull key={`hull-${hubNode.id}`} hub={hubNode} childrenNodes={children} color={hubNode.style?.borderColor||'orange'} />;
-              })}
-            </Box>
-          )}
+          {/* ClusterHull rendering removed */}
         </Box>
 
         {!ui.isFullScreen && (
-          <Box 
-            sx={{ 
-              width: '280px', // Fixed width for the panel
-              flexShrink: 0, // Prevent shrinking
-              borderLeft: `1px solid ${theme.palette.divider}`, // Separator line
-              height: '100%', // Match parent height
-              overflowY: 'auto', // Allow panel content to scroll
-              p: 1.5, // Padding equivalent to old Panel padding
-              backgroundColor: 'background.paper' // Match old Panel background
-            }}
-          >
+          <Box sx={{ width: '280px', flexShrink: 0, borderLeft: `1px solid ${theme.palette.divider}`, height: '100%', overflowY: 'auto', p: 1.5, backgroundColor: 'background.default' /* Slightly different bg for panel */ }}>
             <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
-              <Typography variant="subtitle1">Controls</Typography>
-              <Tooltip title="Map Information & Help">
-                <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
+              <Typography variant=\"subtitle1\" sx={{fontWeight: 600}}>Controls</Typography>
+              <Tooltip title=\"Map Information & Help\">
+                <IconButton onClick={ui.openInfoModal} size=\"small\"> <InfoIcon /> </IconButton>
               </Tooltip>
             </Box>
             <Divider sx={{my:1}}/>
             
-            <Typography variant="caption" display="block" gutterBottom>View</Typography>
+            <Typography variant=\"caption\" display=\"block\" gutterBottom>View</Typography>
             <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, justifyContent: 'center' }}>
-              <Tooltip title="Zoom In"><IconButton onClick={onZoomIn} size="small"><ZoomInIcon /></IconButton></Tooltip>
-              <Tooltip title="Zoom Out"><IconButton onClick={onZoomOut} size="small"><ZoomOutIcon /></IconButton></Tooltip>
-              <Tooltip title="Fit View"><IconButton onClick={onFitView} size="small"><FitScreenIcon /></IconButton></Tooltip>
+              <Tooltip title=\"Zoom In\"><IconButton onClick={onZoomIn} size=\"small\"><ZoomInIcon /></IconButton></Tooltip>
+              <Tooltip title=\"Zoom Out\"><IconButton onClick={onZoomOut} size=\"small\"><ZoomOutIcon /></IconButton></Tooltip>
+              <Tooltip title=\"Fit View\"><IconButton onClick={onFitView} size=\"small\"><FitScreenIcon /></IconButton></Tooltip>
             </Box>
+            <Divider sx={{my:1}}/>
+            {/* Layout ToggleButtonGroup and Dagre Orientation ToggleButtonGroup removed */}
 
-            <Typography variant="caption" display="block" gutterBottom>Layout</Typography>
-            <ToggleButtonGroup
-              value={layoutManager.layoutType}
-              exclusive
-              onChange={(e, newLayout) => { if (newLayout) layoutManager.changeLayout(newLayout); }}
-              aria-label="layout selector"
-              size="small"
-              fullWidth
-              sx={{mb:1.5}}
-            >
-              <ToggleButton value="radial" aria-label="radial layout"><Tooltip title="Radial"><HubIcon fontSize="small"/></Tooltip></ToggleButton>
-              <ToggleButton value="force-directed" aria-label="force-directed layout"><Tooltip title="Force-Directed"><SchemaIcon fontSize="small"/></Tooltip></ToggleButton>
-              <ToggleButton value="dagre" aria-label="hierarchical layout"><Tooltip title="Hierarchical"><AccountTreeIcon fontSize="small"/></Tooltip></ToggleButton>
-            </ToggleButtonGroup>
-            
-            {layoutManager.layoutType === 'dagre' && layoutManager.options?.orientation && (
-              <Box sx={{mb: 1.5}}>
-                <Typography variant="caption" display="block" gutterBottom>Hierarchy Orientation</Typography>
-                <ToggleButtonGroup
-                  value={layoutManager.options.orientation}
-                  exclusive
-                  onChange={(e, newOrientation) => {
-                    if (newOrientation) layoutManager.updateOptions({ orientation: newOrientation });
-                  }}
-                  aria-label="dagre orientation selector"
-                  size="small"
-                  fullWidth
-                >
-                  {['TB', 'LR', 'BT', 'RL'].map(dir => (
-                    <ToggleButton key={dir} value={dir} aria-label={`${dir} orientation`}>{dir}</ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </Box>
-            )}
+            <Typography variant=\"caption\" display=\"block\" id=\"depth-slider-label\" gutterBottom>Exploration Depth: {ui.depth}</Typography>
+            <Slider size=\"small\" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby=\"depth-slider-label\" valueLabelDisplay=\"auto\" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
+            <Divider sx={{my:1}}/>
 
-            <Typography variant="caption" display="block" id="depth-slider-label" gutterBottom>Exploration Depth: {ui.depth}</Typography>
-            <Slider
-              size="small"
-              value={ui.depth}
-              onChange={(e, newValue) => ui.setDepth(newValue)}
-              aria-labelledby="depth-slider-label"
-              valueLabelDisplay="auto"
-              step={1}
-              marks
-              min={1}
-              max={ui.maxDepth || 3}
-              sx={{mb:1.5, mx: 0.5}}
-            />
-
-            <Typography variant="caption" display="block" gutterBottom>Filter Nodes by Type</Typography>
+            <Typography variant=\"caption\" display=\"block\" gutterBottom>Filter Nodes by Type</Typography>
             <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
               {Object.entries(ui.nodeFilters || {}).map(([type, checked]) => (
-                <Chip
-                  key={type}
-                  icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}
-                  label={type}
-                  onClick={() => ui.toggleNodeFilter(type)}
-                  size="small"
-                  color={checked ? "primary" : "default"}
-                  variant={checked ? "filled" : "outlined"}
-                />
+                <Chip key={type} icon={checked ? <CheckBoxIcon fontSize=\"small\"/> : <CheckBoxOutlineBlankIcon fontSize=\"small\"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size=\"small\" color={checked ? \"primary\" : \"default\"} variant={checked ? \"filled\" : \"outlined\"}/>
               ))}
             </Box>
+            <Divider sx={{my:1}}/>
             
-            <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
+            <Typography variant=\"caption\" display=\"block\" gutterBottom>Filter Edges by Type</Typography>
             <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
               {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (
-                <Chip
-                  key={type}
-                  label={type.charAt(0).toUpperCase() + type.slice(1)} // Capitalize
-                  onClick={() => ui.toggleEdgeFilter(type)}
-                  size="small"
-                  color={checked ? "secondary" : "default"}
-                  variant={checked ? "filled" : "outlined"}
-                  icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}
-                />
+                <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size=\"small\" color={checked ? \"secondary\" : \"default\"} variant={checked ? \"filled\" : \"outlined\"} icon={checked ? <CheckBoxIcon fontSize=\"small\"/> : <CheckBoxOutlineBlankIcon fontSize=\"small\"/>}/ >
               ))}
             </Box>
+            <Divider sx={{my:1}}/>
 
-            <Tooltip title={ui.showLowSignal ? "Low signal items are visible" : "Low signal items are hidden"}>
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                onClick={ui.toggleShowLowSignal}
-                startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}
-              >
-                {ui.showLowSignal ? 'Show All Signal' : 'Hide Low Signal'}
+            <Tooltip title={ui.showLowSignal ? \"Low signal items are visible\" : \"Low signal items are hidden\"}>\n              <Button variant=\"outlined\" size=\"small\" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
+                {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'} {/* Updated text */}
               </Button>
             </Tooltip>
           </Box>
@@ -512,30 +321,18 @@ RelationshipMapperContent.propTypes = {
   entityType: PropTypes.oneOf(['Character', 'Element', 'Puzzle', 'Timeline']).isRequired,
   entityId: PropTypes.string.isRequired,
   entityName: PropTypes.string,
-  relationshipData: PropTypes.object,
-  graphData: PropTypes.object,
+  // relationshipData: PropTypes.object, // deprecated or part of graphData
+  graphData: PropTypes.object, // Now the primary data source
   isLoading: PropTypes.bool,
   error: PropTypes.object,
 };
 
-// Wrapper component that provides the ReactFlowProvider
-const RelationshipMapper = (props) => {
-  return (
-    <ReactFlowProvider>
-      <RelationshipMapperContent {...props} />
-    </ReactFlowProvider>
-  );
-};
+const RelationshipMapper = (props) => (
+  <ReactFlowProvider>
+    <RelationshipMapperContent {...props} />
+  </ReactFlowProvider>
+);
 
-RelationshipMapper.propTypes = {
-  title: PropTypes.string,
-  entityType: PropTypes.oneOf(['Character', 'Element', 'Puzzle', 'Timeline']).isRequired,
-  entityId: PropTypes.string.isRequired,
-  entityName: PropTypes.string,
-  relationshipData: PropTypes.object,
-  graphData: PropTypes.object,
-  isLoading: PropTypes.bool,
-  error: PropTypes.object,
-};
+RelationshipMapper.propTypes = RelationshipMapperContent.propTypes; // Inherit propTypes
 
-export default RelationshipMapper; 
+export default RelationshipMapper;
