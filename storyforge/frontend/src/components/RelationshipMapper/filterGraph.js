@@ -24,6 +24,7 @@ function filterGraph(
   } = {}
 ) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+    console.warn('[filterGraph] Invalid nodes or edges input. Nodes:', nodes, 'Edges:', edges);
     return { nodes: [], edges: [] };
   }
 
@@ -37,15 +38,15 @@ function filterGraph(
   /*
   if (centerNodeId && workingEdges.length > 0) {
     const CONDITIONAL_STRONG = new Set([
-      \"Owns\", \"Owned By\", \"Contains\", \"Inside\"
+      "Owns", "Owned By", "Contains", "Inside"
     ]);
     const UNCONDITIONAL_STRONG = new Set([
-      \"Requires\", \"Required By\", \"Rewards\", \"Reward From\", \"Unlocks\", \"Locked In\",
-      \"Sub-Puzzle Of\", \"Has Sub-Puzzle\", \"Evidence For\"
+      "Requires", "Required By", "Rewards", "Reward From", "Unlocks", "Locked In",
+      "Sub-Puzzle Of", "Has Sub-Puzzle", "Evidence For"
     ]);
     const WEAK_RELATIONSHIPS = new Set([
-      \"Associated\", \"Associated With\", \"Involves\", \"Involved In\", 
-      \"Participates In\", \"Appears In\"
+      "Associated", "Associated With", "Involves", "Involved In", 
+      "Participates In", "Appears In"
     ]);
     const INTERMEDIARY_HUB_TYPES = new Set(['Puzzle', 'Timeline', 'Element']);
 
@@ -129,8 +130,14 @@ function filterGraph(
   // --- END NEW Edge Simplification Logic (Temporarily Disabled) ---
 
   // --- Depth Filtering ---
-  if (depth > 0 && workingNodes.length > 1 && centerNodeId) {
-    const visited = new Set([centerNodeId]);
+  if (depth > 0 && workingNodes.length > 1 && centerNodeId && workingNodeMap.has(centerNodeId)) {
+    const visited = new Set();
+    if (workingNodeMap.has(centerNodeId)) { // Ensure centerNodeId is valid before adding
+        visited.add(centerNodeId);
+    } else {
+        console.warn(`[filterGraph] Center node ID ${centerNodeId} not found in initial workingNodeMap. Depth filtering might be incorrect.`);
+    }
+
     const queue = [{ id: centerNodeId, d: 0 }];
     const adjacency = {};
     workingEdges.forEach((e) => {
@@ -139,31 +146,76 @@ function filterGraph(
       adjacency[e.source].push(e.target);
       adjacency[e.target].push(e.source);
     });
-    while (queue.length) {
-      const { id, d } = queue.shift();
-      if (d >= depth) continue;
-      (adjacency[id] || []).forEach((neighborId) => {
-        if (workingNodeMap.has(neighborId) && !visited.has(neighborId)) {
-          visited.add(neighborId);
-          queue.push({ id: neighborId, d: d + 1 });
+    
+    let head = 0;
+    while(head < queue.length) { // Efficient queue processing
+        const { id, d } = queue[head++];
+        if (d >= depth) continue;
+
+        (adjacency[id] || []).forEach((neighborId) => {
+            if (workingNodeMap.has(neighborId) && !visited.has(neighborId)) {
+                visited.add(neighborId);
+                queue.push({ id: neighborId, d: d + 1 });
+            }
+        });
+    }
+    
+    // New logic to add children of visited parents
+    const allOriginalNodes = nodes.slice(); // Use the original full nodes list
+    let newChildrenAddedInPass;
+    do {
+      newChildrenAddedInPass = false;
+      allOriginalNodes.forEach(potentialChildNode => {
+        if (potentialChildNode.data && potentialChildNode.data.parentId) {
+          if (visited.has(potentialChildNode.data.parentId) && !visited.has(potentialChildNode.id)) {
+            if (workingNodeMap.has(potentialChildNode.id)) { // Ensure child exists in the current graph context
+                visited.add(potentialChildNode.id);
+                newChildrenAddedInPass = true;
+            }
+          }
         }
       });
-    }
+    } while (newChildrenAddedInPass);
+
     workingNodes = workingNodes.filter((n) => visited.has(n.id));
     workingEdges = workingEdges.filter((e) => visited.has(e.source) && visited.has(e.target));
     workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
+  } else if (depth > 0 && workingNodes.length > 1 && centerNodeId && !workingNodeMap.has(centerNodeId)) {
+    console.warn(`[filterGraph] Center node ${centerNodeId} for depth filtering not found in the provided nodes. Returning all nodes/edges.`);
   }
+
 
   // --- Node Type Filtering ---
   const activeNodeFilters = Object.keys(nodeFilters).filter((t) => nodeFilters[t]);
   if (activeNodeFilters.length > 0 && activeNodeFilters.length < Object.keys(nodeFilters).length) {
-    workingNodes = workingNodes.filter((n) => n.data.isCenter || activeNodeFilters.includes(n.data.type));
+    // Initial filter based on type or being the center node
+    let tempFilteredNodes = workingNodes.filter((n) => 
+      (n.data.isCenter && workingNodeMap.has(n.id)) || 
+      activeNodeFilters.includes(n.data.type)
+    );
+    
+    // Ensure children of kept, type-valid parents are also kept, even if child's type *would* be filtered (this is debatable UX, but aims to preserve group structure if parent is shown)
+    // This specific part might be too aggressive or counter-intuitive if a type is EXPLICITLY filtered out.
+    // For now, let's simplify: if a node's type is filtered out, it's out. The group will show the parent without that specific child.
+    // The primary goal is that if a child's type IS NOT filtered out, but it might have been pruned by earlier filters, it should be kept if its parent is kept.
+    // The depth filter already handles bringing children in. Node type filter should be respected.
+    
+    // Revised Node Type Filtering:
+    // A node is kept if:
+    // 1. It's the center node.
+    // 2. Its type is in activeNodeFilters.
+    workingNodes = workingNodes.filter(n => {
+        if (n.data.isCenter && workingNodeMap.has(n.id)) return true; // Keep center
+        if (activeNodeFilters.includes(n.data.type)) return true; // Keep if type matches
+        return false; // Otherwise, filter out
+    });
+
+    // After filtering nodes, update the map and filter edges
     workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
     workingEdges = workingEdges.filter((e) => workingNodeMap.has(e.source) && workingNodeMap.has(e.target));
   }
 
   // --- Edge Type Filtering ---
-  // Ensure edgeFilters is an object before processing
   const activeEdgeFilters = typeof edgeFilters === 'object' && edgeFilters !== null 
     ? Object.keys(edgeFilters).filter((et) => edgeFilters[et])
     : [];
@@ -171,17 +223,56 @@ function filterGraph(
     workingEdges = workingEdges.filter(edge => {
       return edge.data?.type && activeEdgeFilters.includes(edge.data.type);
     });
-    // Remove orphaned nodes (except center) after edge filtering
-    const connectedNodeIdsAfterEdgeFilter = new Set();
-    if (centerNodeId) connectedNodeIdsAfterEdgeFilter.add(centerNodeId); // Keep center node
     
+    // Remove orphaned nodes after edge filtering
+    // A node is kept if:
+    // 1. It's the center node (if it still exists in workingNodeMap).
+    // 2. It's part of any remaining workingEdge.
+    // 3. It's a child of a node that is kept by rules 1 or 2.
+    const nodesConnectedByEdges = new Set();
     workingEdges.forEach(edge => {
-      connectedNodeIdsAfterEdgeFilter.add(edge.source);
-      connectedNodeIdsAfterEdgeFilter.add(edge.target);
+      nodesConnectedByEdges.add(edge.source);
+      nodesConnectedByEdges.add(edge.target);
     });
-    workingNodes = workingNodes.filter(node => node.data.isCenter || connectedNodeIdsAfterEdgeFilter.has(node.id));
-    // No need to update workingNodeMap here as it's the last step for nodes
+
+    const finalKeptNodeIds = new Set();
+    if (centerNodeId && workingNodeMap.has(centerNodeId)) {
+      finalKeptNodeIds.add(centerNodeId);
+    }
+
+    workingNodes.forEach(n => {
+      if (nodesConnectedByEdges.has(n.id)) {
+        finalKeptNodeIds.add(n.id);
+      }
+    });
+    
+    // Iteratively add children of already kept nodes
+    let newChildrenAddedInLastPass;
+    const originalNodesForOrphanCheck = nodes.slice(); // Use original full node list to check parentage
+
+    do {
+      newChildrenAddedInLastPass = false;
+      originalNodesForOrphanCheck.forEach(node => {
+        if (node.data && node.data.parentId && 
+            finalKeptNodeIds.has(node.data.parentId) && 
+            !finalKeptNodeIds.has(node.id)) {
+          // Only add if this node wasn't filtered out by type earlier
+          if (workingNodeMap.has(node.id)) { 
+            finalKeptNodeIds.add(node.id);
+            newChildrenAddedInLastPass = true;
+          }
+        }
+      });
+    } while (newChildrenAddedInLastPass);
+    
+    workingNodes = workingNodes.filter(node => finalKeptNodeIds.has(node.id));
+    // Update workingNodeMap after node filtering
+    workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
   }
+
+  // Final consistency check: ensure all edge sources/targets are in the final node list
+  const finalNodeIdsSet = new Set(workingNodes.map(n => n.id));
+  workingEdges = workingEdges.filter(e => finalNodeIdsSet.has(e.source) && finalNodeIdsSet.has(e.target));
 
   return { nodes: workingNodes, edges: workingEdges };
 }
