@@ -27,7 +27,7 @@
 *   **Backend Data Store:** **Existing Notion Workspace** (via Notion API). *This is a critical constraint. The structure defined in Section 4 is the target.*
 *   **Frontend Framework:** React (as implemented).
 *   **Visualization Libraries:** `@xyflow/react` (React Flow) is the primary visualization library used.
-*   **State Management:** React Query (as implemented for API service layer) and Zustand (for client-side UI state, e.g., within the Relationship Mapper).
+*   **State Management:** React Query (as implemented for API service layer) and Zustand. Zustand is currently used for client-side UI state (e.g., within the Relationship Mapper); the complexity of this client-side state may be reduced with the focused rebuild of the Relationship Mapper, which simplifies its UI controls and layout options.
 *   **Styling:** Material UI with a dark theme (as implemented).
 *   **Backend-for-Frontend (BFF) / Middleware:** Node.js with Express.js (as implemented). This BFF handles Notion API interactions, caching (using `node-cache`), complex data transformations (including generation of rich `graphData` for visualization as per Section 4.E), and secure API key management.
 
@@ -111,7 +111,12 @@ The `Elements` database serves as a general store for all items, including those
     *   *(`Puzzle Chain` (URL/Relation) - Consider for formal support based on sample CSV)*
 
 **(E) BFF `graphData` Object Specification (for Relationship Mapper)**
-(Specification remains current and accurate based on code review of `notionController.js` helpers `_createGraphNodeInternal` and `_createGraphEdgeInternal`. The `edge.data.shortLabel` is particularly critical as the frontend uses it to determine `parentId` for visual grouping in Dagre layouts.)
+(Specification remains current and accurate based on code review of `notionController.js` helpers `_createGraphNodeInternal` and `_createGraphEdgeInternal`. The following fields within the `graphData` object are particularly critical for the Relationship Mapper's focused hierarchical layout strategy:
+*   `nodes[n].id`, `nodes[n].name`, `nodes[n].type`, and `nodes[n].properties`: Essential for node rendering, labeling, and differentiation.
+*   `edges[e].source`, `edges[e].target`, `edges[e].label`: Define basic connectivity and on-edge textual labels.
+*   `edges[e].data.shortLabel`: Critically important, as the frontend logic in `useGraphTransform.js` relies on specific `shortLabel` values (e.g., "Contains," "Required For," "Rewards") to programmatically assign `parentId` attributes to nodes. This `parentId` assignment is the foundation for creating visual groupings using Dagre compound nodes and React Flow's parent rendering.
+*   `edges[e].data.contextualLabel`: Used for detailed tooltips on edges.
+The frontend's ability to effectively group related nodes (e.g., container contents, puzzle inputs/outputs) is directly dependent on the consistency and accuracy of these labels, especially `shortLabel`, originating from the BFF.)
 '''json
 {
   "center": { /* Fully mapped central entity object, matching structure of a node below */ },
@@ -233,20 +238,39 @@ While the dashboard is currently a placeholder, understanding these personas and
 
 **D. UX Principles for Graph Clarity in Relationship Mapper:**
 
-To achieve the overarching goal, especially in complex maps, we will adhere to the following UX principles for how nodes are grouped and how edges are displayed or pruned:
-
 *   **Tell a Story, Don't Just Show Data:** The graph should intuitively guide the user through the most relevant connections. This means prioritizing relationships that are key to understanding the central entity's role and narrative function.
 *   **Reduce Cognitive Load:** Avoid overwhelming the user with a "hairball" of lines. The layout should be clean, and connections should be easy to follow.
-*   **Contextual Grouping for Meaning:**
-    *   Nodes that naturally belong together or form a conceptual unit should be visually grouped. For example, *Elements physically inside a Container Element should cluster around that Container.* Similarly, *Puzzles should visually group with their direct input Elements (Required For) and output Elements (Rewards).*
-    *   This grouping helps users understand sub-systems or collections at a glance.
-*   **Intelligent Edge Pruning for Clarity (Single Point of Connection):**
-    *   To prevent visual clutter, if a strong, meaningful indirect connection to the central entity of the map exists *through an intermediary hub node* (like a Puzzle, Timeline event, or a significant Container Element), then weaker, direct connections from the central entity to nodes already connected to that hub may be pruned.
-    *   *For example, if Character 'A' (central node) owns Element 'Container X', and 'Container X' contains Element 'Clue Y', we want to primarily show `A --owns--> Container X --contains--> Clue Y`. The direct edge `A --owns--> Clue Y` (if it also exists) might be hidden if 'Container X' is a significant intermediary, thus simplifying the view without losing the core understanding that 'A' has access to 'Clue Y' via 'Container X'.*
-    *   This "single point of connection" principle helps highlight the most direct or narratively important pathway, reducing redundant lines. Essential direct links will be preserved if no such clear intermediary path exists.
-*   **Prioritize Strong Relationships:** Edges representing strong, defining relationships (e.g., "Owns," "Rewards," "Requires") should be more prominent or less likely to be pruned than weaker, more generic associations.
-
-These principles will guide the technical implementation of features like the frontend `parentId` assignment (for the "Dagre + Orbiting" layout) and the edge filtering logic in `filterGraph.js`. The aim is always to present the most understandable and actionable view of the narrative web to the designers.
+*   **Optimized Information Display on Nodes & Edges (Leveraging Color and Hover Text):**
+    *   **Principle:** Provide the right amount of information at the right time, balancing immediate visual clarity with access to comprehensive details. This involves minimizing on-node/on-edge text by strategically using color-coding and making detailed information readily available via hover interactions (tooltips).
+    *   **Implementation - Node Information Strategy:**
+        *   **Color-Coding for Type Identification:**
+            *   *Node Body:* The primary visual cue for an entity's fundamental type (Character, Element, Puzzle, Timeline) will be its background color and associated icon, as currently defined in `EntityNode.jsx` (via `getEntityPresentation`). This allows users to quickly differentiate node categories without reading explicit type labels on every node.
+            *   *Node Chips:* Secondary attributes (e.g., an Element's `Basic Type` like "Prop" or "Container", a Character's `Tier` like "Core") will be displayed as small, color-coded chips on the node. Chip colors will be consistent with their primary entity type or a distinct scheme if representing sub-status, providing another layer of quick visual information.
+        *   **Dynamic & Contextual Node Labels:**
+            *   *Minimal Default Labels:* At wider zoom levels or for less central nodes, on-node text labels will be kept to a minimum – potentially showing only a truncated version of the entity's `Name` (from `graphData.nodes[n].name`) or a highly abbreviated identifier. The goal is to ensure node distinctiveness without clutter.
+            *   *Zoom-Based Detail Expansion:* As users zoom in, node labels will progressively reveal more of the `Name`. This will be handled within `EntityNode.jsx` by responding to React Flow's zoom state.
+            *   *Central/Selected Node Emphasis:* The central entity of the map and any user-selected nodes may display slightly more label detail by default.
+        *   **Comprehensive Tooltips for Detail-on-Demand:**
+            *   *Primary Detail Source:* Tooltips (activated on hover, managed by `EntityNode.jsx` and its `NodeTooltipContent` sub-component) will serve as the primary mechanism for accessing the full details of an entity. This keeps the main map display clean.
+            *   *Tooltip Content:* Tooltips will display:
+                *   Full `Name` (e.g., `graphData.nodes[n].name`).
+                *   Entity `Type` (e.g., `graphData.nodes[n].type`).
+                *   Key type-specific properties derived from `graphData.nodes[n].properties` (e.g., for a Character: `Tier`, `Role`, `Primary Action Snippet`; for a Puzzle: `Timing`, `Status Summary`; for an Element: `Basic Type`, `Status`, `Flow Summary`; for a Timeline event: `Date`, `Participant Summary`).
+                *   Full descriptions (`graphData.nodes[n].fullDescription`) if available, especially in fullscreen mode or for central/selected items.
+    *   **Implementation - Edge Information Strategy:**
+        *   **Color-Coding for Relationship Category:**
+            *   Edge colors will continue to be a primary means of differentiating the *category* of a relationship, as defined in `transformToGraphElements.js` (`edgeStyles`) and rendered by `CustomEdge.jsx`. For example:
+                *   `dependency` edges (Orange): For "Requires," "Rewards" links to Puzzles.
+                *   `containment` edges (Light Blue, dashed): For "Contains," "Inside" links for Elements.
+                *   `character` edges (Indigo): For "Owns," "Associated With" involving Characters.
+                *   `timeline` edges (Pink): For "Participates In," "Evidence For" involving Timeline events.
+                *   `association` (Green) / `default` (Grey) for other types.
+            *   This color-coding helps users rapidly understand the nature of connections without needing to read every label.
+        *   **Concise On-Edge Labels:**
+            *   On-edge text labels will display the `shortLabel` (e.g., "Owns," "Requires," "Contains") from `graphData.edges[e].data.shortLabel`. These should be brief and directly indicative of the relationship type.
+        *   **Contextual Tooltips for Full Edge Semantics:**
+            *   Tooltips on edges (managed by `CustomEdge.jsx`) will display the full `contextualLabel` (e.g., "Character A (Character) --Owns--> Element B (Prop)") from `graphData.edges[e].data.contextualLabel`, providing unambiguous detail about the source, target, and relationship when needed.
+    *   **Benefit:** This multi-layered approach (color -> concise on-screen labels -> detailed tooltips) minimizes visual noise on the map itself, making it cleaner and easier to scan for patterns and primary connections. Detailed information remains easily accessible on demand, supporting both quick overviews and in-depth exploration. This directly aligns with the goal of reducing cognitive load and making the map more intuitive.
 
 **7. Assumptions & Dependencies**
 *   **The Notion workspace structured precisely according to Section 4 is maintained.** Unauthorized changes to this Notion structure will break the tool.
@@ -255,13 +279,19 @@ These principles will guide the technical implementation of features like the fr
 *   **The BFF's `/graph` endpoints consistently provide valid `graphData` objects structured according to Section 4.E.** The frontend `RelationshipMapper` now uses this `graphData` as its sole source for graph construction.
 
 **8. Future Considerations (Out of Scope for current phases unless specified in Action Plan - Section 9)**
-*   Full, robust parsing (beyond minimal `SF_RFID`) of structured data from Rich Text for memory attributes, if the minimal approach proves insufficient long-term.
-*   Re-evaluation of true Dagre compound node capabilities if the "Dagre + Orbiting" strategy (Phase 1, Step 2 of Action Plan in Section 9) proves insufficient after refinement.
-*   Interactive in-place node expansion/collapse within the Relationship Mapper.
+*   Full, robust parsing (beyond minimal `SF_RFID`) of structured data from Rich Text for memory attributes, if the minimal approach (Action Plan Phase 2, Step 5) proves insufficient long-term.
+*   **Re-evaluation of true Dagre compound node capabilities...** (This item is now addressed by the focused rebuild outlined in Action Plan Section 9, Phase 1, Step 2, which adopts Dagre compound nodes as the core strategy.)
+*   **Enhanced Interactive Group Management:**
+    *   Interactive in-place node expansion/collapse for compound groups within the Relationship Mapper (e.g., allowing users to collapse a Puzzle's inputs/outputs or a Container's contents to reduce clutter on demand). This is now more feasible with the adoption of a true compound node architecture.
+    *   Consideration for user-defined or dynamic grouping beyond the automatic semantic grouping if advanced use cases emerge.
+*   **Advanced Filtering & Highlighting:**
+    *   More sophisticated filtering options beyond simple type toggles (e.g., filter by specific narrative threads, status, or custom tags if added to data).
+    *   Path highlighting between selected nodes or to trace specific relationship chains.
 *   Visual diffing of narrative states or versions.
 *   Integration with a dedicated task management or playtesting feedback system.
-*   Advanced "narrative health check" analytics (e.g., identifying orphaned elements, unlinked puzzles, or circular dependencies).
+*   Advanced "narrative health check" analytics (e.g., identifying orphaned elements, unlinked puzzles, or circular dependencies – the new layout might make some of these more visually apparent).
 *   Mobile/tablet responsiveness for read-only viewing.
+*   **Refined Layout Customization (Post-Rebuild):** Once the core Dagre compound node layout is stable and effective, minor, well-justified layout customization options (e.g., alternative Dagre orientations like 'LR' if beneficial for specific views, or user-adjustable spacing parameters within defined limits) could be revisited if strong user needs emerge, but the primary goal remains a highly effective default.
 
 **9. Action Plan & Next Steps**
 
@@ -313,17 +343,92 @@ This section outlines the current, active plan for StoryForge refinement and adv
                 *   **Status: COMPLETED** (Merged to master on May 19, 2025)
         *   *What (Achieved/Goal):* A cleaner, more maintainable codebase. Updated `package.json` files. Fewer misleading/broken tests.
 
-2.  **RelationshipMapper - Core UX & Layout Foundation (High Priority):**
-    *   *Why:* Address direct user feedback that current mapping UX needs improvement. Improve stability, clarity, and performance.
-    *   *Where:* Primarily the `storyforge/frontend/src/components/RelationshipMapper/` directory, focusing on `RelationshipMapper.jsx`, `useGraphTransform.js`, `layoutUtils.js`, and how detail pages (e.g., `ElementDetail.jsx`) pass data to it.
-    *   *Tasks:*
-        *   Verify `graphData` pipeline consistency from BFF through to React Flow components. (Initial conceptual confirmation done; ongoing verification during development).
-        *   Thoroughly test and refine parameters for the current "Dagre + Orbiting (+/- Hulls)" layout strategy (logic in `layoutUtils.js`, `parentId` assignment in `useGraphTransform.js`). Focus on clarity and reducing overlaps for common graph densities. (See PRD Section 6, User Personas/Workflows for use cases).
-        *   Evaluate UX of this layout. If significant issues persist, make a data-driven decision to Path A (continue optimizing current approach) or Path B (plan R&D for true Dagre compound nodes or other advanced grouping, referencing Section 8 Future Considerations).
-        *   Review and improve basic interactions (zoom, pan, node selection if applicable).
-        *   Monitor triggers for `FallbackGraph.jsx` to assess main mapper stability.
-    *   *What (Goal):* A demonstrably more usable and stable Relationship Mapper. A clear decision and path forward for the Dagre layout strategy. Relevant PRD sections (like this one, and Section 6) updated with findings.
-    *   **Status: PENDING**
+2.  **RelationshipMapper - Focused Rebuild for Core UX & Layout Foundation (High Priority):**
+
+    *   **A. Rationale for Rebuild & Goals:**
+        *   **UI/UX Challenges with Previous Approach:** Extensive testing and user feedback (including analysis of visual outputs from "Alex Reeves's Map" and others) revealed that the prior multi-layout strategy ("Dagre + Orbiting," Radial, Force-Directed) and manual orbiting logic for Dagre layouts did not consistently or clearly meet core user needs. Key issues included:
+            *   **Failure to "Tell a Story":** Maps did not provide an at-a-glance understanding of crucial hierarchical relationships, such as the contents of a container Element or the set of elements involved in a Puzzle.
+            *   **High Cognitive Load:** Users were required to manually trace numerous edges and interpret truncated labels to understand fundamental groupings.
+            *   **Ineffective Visual Grouping:** The "Dagre + Orbiting" strategy, despite iterations, failed to produce distinct and intuitive visual clusters for parent-child relationships (e.g., an Element and its contained items; a Puzzle and its inputs/outputs). The manual "orbiting" often resulted in child nodes appearing disconnected or arbitrarily placed relative to their intended parent.
+            *   **Label Truncation:** Aggressive label truncation made many nodes unidentifiable without interaction, severely hindering quick comprehension.
+            *   **UI Inconsistencies:** Issues like the inconsistent visibility of map controls (especially in fullscreen mode) detracted from usability.
+        *   **Engineering Complexity:** Supporting multiple complex layout algorithms (Radial, Force-Directed, and the manual Dagre+Orbiting) with their distinct state management and UI controls led to significant code complexity in `layoutUtils.js`, `useGraphTransform.js`, `RelationshipMapper.jsx`, `useLayoutManager.js`, and `useRelationshipMapperUIState.js`. This complexity made the system difficult to debug, maintain, and extend reliably.
+        *   **Strategic Decision:** Based on these findings, a decision has been made to undertake a focused rebuild of the Relationship Mapper's core layout and rendering logic. This rebuild prioritizes a single, robust, and clear hierarchical layout strategy designed to effectively visualize the narrative structure as defined by the user personas and use cases (PRD Section 6.B).
+        *   **Primary Goal:** To deliver a Relationship Mapper that is intuitive, provides clear visual groupings for key hierarchical relationships (containers, puzzles), significantly reduces cognitive load, and is built on a more maintainable and focused engineering foundation.
+
+    *   **B. Revised Architectural Approach for Relationship Mapper:**
+        *   **Input Data Structure:** The mapper will continue to consume the `graphData` object (nodes and edges with their properties, including `edge.data.shortLabel`) provided by the Backend-for-Frontend (BFF) as specified in PRD Section 4.E. The integrity and richness of this `graphData` are paramount.
+        *   **Primary Layout Strategy (Exclusive):**
+            *   **Engine:** Dagre (`dagre.js`) will be the *exclusive* graph layout engine used. Alternative layout options (Radial, Force-Directed) and their associated UI controls will be removed. This simplifies the user experience and development effort.
+            *   **Layout Orientation:** A default orientation (e.g., 'TB' - Top-to-Bottom) will be chosen for consistency, particularly for Character and Puzzle maps. If specific views demonstrably benefit from other orientations (e.g., 'LR' for certain Element or Timeline views), this could be a configurable option passed to the Dagre layout, but the primary aim is a single, highly effective default.
+        *   **Visual Grouping Mechanism (Compound Nodes):**
+            *   **Logical Group Identification:** The frontend (`useGraphTransform.js`) will continue to parse `graphData` to identify logical parent-child relationships. Specifically, `node.data.parentId` will be assigned to:
+                *   Element nodes that are `Contains`-ed within another Element node (the container).
+                *   Element nodes that are `Required For` a Puzzle node or `Rewards`-ed by a Puzzle node.
+            *   **Dagre Compound Nodes:** The `getDagreLayout` function in `layoutUtils.js` will be refactored to fully utilize Dagre's `compound: true` feature. This involves:
+                *   Calling `g.setParent(childNode.id, parentNode.id)` for all nodes with an assigned `parentId`.
+                *   Setting initial visual dimensions for all nodes (including parents) in `g.setNode()`. Dagre will then automatically calculate and expand the dimensions of parent (compound) nodes to encompass their children.
+                *   Configuring Dagre's graph-level layout options to manage spacing *within* and *between* groups (e.g., `nodePadding`, `rankPadding`, `edgePadding` as supported by Dagre).
+            *   **React Flow Parent Rendering:** The `useGraphTransform.js` hook will map `node.data.parentId` to React Flow's native `node.parentNode` attribute. This enables React Flow to render nodes hierarchically, with child nodes visually positioned *inside* their designated parent node.
+        *   **Node Presentation (`EntityNode.jsx`):**
+            *   Parent/Group Nodes: Nodes acting as parents (containers, puzzles with grouped elements) will be styled distinctly by `EntityNode.jsx` (e.g., using a subtle background variation, border, or by defining a specific parent node type in React Flow if more complex styling is needed) to visually set them apart as grouping constructs.
+            *   Child Nodes: Will render as standard `EntityNode`s within the bounds of their parent.
+            *   Dynamic Label Display: To combat truncation, node labels will display more detail upon zooming in or for central/selected nodes. Short, clear identifiers or icons may be used at lower zoom levels. Full information will always be available via tooltips (as per existing functionality).
+        *   **Edge Presentation (`CustomEdge.jsx`):**
+            *   Edges will continue to use `CustomEdge.jsx`.
+            *   Consideration will be given to subtly varying edge styles (e.g., weight, opacity) for edges *within* a group versus edges *between* groups or top-level nodes, to reinforce visual hierarchy.
+        *   **Simplification of State and UI:**
+            *   `RelationshipMapper.jsx`, `useLayoutManager.js`, and `useRelationshipMapperUIState.js` will be simplified by removing states and UI elements related to the now-deprecated Radial and Force-Directed layout options.
+            *   The manual "orbiting children" logic and associated custom hull rendering (`ClusterHull.jsx`) will be removed from `layoutUtils.js` and `RelationshipMapper.jsx` respectively, in favor of Dagre/React Flow's native compound node rendering.
+
+    *   **C. Detailed Implementation Tasks:**
+        *   **1. PRD Alignment (This Document):** Finalize updates to this `StoryForge PR.txt` (Sections 6.D, 9, and others as needed) to reflect this focused rebuild strategy. This document will serve as the "gold standard" for this effort. (Status: In Progress - This detailed drafting is part of that).
+        *   **2. Data Transformation Refinement (`useGraphTransform.js`):**
+            *   Verify and solidify the `data.parentId` assignment logic. Ensure it correctly identifies all semantically intended children for 'Element' (type: Container) and 'Puzzle' hubs based on `edge.data.shortLabel` values like "Contains," "Required For," and "Rewards."
+            *   Uncomment and ensure correct operation of the code that maps `node.data.parentId` to `node.parentNode`, ensuring the parent node is part of the `finalNodesForLayout` passed to the layout function.
+        *   **3. Layout Engine Overhaul (`layoutUtils.js` - `getDagreLayout`):**
+            *   Remove the `getCustomRadialLayout` and `getForceDirectedLayout` functions.
+            *   In `getDagreLayout`:
+                *   Remove all previous "inflated hub size" calculations and the manual "Post-process: orbit children" logic.
+                *   When calling `g.setNode()`, use the node's standard visual dimensions (e.g., `config.nodeWidth`).
+                *   Implement the iteration to call `g.setParent(childNode.id, parentNode.id)` for all nodes with a valid `data.parentId`.
+                *   Research and apply appropriate Dagre graph-level options for padding and spacing within compound nodes (e.g., `rankPadding`, `nodePadding`, `marginx`, `marginy` might need to be applied to the subgraph/cluster rather than or in addition to the global graph).
+        *   **4. Node Rendering Enhancements (`EntityNode.jsx`):**
+            *   Implement dynamic label rendering based on zoom level (using `useViewport()` from `@xyflow/react`). Define thresholds for icon-only, short label, and fuller label displays.
+            *   Develop and apply distinct styling for nodes that function as group parents (e.g., using `node.isParent` if provided by React Flow, or by adding a `data.isActualParentGroup` flag from `useGraphTransform`). This could involve different background shades, borders, or slight padding *within the Paper component* if it doesn't interfere with Dagre's child placement.
+        *   **5. Main Mapper Component Simplification (`RelationshipMapper.jsx`):**
+            *   Remove UI elements (buttons, selectors) and associated state logic (in `useLayoutManager.js`, `useRelationshipMapperUIState.js`) for the Radial and Force-Directed layouts.
+            *   If a default Dagre orientation (e.g., 'TB') is chosen as standard, remove UI for changing Dagre orientation, further simplifying the controls panel.
+            *   Ensure map controls (zoom, fit-view, fullscreen toggle, info/help) are consistently available and functional, especially when the map is in fullscreen mode. The existing panel can be simplified and should remain accessible.
+            *   Remove the `ClusterHull.jsx` component and its rendering logic if native parent node styling is sufficient.
+        *   **6. Edge Styling (Optional Refinement - `CustomEdge.jsx`):**
+            *   After core grouping is stable, evaluate if distinct styling for intra-group vs. inter-group edges (e.g., thinner, slightly transparent for intra-group) enhances clarity. Implement in `CustomEdge.jsx` if deemed beneficial.
+        *   **7. Filtering Logic Review (`filterGraph.js`):**
+            *   Temporarily simplify or disable the "Single Point of Connection" (SPOC) edge pruning logic during initial layout rebuild to avoid confounding factors.
+            *   Once the new compound node layout is stable and clear, re-evaluate the SPOC logic. Test its impact on readability with the new grouping. It might be simplified or its parameters tuned. Basic depth and node/edge type filtering should remain functional.
+        *   **8. Comprehensive Testing:**
+            *   Utilize diverse test cases based on PRD Section 6.B (User Personas & Use Cases), focusing on Character, Element (container), and Puzzle maps.
+            *   Verify that logical groups (container contents, puzzle I/O) are visually cohesive and easy to interpret.
+            *   Assess overall graph readability, edge crossings, and spacing.
+            *   Test label display at various zoom levels.
+            *   Confirm UI consistency and control accessibility.
+
+    *   **D. Key UI/UX Improvements Addressed by this Rebuild:**
+        *   **Hierarchical Clarity:** Direct visual representation of parent-child relationships (items in containers, elements tied to puzzles).
+        *   **Reduced Cognitive Load:** Simplified visual structure and fewer user-configurable layout options will make the map easier to understand and use.
+        *   **Improved "At-a-Glance" Understanding:** Users should be able to quickly discern the main relationships and groupings relevant to the central entity.
+        *   **Enhanced Label Readability:** Dynamic labels will reduce clutter while ensuring information is accessible.
+        *   **Consistent UI Controls:** Improved accessibility and behavior of map controls.
+
+    *   **E. Expected Outcome / Definition of Done for this Step:**
+        *   The Relationship Mapper primarily uses a Dagre-based layout that effectively renders logical groups (containers, puzzles) as visually distinct compound nodes using React Flow's `parentNode` mechanism.
+        *   Alternative layout options (Radial, Force-Directed) and manual orbiting/hull logic are removed from the codebase.
+        *   Node labels are dynamically adjusted for readability based on context (e.g., zoom).
+        *   The UI for map controls is simplified and functions correctly in all view modes.
+        *   The mapper demonstrably meets the core visualization needs for Character, Element (container), and Puzzle map use cases as outlined in PRD Section 6.B.
+        *   The relevant codebase (`RelationshipMapper/` directory) is cleaner, more maintainable, and focused.
+        *   This PRD section (and related ones like 6.D) are updated to accurately reflect the new implementation.
+    *   **Status: PENDING (This detailed plan supersedes the previous brief for this step)**
 
 3.  **Full PRD Update & Documentation Synchronization (Completion of Initial Pass):**
     *   *Why:* Solidify `StoryForge PR.txt` (this document) as the single, accurate source of truth. Align or archive other potentially conflicting project documents.
@@ -385,26 +490,41 @@ This section outlines the current, active plan for StoryForge refinement and adv
 **Testing Suite Status (as of May 19, 2025):**
 *   Deprecated test files (`storyforge/backend/tests/utils/propertyMapper.test.js`, `storyforge/backend/tests/utils/notionPropertyMapperAsync.test.js`, `storyforge/backend/tests/integration/puzzleEndpoints.test.js`) have been removed from the codebase.
 *   The primary utility mapper test file is now `storyforge/backend/tests/utils/notionPropertyMapper.test.js`. This file requires ongoing review and expansion to cover all critical mapping logic, including the upcoming minimal memory attribute parsing (Phase 2, Step 5).
-*   The frontend test file `storyforge/frontend/src/components/RelationshipMapper/RelationshipMapper.test.jsx` requires significant refactoring or replacement. It previously tested an outdated `relationshipData` prop. New tests should focus on `graphData`-centric graph construction and user interactions with the Relationship Mapper. (Action Plan Phase 1B).
-*   E2E tests (e.g., using Playwright) are planned for future phases to cover key user workflows. (Playwright version in `storyforge/frontend/package.json` needs verification - Phase 1B).
+*   The frontend test file `storyforge/frontend/src/components/RelationshipMapper/RelationshipMapper.test.jsx` (and any related specific layout/transform tests) will require significant refactoring or replacement to align with the focused rebuild of the Relationship Mapper. Tests should now focus on:
+    *   Correct `graphData` consumption.
+    *   Proper `parentId` assignment logic in `useGraphTransform.js`.
+    *   Successful rendering of hierarchical structures using Dagre compound nodes and React Flow's `parentNode` mechanism.
+    *   User interactions with the simplified control panel and new features like dynamic label display.
+*   E2E tests (e.g., using Playwright) remain crucial and will be adapted to cover key user workflows with the rebuilt mapper.
 
 A comprehensive testing strategy is crucial for the development of StoryForge. This includes:
 
 *   **10.1. Unit Tests:**
-    *   Focus on testing individual functions, modules, and components in isolation.
-    *   **Backend:** All utility functions in `notionPropertyMapper.js` (including relation mapping and the upcoming memory attribute parsing) should have thorough unit tests in `notionPropertyMapper.test.js`. Controller logic in `notionController.js` that involves complex transformations or non-trivial logic should also be unit tested where feasible.
-    *   **Frontend:** Core UI components (especially those with complex logic like `EntityNode.jsx`, `CustomEdge.jsx`) and utility functions (like those in `transformToGraphElements.js`, `layoutUtils.js`) should have unit tests. `transformToGraphElements.js` tests should confirm correct mapping from `graphData` to React Flow elements.
+    *   **Backend:** (Remains as previously stated)
+    *   **Frontend:**
+        *   Core UI components: `EntityNode.jsx` (including dynamic label rendering logic and parent/group styling), `CustomEdge.jsx`.
+        *   Utility functions:
+            *   `transformToGraphElements.js`: Confirm correct mapping from `graphData` to React Flow elements, especially `edge.data.shortLabel` usage.
+            *   `useGraphTransform.js`: Critical unit tests for the `parentId` assignment logic given various `graphData` inputs. Test the correct formation of `nodes` and `edges` including the `parentNode` attribute.
+            *   `layoutUtils.js` (`getDagreLayout`): Test the core Dagre graph setup, particularly `g.setParent()` calls and application of graph-level layout options for compound nodes (may require mocking Dagre's behavior or testing smaller, verifiable graph structures).
+            *   `filterGraph.js`: Test filtering logic (depth, type, and SPOC if re-enabled) independently of layout.
 *   **10.2. Integration Tests:**
-    *   **Backend:** Test interactions between services, controllers, and the Notion API (potentially using mocked API responses). Focus on API endpoint functionality (e.g., ensuring `/graph/{type}/{id}` endpoints return correctly structured `graphData`).
-    *   **Frontend:** Test how components interact, especially how data flows from page components to the `RelationshipMapper` and how state changes affect the UI.
+    *   **Backend:** (Remains as previously stated)
+    *   **Frontend:**
+        *   Test the flow from `graphData` prop in `RelationshipMapper.jsx` through `useGraphTransform.js` to `getDagreLayout`, and finally to the nodes/edges rendered by React Flow. Verify that parent-child relationships are correctly established and rendered.
+        *   Test interactions between the simplified control panel in `RelationshipMapper.jsx` and the resulting graph display (e.g., depth changes, filter applications).
 *   **10.3. End-to-End (E2E) Tests:**
-    *   Simulate real user scenarios using a testing framework like Playwright.
-    *   Examples: Fetching and displaying an Element detail page, viewing its relationship graph, applying filters to the graph.
-    *   These are particularly important for verifying the Relationship Mapper's overall functionality and UX.
+    *   Simulate real user scenarios using a testing framework like Playwright:
+        *   Fetching and displaying a Character map (e.g., "Alex Reeves's Map"): Verify key owned items (like containers with their contents) and associated puzzles (with their inputs/outputs) are clearly grouped and visually distinct.
+        *   Displaying an Element map for a container: Verify its contents are shown hierarchically within it.
+        *   Displaying a Puzzle map: Verify its required and rewarded elements are grouped with it.
+        *   Test dynamic label display at different zoom levels.
+        *   Test tooltip information accuracy for nodes and edges.
+        *   Verify UI consistency of controls in standard and fullscreen modes.
+    *   These E2E tests are essential for validating the overall UX and "storytelling" effectiveness of the rebuilt mapper.
 *   **10.4. Manual & Exploratory Testing:**
-    *   Regularly perform manual checks of the application, especially for new features or complex UI interactions like the Relationship Mapper.
-    *   Explore edge cases and non-standard user flows.
+    *   (Remains as previously stated, but with a focus on the new hierarchical layout across various data complexities).
 
-This testing strategy, with tests being added and updated alongside development as per the Action Plan, will serve as a blueprint for building a resilient and reliable StoryForge application.
+This testing strategy, with tests being added and updated alongside the focused rebuild as per the Action Plan (Section 9), will serve as a blueprint for building a resilient and reliable StoryForge application.
 
 ---
