@@ -93,6 +93,7 @@ const RelationshipMapperContent = ({
     suppressLowSignal: !ui.showLowSignal,
     layoutType: layoutManager.layoutType, // Will be 'dagre'
     layoutOptions: layoutManager.options, // Standardized Dagre options
+    isFullScreenForLogging: ui.isFullScreen, // ADDED FOR DEBUGGING
   });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
