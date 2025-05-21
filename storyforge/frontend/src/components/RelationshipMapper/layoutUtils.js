@@ -22,15 +22,16 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
   }
 
   try {
-    const g = new dagre.graphlib.Graph({ compound: true, multigraph: true }); 
+    // Initialize Dagre graph. Temporarily set compound: false to isolate ranking error.
+    const g = new dagre.graphlib.Graph({ compound: false, multigraph: true }); 
 
     const defaultOptions = {
       rankdir: 'TB', 
       align: undefined, 
-      nodesep: 80,    
-      ranksep: 100,   
-      marginx: 20,    
-      marginy: 20,    
+      nodesep: 90,    // Increased spacing slightly
+      ranksep: 120,   // Increased spacing slightly   
+      marginx: 30,    
+      marginy: 30,    
       nodeWidth: 170, 
       nodeHeight: 60, 
       centerNodeWidth: 190, 
@@ -62,8 +63,10 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
 
     console.log(`[Dagre] Added ${g.nodeCount()} nodes to Dagre graph.`);
 
+    // Temporarily disable setParent to isolate ranking error
+    /*
     nodes.forEach((node) => {
-      if (!node || !node.id) return; // Skip invalid node already warned about
+      if (!node || !node.id) return;
       if (node.data && node.data.parentId) {
         if (dagreNodeIds.has(node.data.parentId) && dagreNodeIds.has(node.id)) {
           g.setParent(node.id, node.data.parentId);
@@ -75,6 +78,8 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
         }
       }
     });
+    */
+    console.log('[Dagre] g.setParent calls are TEMPORARILY DISABLED. Graph compound: false.');
     
     const edgesForLayout = edges.filter(edge => {
       if (!edge || !edge.source || !edge.target) {
@@ -106,7 +111,6 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     dagre.layout(g);
     console.log('[Dagre] Dagre layout algorithm complete.');
 
-    // DEBUG: Inspect a few nodes directly from Dagre graph object after layout
     if (g.nodeCount() > 0) {
       const sampleNodeIds = g.nodes().slice(0, Math.min(5, g.nodeCount()));
       console.log('[Dagre DEBUG] Sample nodes from graph post-layout:');
@@ -120,7 +124,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const layoutedNodes = nodes.map((originalInputNode) => {
       if (!originalInputNode || !originalInputNode.id) {
         console.warn('[Dagre] Skipping invalid originalInputNode in final map stage.');
-        return null; // Or some placeholder to filter out later
+        return null; 
       }
       const dagreNodeData = g.node(originalInputNode.id); 
 
@@ -147,29 +151,28 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
           }
         };
       } else {
-        // Fallback if node not found in Dagre graph OR x/y are not numbers
-        console.warn(`[Dagre FALLBACK] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) either not found in Dagre graph post-layout or has invalid x/y. Dagre node data:`, JSON.stringify(dagreNodeData));
+        console.warn(`[Dagre FALLBACK APPLIED] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data:`, JSON.stringify(dagreNodeData));
         fallbackIndex++;
         return { 
           ...originalInputNode, 
-          position: { x: (fallbackIndex % 5) * 200, y: Math.floor(fallbackIndex / 5) * 150 + 50 } // Staggered fallback positions
+          position: { x: (fallbackIndex % 6) * 200, y: Math.floor(fallbackIndex / 6) * 150 } 
         }; 
       }
-    }).filter(node => node !== null); // Filter out any null nodes from invalid input
+    }).filter(node => node !== null);
 
     if (fallbackIndex > 0) {
-        console.warn(`[Dagre] ${fallbackIndex} nodes used fallback positioning.`);
+        console.warn(`[Dagre] ${fallbackIndex} nodes used fallback positioning due to missing/invalid Dagre coordinates.`);
     }
-    console.log('[Dagre] Node position mapping complete.');
+    console.log('[Dagre] Node position mapping complete. Number of layoutedNodes:', layoutedNodes.length);
     return { nodes: layoutedNodes, edges: edgesForLayout };
 
   } catch (error) {
-    console.error('[Dagre Layout Error Caught]', error); 
+    console.error('[Dagre Layout Error Caught]', error, error.stack);
     const fallbackNodes = nodes.map((n, i) => {
       if (!n) return null;
       return {
         ...n,
-        position: n.position || { x: (i % 5) * 200, y: Math.floor(i / 5) * 150 + 1000 } // Position far away if error
+        position: { x: (i % 6) * 200, y: Math.floor(i / 6) * 150 + 1000 } 
       }
     }).filter(Boolean);
     return { nodes: fallbackNodes, edges: edges || [] };
