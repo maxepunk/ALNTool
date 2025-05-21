@@ -127,14 +127,14 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     console.log(`[DagreLayout] Number of valid edges for layout: ${edgesForLayout.length}`);
     
     edgesForLayout.forEach((edge) => {
-      const edgeName = edge.id || \`edge-\${edge.source}-\${edge.target}-\${Math.random().toString(36).substring(2, 9)}\`;
+      const edgeName = edge.id || `edge-${edge.source}-${edge.target}-${Math.random().toString(36).substring(2, 9)}`;
       g.setEdge(edge.source, edge.target, { 
         minlen: edge.data?.minlen || 1, 
         weight: edge.data?.weight || 1, 
         label: edge.data?.shortLabel || edge.label || '' 
       }, edgeName); 
     });
-    console.log(\`[DagreLayout] Added \${g.edgeCount()} edges to Dagre graph.\`);
+    console.log(`[DagreLayout] Added ${g.edgeCount()} edges to Dagre graph.`);
 
     console.log('[DagreLayout] Graph state BEFORE dagre.layout(g). Nodes:', JSON.stringify(g.nodes().map(id => g.node(id))), 'Edges:', JSON.stringify(g.edges().map(e => ({v: e.v, w: e.w, name: e.name, ...g.edge(e)}))));
 
@@ -145,7 +145,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     g.nodes().forEach(nodeId => {
         const dagreInternalNode = g.node(nodeId);
         if (dagreInternalNode && (g.children(nodeId)?.length > 0 || dagreInternalNode._isCompound)) { 
-            console.log(\`[DagreLayout DEBUG] Node (potential parent): \${nodeId}, X: \${dagreInternalNode.x?.toFixed(2)}, Y: \${dagreInternalNode.y?.toFixed(2)}, Width: \${dagreInternalNode.width?.toFixed(2)}, Height: \${dagreInternalNode.height?.toFixed(2)}, Children: \${JSON.stringify(g.children(nodeId))}, IsCompound: \${dagreInternalNode._isCompound}\`);
+            console.log(`[DagreLayout DEBUG] Node (potential parent): ${nodeId}, X: ${dagreInternalNode.x?.toFixed(2)}, Y: ${dagreInternalNode.y?.toFixed(2)}, Width: ${dagreInternalNode.width?.toFixed(2)}, Height: ${dagreInternalNode.height?.toFixed(2)}, Children: ${JSON.stringify(g.children(nodeId))}, IsCompound: ${dagreInternalNode._isCompound}`);
         }
     });
 
@@ -159,7 +159,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
 
       if (dagreNodeData && typeof dagreNodeData.x === 'number' && typeof dagreNodeData.y === 'number') {
         if (dagreNodeData.width === 0 || dagreNodeData.height === 0) {
-             console.warn(\`[DagreLayout] Node \${originalInputNode.id} has zero width/height from Dagre:\`, dagreNodeData);
+             console.warn(`[DagreLayout] Node ${originalInputNode.id} has zero width/height from Dagre:`, dagreNodeData);
         }
         return {
           ...originalInputNode,
@@ -185,7 +185,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
           }
         };
       } else {
-        console.warn(\`[DagreLayout FALLBACK APPLIED In-Try] Node \${originalInputNode.id} (label: \${originalInputNode.data?.label}) - Dagre data missing or invalid:\`, JSON.stringify(dagreNodeData));
+        console.warn(`[DagreLayout FALLBACK APPLIED In-Try] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data missing or invalid:`, JSON.stringify(dagreNodeData));
         fallbackIndex++;
         return { 
           ...originalInputNode, 
@@ -195,7 +195,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     }).filter(node => node !== null);
 
     if (fallbackIndex > 0) {
-        console.warn(\`[DagreLayout] \${fallbackIndex} nodes used IN-TRY fallback positioning due to missing/invalid Dagre coordinates.\`);
+        console.warn(`[DagreLayout] ${fallbackIndex} nodes used IN-TRY fallback positioning due to missing/invalid Dagre coordinates.`);
     }
     console.log('[DagreLayout] Node position mapping complete. Number of layoutedNodes:', layoutedNodes.length);
     return { nodes: layoutedNodes, edges: edgesForLayout };
@@ -231,7 +231,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     }).filter(Boolean);
     
     if(fallbackNodes.length > 0) {
-        console.warn(\`[DagreLayout CATCH BLOCK FALLBACK] Generated \${fallbackNodes.length} fallback nodes.\`);
+        console.warn(`[DagreLayout CATCH BLOCK FALLBACK] Generated ${fallbackNodes.length} fallback nodes.`);
     }
     return { nodes: fallbackNodes, edges: edges || [] };
   }
