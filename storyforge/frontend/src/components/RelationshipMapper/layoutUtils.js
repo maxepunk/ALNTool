@@ -31,8 +31,8 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const defaultOptions = {
       rankdir: 'TB', 
       align: undefined, 
-      nodesep: 70,    // Adjusted from 90, can be tuned
-      ranksep: 70,    // Adjusted from 120, can be tuned
+      nodesep: 85,    // Increased from 70 for more horizontal space
+      ranksep: 90,    // Increased from 70 for more vertical space
       marginx: 30,    
       marginy: 30,
       // For compound nodes, Dagre also supports:
@@ -179,7 +179,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
                 y: dagreNodeData.y,
                 width: dagreNodeData.width,
                 height: dagreNodeData.height,
-                isCompound: dagreInternalNode._isCompound || (g.children(originalInputNode.id)?.length > 0) || false,
+                isCompound: (g.children(originalInputNode.id)?.length > 0) || false, // Simplified isCompound check based on children presence
                 children: g.children(originalInputNode.id) || []
             }
           }
