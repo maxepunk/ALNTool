@@ -1,56 +1,34 @@
 import { useMemo } from 'react';
 import transformToGraphElements from './transformToGraphElements';
-import { getDagreLayout } from './layoutUtils'; // Removed getCustomRadialLayout, getForceDirectedLayout
+import { getDagreLayout } from './layoutUtils';
 import filterGraph from './filterGraph';
-
-// Helper: convert backend-pre-computed graph to ReactFlow-compatible
 import { MarkerType } from '@xyflow/react';
 
-// Define edge styles based on relationship type
 const edgeStyles = {
-  dependency: {
-    stroke: '#f57c00', // Orange
-    strokeWidth: 2.5, // Thicker
-    animated: true,
-  },
-  containment: {
-    stroke: '#03a9f4', // Light Blue (more distinct)
-    strokeWidth: 1.5,
-    strokeDasharray: '6, 4', // More obvious dash
-  },
-  character: {
-    stroke: '#3f51b5', // Indigo
-    strokeWidth: 1.5,
-  },
-  timeline: {
-    stroke: '#d81b60', // Pink
-    strokeWidth: 1.5,
-  },
-  default: {
-    stroke: '#90a4ae', // Grey
-    strokeWidth: 1, // Thinner default
-  },
+  dependency: { stroke: '#f57c00', strokeWidth: 2.5, animated: true },
+  containment: { stroke: '#03a9f4', strokeWidth: 1.5, strokeDasharray: '6, 4' },
+  character: { stroke: '#3f51b5', strokeWidth: 1.5 },
+  timeline: { stroke: '#d81b60', strokeWidth: 1.5 },
+  default: { stroke: '#90a4ae', strokeWidth: 1 },
 };
 
-// Function to determine edge type based on label or node types (example)
 const getEdgeType = (edge, nodes) => {
   const sourceNode = nodes.find(n => n.id === edge.source);
   const targetNode = nodes.find(n => n.id === edge.target);
   const label = edge.label?.toLowerCase() || '';
-
   if (label.includes('puzzle') || label.includes('required') || label.includes('reward') || label.includes('lock')) return 'dependency';
   if (label.includes('contain') || label.includes('inside')) return 'containment';
   if (sourceNode?.data?.type === 'Character' || targetNode?.data?.type === 'Character') return 'character';
   if (sourceNode?.data?.type === 'Timeline' || targetNode?.data?.type === 'Timeline') return 'timeline';
-
   return 'default';
 };
 
+// transformBackendGraph function seems to be unused directly in the main hook logic, transformToGraphElements is used.
+// It might be a helper for transformToGraphElements or legacy. For now, keeping it as is.
 const transformBackendGraph = (graphData, centerId) => {
   if (!graphData || !Array.isArray(graphData.nodes) || !Array.isArray(graphData.edges)) {
     return { nodes: [], edges: [] };
   }
-
   const mapNode = (n, isCenter = false) => ({
     id: n.id,
     type: 'entityNode',
@@ -65,198 +43,142 @@ const transformBackendGraph = (graphData, centerId) => {
     },
     ...(isCenter ? { style: { zIndex: 100 } } : {}),
   });
-
   const nodes = graphData.nodes.map((node) => mapNode(node, node.id === centerId));
   if (!nodes.find((n) => n.id === centerId) && graphData.center) {
     nodes.push(mapNode(graphData.center, true));
   }
-  
   const baseNodesForEdgeType = nodes;
-
   const edges = graphData.edges.map((e, idx) => {
     const edgeType = getEdgeType(e, baseNodesForEdgeType);
     const style = { ...(edgeStyles[edgeType] || edgeStyles.default) };
-    
     return {
       id: e.id || `edge-${idx}`,
       source: e.source,
       target: e.target,
       label: e.label || '', 
-      type: 'custom', // Use the registered custom edge type
+      type: 'custom',
       animated: style.animated || false,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 15,
-        height: 15,
-        color: style.stroke || edgeStyles.default.stroke,
-      },
-      style: { 
-        strokeWidth: style.strokeWidth || edgeStyles.default.strokeWidth, 
-        stroke: style.stroke || edgeStyles.default.stroke,
-        strokeDasharray: style.strokeDasharray,
-        opacity: 1, // Base opacity
-      },
-      labelStyle: { fill: '#ddd', fontWeight: 500, fontSize: '11px' }, // Slightly bolder/larger label
+      markerEnd: { type: MarkerType.ArrowClosed, width: 15, height: 15, color: style.stroke || edgeStyles.default.stroke },
+      style: { strokeWidth: style.strokeWidth || edgeStyles.default.strokeWidth, stroke: style.stroke || edgeStyles.default.stroke, strokeDasharray: style.strokeDasharray, opacity: 1 },
+      labelStyle: { fill: '#ddd', fontWeight: 500, fontSize: '11px' },
       labelBgPadding: [4, 6],
       labelBgBorderRadius: 4,
-      labelBgStyle: { fill: 'rgba(40,40,40,0.85)', fillOpacity: 0.85 }, // Slightly more opaque background
-      // Add data attribute for highlighting
-      data: { 
-        type: edgeType,
-        shortLabel: e.data?.shortLabel,
-        contextualLabel: e.data?.contextualLabel,
-      }
+      labelBgStyle: { fill: 'rgba(40,40,40,0.85)', fillOpacity: 0.85 },
+      data: { type: edgeType, shortLabel: e.data?.shortLabel, contextualLabel: e.data?.contextualLabel }
     };
   });
-
   return { nodes, edges };
 };
 
-/**
- * useGraphTransform
- * Transforms raw or backend graph data into React Flow nodes/edges, applies filtering, and then applies layout.
- * @param {Object} params - Parameters for transformation, filtering, and layout
- * @returns {Object} { nodes, edges, error }
- */
 export default function useGraphTransform({
   entityType,
   entityId,
   entityName,
-  rawData,
   graphData,
   viewMode = 'default',
   depth = 1,
   nodeFilters = {},
   edgeFilters = {},
   suppressLowSignal = true,
-  // layoutType = 'dagre', // No longer a variable, fixed to Dagre
   layoutOptions = {},
 }) {
-  /**
-   * We memo-calculate the graph so that expensive work only reruns when inputs change.
-   */
   const { nodes, edges, error } = useMemo(() => {
+    console.log('[useGraphTransform] Memo Start. Entity:', entityName, 'ID:', entityId, 'Depth:', depth);
+    console.log('[useGraphTransform] Input graphData nodes:', graphData?.nodes?.length, 'edges:', graphData?.edges?.length);
+
     try {
-      // Step 1: Transform data to base nodes/edges
       const { nodes: baseNodes, edges: baseEdges } = transformToGraphElements({
         entityType,
         entityId,
         entityName,
-        rawData,
         graphData,
         viewMode,
       });
+      console.log('[useGraphTransform] Step 1 (transformToGraphElements) Done. Base nodes:', baseNodes?.length, 'Base edges:', baseEdges?.length);
 
-      // --- Step 2: Assign parentId for Dagre grouping ---
       let nodesWithParentId = baseNodes;
-      if (baseNodes && baseNodes.length > 0) { // parentId assignment is specific to Dagre compound
-        const nodesForGrouping = baseNodes.map(n => ({
-          ...n,
-          data: { ...(n.data || {}) }, 
-        }));
+      if (baseNodes && baseNodes.length > 0) {
+        const nodesForGrouping = baseNodes.map(n => ({ ...n, data: { ...(n.data || {}) } }));
         const nodeMap = new Map(nodesForGrouping.map(n => [n.id, n]));
-
-        // 1. Identify Container Groups and assign parentId
         nodesForGrouping.forEach(potentialContainerNode => {
           if (potentialContainerNode.data.type === 'Element') {
             baseEdges.forEach(edge => {
               if (edge.source === potentialContainerNode.id && edge.data?.shortLabel === 'Contains') {
                 const contentNode = nodeMap.get(edge.target);
-                if (contentNode && contentNode.data.type === 'Element') {
-                  contentNode.data.parentId = potentialContainerNode.id;
-                }
+                if (contentNode && contentNode.data.type === 'Element') contentNode.data.parentId = potentialContainerNode.id;
               }
             });
           }
         });
-
-        // 2. Identify Puzzle Groups and assign parentId (respecting existing parentId from container grouping)
         nodesForGrouping.forEach(potentialPuzzleNode => {
           if (potentialPuzzleNode.data.type === 'Puzzle') {
             baseEdges.forEach(edge => {
               if (edge.target === potentialPuzzleNode.id && edge.data?.shortLabel === 'Required For') {
                 const requiredElementNode = nodeMap.get(edge.source);
-                if (requiredElementNode && requiredElementNode.data.type === 'Element' && !requiredElementNode.data.parentId) {
-                  requiredElementNode.data.parentId = potentialPuzzleNode.id;
-                }
+                if (requiredElementNode && requiredElementNode.data.type === 'Element' && !requiredElementNode.data.parentId) requiredElementNode.data.parentId = potentialPuzzleNode.id;
               }
               if (edge.source === potentialPuzzleNode.id && edge.data?.shortLabel === 'Rewards') {
                 const rewardedElementNode = nodeMap.get(edge.target);
-                if (rewardedElementNode && rewardedElementNode.data.type === 'Element' && !rewardedElementNode.data.parentId) {
-                  rewardedElementNode.data.parentId = potentialPuzzleNode.id;
-                }
+                if (rewardedElementNode && rewardedElementNode.data.type === 'Element' && !rewardedElementNode.data.parentId) rewardedElementNode.data.parentId = potentialPuzzleNode.id;
               }
             });
           }
         });
         nodesWithParentId = nodesForGrouping;
       }
-      // --- END Step 2 ---
+      console.log('[useGraphTransform] Step 2 (parentId assignment) Done.');
 
-      // --- Step 2.5: Mark nodes that are actual parents (for styling in EntityNode) ---
       if (nodesWithParentId && nodesWithParentId.length > 0) {
         const parentIdsFromChildren = new Set();
-        nodesWithParentId.forEach(n => {
-          if (n.data?.parentId) {
-            parentIdsFromChildren.add(n.data.parentId);
-          }
-        });
-        nodesWithParentId = nodesWithParentId.map(n => ({
-          ...n,
-          data: {
-            ...n.data,
-            isActualParentGroup: parentIdsFromChildren.has(n.id)
-          }
-        }));
+        nodesWithParentId.forEach(n => { if (n.data?.parentId) parentIdsFromChildren.add(n.data.parentId); });
+        nodesWithParentId = nodesWithParentId.map(n => ({ ...n, data: { ...n.data, isActualParentGroup: parentIdsFromChildren.has(n.id) } }));
       }
-      // --- END Step 2.5 ---
+      console.log('[useGraphTransform] Step 2.5 (isActualParentGroup) Done.');
 
-      // Step 3: Filtering
       const { nodes: filteredNodes, edges: filteredEdges } = filterGraph(
-        nodesWithParentId, // Pass nodes that may now have parentId and isActualParentGroup
+        nodesWithParentId,
         baseEdges,
-        {
-          centerNodeId: entityId,
-          depth,
-          nodeFilters,
-          edgeFilters,
-          suppressLowSignal, 
-        }
+        { centerNodeId: entityId, depth, nodeFilters, edgeFilters, suppressLowSignal }
       );
+      console.log('[useGraphTransform] Step 3 (filterGraph) Done. Filtered nodes:', filteredNodes?.length, 'Filtered edges:', filteredEdges?.length);
 
-      // Step 4: Layout (Dagre only)
       let layoutedNodes, layoutedEdges;
-      const finalLayoutOptions = { ...layoutOptions }; // Options for Dagre
       const finalNodesForLayout = filteredNodes; 
+      const finalLayoutOptions = { ...layoutOptions };
+
+      console.log('[useGraphTransform] Step 4: About to call getDagreLayout.');
+      console.log('[useGraphTransform] Nodes for Dagre:', finalNodesForLayout?.length, 'Edges for Dagre:', filteredEdges?.length);
+      if (finalNodesForLayout && finalNodesForLayout.length > 0) {
+         console.log('[useGraphTransform] Sample node for Dagre:', JSON.stringify(finalNodesForLayout[0]));
+      }
+      console.log('[useGraphTransform] Layout options for Dagre:', JSON.stringify(finalLayoutOptions));
 
       ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
+      console.log('[useGraphTransform] getDagreLayout call completed. Layouted nodes:', layoutedNodes?.length);
       
-      // After layout, map parentId from data to the node's parentNode attribute for React Flow.
-      // This is crucial for Dagre compound node rendering via React Flow's parentNode mechanism.
       let finalReactFlowNodes = layoutedNodes.map(n => {
         if (n.data && n.data.parentId && finalNodesForLayout.find(p => p.id === n.data.parentId)) {
           return { ...n, parentNode: n.data.parentId };
         }
         return n;
       });
+      console.log('[useGraphTransform] parentNode mapping complete. Final nodes:', finalReactFlowNodes?.length);
 
       return { nodes: finalReactFlowNodes, edges: layoutedEdges, error: null };
     } catch (err) {
-      console.error('useGraphTransform error', err);
+      console.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
       return { nodes: [], edges: [], error: err };
     }
   }, [
     entityType, 
     entityId, 
     entityName, 
-    rawData, 
     graphData, 
     viewMode, 
     depth, 
     JSON.stringify(nodeFilters), 
     JSON.stringify(edgeFilters), 
     suppressLowSignal, 
-    // layoutType, // Removed as it's fixed to Dagre
     JSON.stringify(layoutOptions)
   ]);
 
