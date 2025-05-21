@@ -28,8 +28,8 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const defaultOptions = {
       rankdir: 'TB', 
       align: undefined, 
-      nodesep: 90,    // Increased spacing slightly
-      ranksep: 120,   // Increased spacing slightly   
+      nodesep: 90,    
+      ranksep: 120,  
       marginx: 30,    
       marginy: 30,    
       nodeWidth: 170, 
@@ -46,7 +46,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     nodes.forEach((node) => {
       if (!node || !node.id) {
         console.warn('[Dagre] Encountered invalid node object during setNode:', node);
-        return; // Skip invalid node
+        return; 
       }
       const visualWidth = node.data.isCenter ? config.centerNodeWidth : config.nodeWidth;
       const visualHeight = node.data.isCenter ? config.centerNodeHeight : config.nodeHeight;
@@ -84,12 +84,11 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const edgesForLayout = edges.filter(edge => {
       if (!edge || !edge.source || !edge.target) {
         console.warn('[Dagre] Encountered invalid edge object:', edge);
-        return false; // Skip invalid edge
+        return false; 
       }
       const sourceExists = dagreNodeIds.has(edge.source);
       const targetExists = dagreNodeIds.has(edge.target);
       if (!sourceExists || !targetExists) {
-        // console.warn(`[Dagre Pre-filter] Edge source/target not in Dagre graph. Edge:`, edge);
         return false;
       }
       return true;
@@ -151,7 +150,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
           }
         };
       } else {
-        console.warn(`[Dagre FALLBACK APPLIED] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data:`, JSON.stringify(dagreNodeData));
+        console.warn(`[Dagre FALLBACK APPLIED In-Try] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data:`, JSON.stringify(dagreNodeData));
         fallbackIndex++;
         return { 
           ...originalInputNode, 
@@ -161,20 +160,28 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     }).filter(node => node !== null);
 
     if (fallbackIndex > 0) {
-        console.warn(`[Dagre] ${fallbackIndex} nodes used fallback positioning due to missing/invalid Dagre coordinates.`);
+        console.warn(`[Dagre] ${fallbackIndex} nodes used IN-TRY fallback positioning due to missing/invalid Dagre coordinates.`);
     }
     console.log('[Dagre] Node position mapping complete. Number of layoutedNodes:', layoutedNodes.length);
     return { nodes: layoutedNodes, edges: edgesForLayout };
 
   } catch (error) {
-    console.error('[Dagre Layout Error Caught]', error, error.stack);
-    const fallbackNodes = nodes.map((n, i) => {
-      if (!n) return null;
+    console.error('[Dagre Layout Error Caught]', error, error.stack); 
+    let catchFallbackIndex = 0;
+    const fallbackNodes = nodes.map((n) => {
+      if (!n || !n.id) return null;
+      catchFallbackIndex++;
+      const newPosition = { x: (catchFallbackIndex % 7) * 180, y: Math.floor(catchFallbackIndex / 7) * 100 };
+      // console.log(`[Dagre CATCH FALLBACK] Node ${n.id} assigned fallback position:`, JSON.stringify(newPosition));
       return {
         ...n,
-        position: { x: (i % 6) * 200, y: Math.floor(i / 6) * 150 + 1000 } 
-      }
+        position: newPosition 
+      };
     }).filter(Boolean);
+    
+    if(fallbackNodes.length > 0) {
+        console.warn(`[Dagre CATCH BLOCK FALLBACK] Generated ${fallbackNodes.length} fallback nodes. Sample after CATCH fallback: NodeID: ${fallbackNodes[0].id}, Position: ${JSON.stringify(fallbackNodes[0].position)}`);
+    }
     return { nodes: fallbackNodes, edges: edges || [] };
   }
 };
