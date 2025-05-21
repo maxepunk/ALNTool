@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import transformToGraphElements from './transformToGraphElements';
-import { getCustomRadialLayout, getForceDirectedLayout, getDagreLayout } from './layoutUtils';
+import { getDagreLayout } from './layoutUtils'; // Removed getCustomRadialLayout, getForceDirectedLayout
 import filterGraph from './filterGraph';
 
 // Helper: convert backend-pre-computed graph to ReactFlow-compatible
@@ -129,7 +129,7 @@ export default function useGraphTransform({
   nodeFilters = {},
   edgeFilters = {},
   suppressLowSignal = true,
-  layoutType = 'dagre', // Will be fixed to 'dagre' as other layouts are removed
+  // layoutType = 'dagre', // No longer a variable, fixed to Dagre
   layoutOptions = {},
 }) {
   /**
@@ -147,11 +147,9 @@ export default function useGraphTransform({
         viewMode,
       });
 
-      // --- Step 2 (NEW ORDER): Assign parentId for Dagre grouping ---
+      // --- Step 2: Assign parentId for Dagre grouping ---
       let nodesWithParentId = baseNodes;
-      // This parentId assignment is primarily for Dagre's compound node feature.
-      // It will become the default behavior as other layout types are removed.
-      if (layoutType === 'dagre' && baseNodes && baseNodes.length > 0) {
+      if (baseNodes && baseNodes.length > 0) { // parentId assignment is specific to Dagre compound
         const nodesForGrouping = baseNodes.map(n => ({
           ...n,
           data: { ...(n.data || {}) }, 
@@ -193,11 +191,29 @@ export default function useGraphTransform({
         });
         nodesWithParentId = nodesForGrouping;
       }
-      // --- END Step 2 (NEW ORDER) ---
+      // --- END Step 2 ---
 
-      // Step 3 (NEW ORDER): Filtering
+      // --- Step 2.5: Mark nodes that are actual parents (for styling in EntityNode) ---
+      if (nodesWithParentId && nodesWithParentId.length > 0) {
+        const parentIdsFromChildren = new Set();
+        nodesWithParentId.forEach(n => {
+          if (n.data?.parentId) {
+            parentIdsFromChildren.add(n.data.parentId);
+          }
+        });
+        nodesWithParentId = nodesWithParentId.map(n => ({
+          ...n,
+          data: {
+            ...n.data,
+            isActualParentGroup: parentIdsFromChildren.has(n.id)
+          }
+        }));
+      }
+      // --- END Step 2.5 ---
+
+      // Step 3: Filtering
       const { nodes: filteredNodes, edges: filteredEdges } = filterGraph(
-        nodesWithParentId, // Pass nodes that may now have parentId
+        nodesWithParentId, // Pass nodes that may now have parentId and isActualParentGroup
         baseEdges,
         {
           centerNodeId: entityId,
@@ -208,26 +224,17 @@ export default function useGraphTransform({
         }
       );
 
-      // Step 4 (NEW ORDER): Layout
+      // Step 4: Layout (Dagre only)
       let layoutedNodes, layoutedEdges;
-      const finalLayoutOptions = { ...layoutOptions };
+      const finalLayoutOptions = { ...layoutOptions }; // Options for Dagre
       const finalNodesForLayout = filteredNodes; 
 
-      // Layout logic will be simplified to only use Dagre as per PRD.
-      // For now, the structure is kept, but only the 'dagre' path will be effectively used.
-      if (layoutType === 'force-directed') { // This path will be removed
-        ({ nodes: layoutedNodes, edges: layoutedEdges } = getForceDirectedLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
-      } else if (layoutType === 'dagre') {
-        ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
-      } else { // This path (customRadial) will also be removed
-        ({ nodes: layoutedNodes, edges: layoutedEdges } = getCustomRadialLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
-      }
-
+      ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
+      
       // After layout, map parentId from data to the node's parentNode attribute for React Flow.
       // This is crucial for Dagre compound node rendering via React Flow's parentNode mechanism.
       let finalReactFlowNodes = layoutedNodes.map(n => {
         if (n.data && n.data.parentId && finalNodesForLayout.find(p => p.id === n.data.parentId)) {
-          // Ensure the parent node still exists after all transformations (especially filtering) before assigning parentNode
           return { ...n, parentNode: n.data.parentId };
         }
         return n;
@@ -249,7 +256,7 @@ export default function useGraphTransform({
     JSON.stringify(nodeFilters), 
     JSON.stringify(edgeFilters), 
     suppressLowSignal, 
-    layoutType, 
+    // layoutType, // Removed as it's fixed to Dagre
     JSON.stringify(layoutOptions)
   ]);
 
