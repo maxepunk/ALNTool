@@ -159,7 +159,7 @@ const RelationshipMapperContent = ({
   if (error || !graphData) { // Also check for graphData presence
     return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity=\"error\">Error loading relationship data: {error?.message || 'No data received'}</Alert>
+        <Alert severity="error">Error loading relationship data: {error?.message || 'No data received'}</Alert>
       </Paper>
     );
   }
@@ -167,8 +167,8 @@ const RelationshipMapperContent = ({
   if (graphError) {
     return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity=\"warning\" sx={{mb: 2}}>Error processing graph data: {graphError.message || 'Could not render graph.'}</Alert>
-        <Typography variant=\"body2\" sx={{mb: 1}}>Displaying fallback data if available:</Typography>
+        <Alert severity="warning" sx={{mb: 2}}>Error processing graph data: {graphError.message || 'Could not render graph.'}</Alert>
+        <Typography variant="body2" sx={{mb: 1}}>Displaying fallback data if available:</Typography>
         <FallbackGraph entityType={entityType} entityName={entityName} relationshipData={graphData} />
       </Paper>
     );
@@ -177,7 +177,7 @@ const RelationshipMapperContent = ({
   if (!transformedNodes || transformedNodes.length === 0) {
      return (
       <Paper sx={{ p: 2, minHeight: ui.isFullScreen ? '100vh' :'300px', ...ui.containerStyles }}>
-        <Alert severity=\"info\" sx={{mb: 2}}>No direct relationships found or data available to visualize for this entity.</Alert>
+        <Alert severity="info" sx={{mb: 2}}>No direct relationships found or data available to visualize for this entity.</Alert>
         {graphData && <FallbackGraph entityType={entityType} entityName={entityName} relationshipData={graphData} />}
       </Paper>
     );
@@ -212,8 +212,8 @@ const RelationshipMapperContent = ({
         borderBottom: `1px solid ${theme.palette.divider}`,
         ...(ui.isFullScreen && { bgcolor: 'background.paper' })
       }}>
-        <Typography variant=\"h6\" sx={{fontSize: '1.1rem'}}>{title || `${entityName}'s Map`}</Typography> {/* Simplified title */} 
-        <Tooltip title={ui.isFullScreen ? \"Exit Fullscreen\" : \"Fullscreen Mode\"}>\n          <IconButton onClick={ui.toggleFullScreen} size=\"small\">\n            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}\n          </IconButton>
+        <Typography variant="h6" sx={{fontSize: '1.1rem'}}>{title || `${entityName}'s Map`}</Typography> {/* Simplified title */} 
+        <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>\n          <IconButton onClick={ui.toggleFullScreen} size="small">\n            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}\n          </IconButton>
         </Tooltip>
       </Box>
       <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}> 
@@ -229,19 +229,21 @@ const RelationshipMapperContent = ({
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             fitView={false}
-            fitViewOptions={{ padding: 0.25, duration: 300 }}\n            minZoom={0.05}
+            fitViewOptions={{ padding: 0.25, duration: 300 }}
+            minZoom={0.05}
             maxZoom={4}
-            proOptions={{ hideAttribution: true }}\n            elevateEdgesOnSelect
+            proOptions={{ hideAttribution: true }}
+            elevateEdgesOnSelect
             panOnScroll
             selectionOnDrag
           >
-            <Background color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} gap={24} size={1.2} variant=\"dots\" />
-            <Controls showInteractive={false} position=\"bottom-left\" />
+            <Background color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} gap={24} size={1.2} variant="dots" />
+            <Controls showInteractive={false} position="bottom-left" />
             <MiniMap nodeColor={(n) => n.data?.isCenter ? theme.palette.primary.main : (theme.palette.text.secondary)} style={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }} maskColor={theme.palette.mode === 'dark' ? 'rgba(40,40,40,0.7)' : 'rgba(245,245,245,0.7)'}/>
-            <Modal open={ui.infoOpen} onClose={ui.closeInfoModal} aria-labelledby=\"info-modal-title\" aria-describedby=\"info-modal-description\" disableEnforceFocus>
+            <Modal open={ui.infoOpen} onClose={ui.closeInfoModal} aria-labelledby="info-modal-title" aria-describedby="info-modal-description" disableEnforceFocus>
               <Paper sx={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: {xs: '90%', sm: 450, md: 500}, bgcolor: 'background.paper', boxShadow: 24, p: {xs: 2, sm: 3, md: 4}, borderRadius: 2 }}>
-                <Typography id=\"info-modal-title\" variant=\"h6\" component=\"h2\">Relationship Mapper Guide</Typography>
-                <Typography id=\"info-modal-description\" sx={{ mt: 2 }} component=\"div\">
+                <Typography id="info-modal-title" variant="h6" component="h2">Relationship Mapper Guide</Typography>
+                <Typography id="info-modal-description" sx={{ mt: 2 }} component="div">
                   <p>This map visualizes connections using a hierarchical layout.</p>
                   <strong>Navigation:</strong>
                   <ul>
@@ -258,10 +260,10 @@ const RelationshipMapperContent = ({
                     <li><strong>Signal Strength:</strong> Show or hide items deemed less critical connections.</li>
                   </ul>
                 </Typography>
-                <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant=\"contained\">Got it!</Button>
+                <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant="contained">Got it!</Button>
               </Paper>
             </Modal>
-            <Snackbar open={ui.snackbar.open} autoHideDuration={ui.snackbar.duration || 6000} onClose={ui.closeSnackbar} message={ui.snackbar.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} action={<IconButton size=\"small\" aria-label=\"close\" color=\"inherit\" onClick={ui.closeSnackbar}><CloseIcon fontSize=\"small\" /></IconButton>} sx={{ '.MuiSnackbarContent-root': { backgroundColor: ui.snackbar.severity ? `${ui.snackbar.severity}.main` : undefined } }}/>
+            <Snackbar open={ui.snackbar.open} autoHideDuration={ui.snackbar.duration || 6000} onClose={ui.closeSnackbar} message={ui.snackbar.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} action={<IconButton size="small" aria-label="close" color="inherit" onClick={ui.closeSnackbar}><CloseIcon fontSize="small" /></IconButton>} sx={{ '.MuiSnackbarContent-root': { backgroundColor: ui.snackbar.severity ? `${ui.snackbar.severity}.main` : undefined } }}/>
           </ReactFlow>
           {/* ClusterHull rendering removed */}
         </Box>
@@ -269,43 +271,43 @@ const RelationshipMapperContent = ({
         {!ui.isFullScreen && (
           <Box sx={{ width: '280px', flexShrink: 0, borderLeft: `1px solid ${theme.palette.divider}`, height: '100%', overflowY: 'auto', p: 1.5, backgroundColor: 'background.default' /* Slightly different bg for panel */ }}>
             <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
-              <Typography variant=\"subtitle1\" sx={{fontWeight: 600}}>Controls</Typography>
-              <Tooltip title=\"Map Information & Help\">
-                <IconButton onClick={ui.openInfoModal} size=\"small\"> <InfoIcon /> </IconButton>
+              <Typography variant="subtitle1" sx={{fontWeight: 600}}>Controls</Typography>
+              <Tooltip title="Map Information & Help">
+                <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
               </Tooltip>
             </Box>
             <Divider sx={{my:1}}/>
             
-            <Typography variant=\"caption\" display=\"block\" gutterBottom>View</Typography>
+            <Typography variant="caption" display="block" gutterBottom>View</Typography>
             <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, justifyContent: 'center' }}>
-              <Tooltip title=\"Zoom In\"><IconButton onClick={onZoomIn} size=\"small\"><ZoomInIcon /></IconButton></Tooltip>
-              <Tooltip title=\"Zoom Out\"><IconButton onClick={onZoomOut} size=\"small\"><ZoomOutIcon /></IconButton></Tooltip>
-              <Tooltip title=\"Fit View\"><IconButton onClick={onFitView} size=\"small\"><FitScreenIcon /></IconButton></Tooltip>
+              <Tooltip title="Zoom In"><IconButton onClick={onZoomIn} size="small"><ZoomInIcon /></IconButton></Tooltip>
+              <Tooltip title="Zoom Out"><IconButton onClick={onZoomOut} size="small"><ZoomOutIcon /></IconButton></Tooltip>
+              <Tooltip title="Fit View"><IconButton onClick={onFitView} size="small"><FitScreenIcon /></IconButton></Tooltip>
             </Box>
             <Divider sx={{my:1}}/>
             {/* Layout ToggleButtonGroup and Dagre Orientation ToggleButtonGroup removed */}
 
-            <Typography variant=\"caption\" display=\"block\" id=\"depth-slider-label\" gutterBottom>Exploration Depth: {ui.depth}</Typography>
-            <Slider size=\"small\" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby=\"depth-slider-label\" valueLabelDisplay=\"auto\" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
+            <Typography variant="caption" display="block" id="depth-slider-label" gutterBottom>Exploration Depth: {ui.depth}</Typography>
+            <Slider size="small" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby="depth-slider-label" valueLabelDisplay="auto" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
             <Divider sx={{my:1}}/>
 
-            <Typography variant=\"caption\" display=\"block\" gutterBottom>Filter Nodes by Type</Typography>
+            <Typography variant="caption" display="block" gutterBottom>Filter Nodes by Type</Typography>
             <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
               {Object.entries(ui.nodeFilters || {}).map(([type, checked]) => (
-                <Chip key={type} icon={checked ? <CheckBoxIcon fontSize=\"small\"/> : <CheckBoxOutlineBlankIcon fontSize=\"small\"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size=\"small\" color={checked ? \"primary\" : \"default\"} variant={checked ? \"filled\" : \"outlined\"}/>
+                <Chip key={type} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size="small" color={checked ? "primary" : "default"} variant={checked ? "filled" : "outlined"}/>
               ))}
             </Box>
             <Divider sx={{my:1}}/>
             
-            <Typography variant=\"caption\" display=\"block\" gutterBottom>Filter Edges by Type</Typography>
+            <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
             <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
               {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (
-                <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size=\"small\" color={checked ? \"secondary\" : \"default\"} variant={checked ? \"filled\" : \"outlined\"} icon={checked ? <CheckBoxIcon fontSize=\"small\"/> : <CheckBoxOutlineBlankIcon fontSize=\"small\"/>}/ >
+                <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size="small" color={checked ? "secondary" : "default"} variant={checked ? "filled" : "outlined"} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}/ >
               ))}
             </Box>
             <Divider sx={{my:1}}/>
 
-            <Tooltip title={ui.showLowSignal ? \"Low signal items are visible\" : \"Low signal items are hidden\"}>\n              <Button variant=\"outlined\" size=\"small\" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
+            <Tooltip title={ui.showLowSignal ? "Low signal items are visible" : "Low signal items are hidden"}>\n              <Button variant="outlined" size="small" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
                 {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'} {/* Updated text */}
               </Button>
             </Tooltip>
