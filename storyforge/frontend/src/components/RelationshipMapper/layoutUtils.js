@@ -215,8 +215,8 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const defaultOptions = {
       rankdir: 'TB',           
       align: undefined,        
-      nodesep: 60,             
-      ranksep: 70,             
+      nodesep: 80, // Increased from 60 to give more horizontal space between potential orbit groups
+      ranksep: 100, // Increased from 70 to give more vertical space
       marginx: 20,
       marginy: 20,
       nodeWidth: 170, 
@@ -226,33 +226,57 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     };
     const config = { ...defaultOptions, ...options };
 
+    // New constants for orbit calculation and effective size estimation
+    const TYPICAL_CHILD_WIDTH = config.nodeWidth;
+    const TYPICAL_CHILD_HEIGHT = config.nodeHeight;
+    const DESIRED_GAP_CHILD_PARENT = 30;
+    const MAX_ORBITING_CHILDREN_FOR_SIZE_ESTIMATE = 4;
+    const ORBIT_PER_CHILD_FACTOR = config.perChildFactor || 25;
+
     g.setGraph(config);
     g.setDefaultEdgeLabel(() => ({}));
 
-    const childCountMap = new Map();
-    nodes.forEach(node => {
-      const children = nodes.filter(n => n.data?.parentId === node.id);
-      childCountMap.set(node.id, children.length);
-    });
+    const hubTypesForOrbit = new Set(["Puzzle", "Element"]);
 
     const dagreNodeIds = new Set(); 
     nodes.forEach((node) => {
-      const baseWidth = node.data.isCenter ? config.centerNodeWidth : config.nodeWidth;
-      const baseHeight = node.data.isCenter ? config.centerNodeHeight : config.nodeHeight;
-      
-      // Keep hub nodes at a consistent footprint; we no longer expand the
-      // parent rectangle to contain children because children will be
-      // displayed *around* the hub (orbit layout) instead of inside it.
-      const width = baseWidth;
-      const height = baseHeight;
-      g.setNode(node.id, { label: node.data.label, width, height });
+      // Determine initial visual dimensions (these are for the node itself)
+      const visualWidth = node.data.isCenter ? config.centerNodeWidth : config.nodeWidth;
+      const visualHeight = node.data.isCenter ? config.centerNodeHeight : config.nodeHeight;
+
+      let dagreNodeWidth = visualWidth;
+      let dagreNodeHeight = visualHeight;
+
+      // Check if this node is a hub that will have orbiting children
+      const isOrbitHub = hubTypesForOrbit.has(node.data?.type) &&
+        nodes.some(n => n.data?.parentId === node.id);
+
+      if (isOrbitHub) {
+        // Calculate the base radius for children orbiting this parent
+        const baseOrbitRadiusForCalc = (visualWidth / 2) + (TYPICAL_CHILD_WIDTH / 2) + DESIRED_GAP_CHILD_PARENT;
+        // Estimate maximum expansion due to multiple children
+        const radiusExpansionEstimate = Math.max(0, MAX_ORBITING_CHILDREN_FOR_SIZE_ESTIMATE - 1) * ORBIT_PER_CHILD_FACTOR;
+        const estimatedFullOrbitRadius = baseOrbitRadiusForCalc + radiusExpansionEstimate;
+        // The maximum extent from the parent's center to the outer edge of an orbiting child
+        const maxExtentFromHubCenter = estimatedFullOrbitRadius + (TYPICAL_CHILD_WIDTH / 2);
+        // Set the effective size for Dagre to allocate space for the hub + its orbit
+        dagreNodeWidth = 2 * maxExtentFromHubCenter;
+        dagreNodeHeight = 2 * maxExtentFromHubCenter; // Make it a square area for simplicity
+      }
+
+      g.setNode(node.id, {
+        label: node.data.label,
+        width: dagreNodeWidth,
+        height: dagreNodeHeight,
+        visualWidth: visualWidth,
+        visualHeight: visualHeight
+      });
       dagreNodeIds.add(node.id); 
     });
 
     nodes.forEach((node) => {
       if (node.data && node.data.parentId) {
-        // We no longer rely on Dagre compound nodes for visual grouping; hulls / orbiting handle it.
-        // Therefore, omit g.setParent to avoid giant parent rectangles rendered by React Flow.
+        // No compound parent in Dagre; orbiting logic will handle grouping visually
       }
     });
 
@@ -316,19 +340,13 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     let layoutedNodes = nodes.map((node) => {
       const nodeWithPosition = g.node(node.id);
       if (nodeWithPosition) {
-        if(node.data.parentId || nodes.some(n => n.data.parentId === node.id)) { 
-            console.log(`[Dagre] Node ID: ${node.id}, Label: ${node.data.label}`);
-            console.log(`  Dagre calculated - x: ${nodeWithPosition.x}, y: ${nodeWithPosition.y}, width: ${nodeWithPosition.width}, height: ${nodeWithPosition.height}`);
-            if(node.data.parentId) console.log(`  Has parentId: ${node.data.parentId}`);
-            if(nodes.some(n => n.data.parentId === node.id)) console.log(`  Is a parent to some node(s)`);
-        }
         return {
           ...node,
           position: {
             x: nodeWithPosition.x - nodeWithPosition.width / 2,
             y: nodeWithPosition.y - nodeWithPosition.height / 2,
           },
-          style: { ...node.style, width: nodeWithPosition.width, height: nodeWithPosition.height },
+          style: { ...node.style, width: nodeWithPosition.visualWidth, height: nodeWithPosition.visualHeight },
         };
       }
       return node;
@@ -339,31 +357,57 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     // they don't occupy the same rectangle.  Applied only to parents
     // that are Puzzles or Elements (containers) but can be extended.
     // -------------------------------------------------------------
-    const hubTypesForOrbit = new Set(["Puzzle", "Element"]);
-
     const idToNodeMap = new Map(layoutedNodes.map(n => [n.id, n]));
 
-    layoutedNodes.forEach(parentNode => {
-      const children = nodes.filter(n => n.data?.parentId === parentNode.id);
+    layoutedNodes.forEach(parentNodeFromLayout => {
+      // Find the original node data to get visual dimensions and check parentage
+      const originalParentNode = nodes.find(n => n.id === parentNodeFromLayout.id);
+      if (!originalParentNode) return;
+
+      const children = nodes.filter(n => n.data?.parentId === originalParentNode.id);
       if (!children.length) return;
 
-      if (!hubTypesForOrbit.has(parentNode.data?.type)) return;
+      if (!hubTypesForOrbit.has(originalParentNode.data?.type)) return;
+
+      // Use the VISUAL width of the parent for orbit calculation
+      const visualParentWidth = originalParentNode.data.isCenter ? config.centerNodeWidth : config.nodeWidth;
+      // const visualParentHeight = originalParentNode.data.isCenter ? config.centerNodeHeight : config.nodeHeight;
+
+      // Recalculate baseOrbitRadius based on visual sizes and desired gap
+      const baseOrbitRadius = (visualParentWidth / 2) + (TYPICAL_CHILD_WIDTH / 2) + DESIRED_GAP_CHILD_PARENT;
+      const perChildFactorToUse = options.perChildFactor || ORBIT_PER_CHILD_FACTOR;
+      const radiusExpansion = Math.max(0, children.length - 1) * perChildFactorToUse;
+      const R = baseOrbitRadius + radiusExpansion;
 
       const angleStep = (2 * Math.PI) / children.length;
-      // Refined radius calculation
-      const baseOrbitRadius = parentNode.style?.width ? parentNode.style.width / 2 + 80 : 120; // Base distance from parent's edge
-      const perChildFactor = 25; // Additional radius per child to spread them out
-      const radiusExpansion = Math.max(0, children.length - 1) * perChildFactor; // Expansion based on number of children
-      const radius = baseOrbitRadius + radiusExpansion;
+      let startAngle = -Math.PI / 2; // Default: Start at the top for the first child (0 radians is right)
+
+      // Aesthetic adjustments for small numbers of children:
+      if (children.length === 1) {
+        startAngle = Math.PI / 2; // Place a single child directly below the parent
+      } else if (children.length === 2) {
+        startAngle = Math.PI / 2 - Math.PI / 4; // 45 degrees (bottom-right quadrant)
+      } else if (children.length === 3) {
+        startAngle = -Math.PI / 2; // Top, then ~120, ~240 degrees
+      } else if (children.length === 4) {
+        startAngle = -Math.PI / 2 + Math.PI / 4; // 45 degrees offset
+      }
+      // For > 4 children, the default startAngle and even angleStep usually work well.
 
       children.forEach((childNode, idx) => {
-        const angle = idx * angleStep;
-        const cx = (parentNode.position?.x || 0) + radius * Math.cos(angle);
-        const cy = (parentNode.position?.y || 0) + radius * Math.sin(angle);
-        const ref = idToNodeMap.get(childNode.id);
-        if (ref) {
-          ref.position = { x: cx, y: cy };
-          ref.data.isManuallyPositioned = true;
+        const angle = startAngle + idx * angleStep;
+        const cx = (parentNodeFromLayout.position?.x || 0) + R * Math.cos(angle);
+        const cy = (parentNodeFromLayout.position?.y || 0) + R * Math.sin(angle);
+        const childNodeRef = idToNodeMap.get(childNode.id);
+        if (childNodeRef) {
+          childNodeRef.position = { x: cx, y: cy };
+          childNodeRef.data.isManuallyPositioned = true;
+          // Ensure the child node uses its standard visual size, not an inflated one
+          childNodeRef.style = {
+            ...childNodeRef.style,
+            width: childNode.data.isCenter ? config.centerNodeWidth : config.nodeWidth,
+            height: childNode.data.isCenter ? config.centerNodeHeight : config.nodeHeight
+          };
         }
       });
     });
