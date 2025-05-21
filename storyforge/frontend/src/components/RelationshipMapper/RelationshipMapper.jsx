@@ -204,7 +204,7 @@ const RelationshipMapperContent = ({
       ...ui.containerStyles 
     }}>
       <Box sx={{
-        p: 1.5, // Adjusted padding
+        p: 1.5, 
         pb: 0, 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -212,12 +212,15 @@ const RelationshipMapperContent = ({
         borderBottom: `1px solid ${theme.palette.divider}`,
         ...(ui.isFullScreen && { bgcolor: 'background.paper' })
       }}>
-        <Typography variant="h6" sx={{fontSize: '1.1rem'}}>{title || `${entityName}'s Map`}</Typography> {/* Simplified title */} 
-        <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>\n          <IconButton onClick={ui.toggleFullScreen} size="small">\n            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}\n          </IconButton>
+        <Typography variant="h6" sx={{fontSize: '1.1rem'}}>{title || `${entityName}\'s Map`}</Typography> 
+        <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
+          <IconButton onClick={ui.toggleFullScreen} size="small">
+            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+          </IconButton>
         </Tooltip>
       </Box>
       <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}> 
-        <Box sx={{ flexGrow: 1, height: '100%', position: 'relative' }}> 
+        <Box sx={{ flexGrow: 1, height: '100%', position: 'relative' }}> {/* This is the ReactFlow container */}
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -254,7 +257,6 @@ const RelationshipMapperContent = ({
                   <strong>Controls (Panel):</strong>
                   <ul>
                     <li><strong>View:</strong> Zoom in/out, or fit all items to the screen.</li>
-                    {/* Removed Layout selection from help text */}
                     <li><strong>Exploration Depth:</strong> Control how many levels of connections are shown.</li>
                     <li><strong>Filter Nodes/Edges:</strong> Toggle visibility of specific entity types or relationships.</li>
                     <li><strong>Signal Strength:</strong> Show or hide items deemed less critical connections.</li>
@@ -268,51 +270,76 @@ const RelationshipMapperContent = ({
           {/* ClusterHull rendering removed */}
         </Box>
 
-        {!ui.isFullScreen && (
-          <Box sx={{ width: '280px', flexShrink: 0, borderLeft: `1px solid ${theme.palette.divider}`, height: '100%', overflowY: 'auto', p: 1.5, backgroundColor: 'background.default' /* Slightly different bg for panel */ }}>
-            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
-              <Typography variant="subtitle1" sx={{fontWeight: 600}}>Controls</Typography>
-              <Tooltip title="Map Information & Help">
-                <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
-              </Tooltip>
-            </Box>
-            <Divider sx={{my:1}}/>
-            
-            <Typography variant="caption" display="block" gutterBottom>View</Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, justifyContent: 'center' }}>
-              <Tooltip title="Zoom In"><IconButton onClick={onZoomIn} size="small"><ZoomInIcon /></IconButton></Tooltip>
-              <Tooltip title="Zoom Out"><IconButton onClick={onZoomOut} size="small"><ZoomOutIcon /></IconButton></Tooltip>
-              <Tooltip title="Fit View"><IconButton onClick={onFitView} size="small"><FitScreenIcon /></IconButton></Tooltip>
-            </Box>
-            <Divider sx={{my:1}}/>
-            {/* Layout ToggleButtonGroup and Dagre Orientation ToggleButtonGroup removed */}
+        {/* Controls Panel - Now always rendered, styling changes based on ui.isFullScreen */}
+        <Box 
+          sx={{
+            // Common styles for the panel
+            width: '280px',
+            flexShrink: 0,
+            height: ui.isFullScreen ? 'auto' : '100%', // Full height in normal, auto in fullscreen
+            maxHeight: ui.isFullScreen ? `calc(100vh - ${theme.spacing(10)})` : 'none', // Max height in fullscreen
+            overflowY: 'auto',
+            p: 1.5,
+            boxSizing: 'border-box',
 
-            <Typography variant="caption" display="block" id="depth-slider-label" gutterBottom>Exploration Depth: {ui.depth}</Typography>
-            <Slider size="small" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby="depth-slider-label" valueLabelDisplay="auto" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
-            <Divider sx={{my:1}}/>
-
-            <Typography variant="caption" display="block" gutterBottom>Filter Nodes by Type</Typography>
-            <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
-              {Object.entries(ui.nodeFilters || {}).map(([type, checked]) => (
-                <Chip key={type} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size="small" color={checked ? "primary" : "default"} variant={checked ? "filled" : "outlined"}/>
-              ))}
-            </Box>
-            <Divider sx={{my:1}}/>
-            
-            <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
-            <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
-              {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (
-                <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size="small" color={checked ? "secondary" : "default"} variant={checked ? "filled" : "outlined"} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}/ >
-              ))}
-            </Box>
-            <Divider sx={{my:1}}/>
-
-            <Tooltip title={ui.showLowSignal ? "Low signal items are visible" : "Low signal items are hidden"}>\n              <Button variant="outlined" size="small" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
-                {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'} {/* Updated text */}
-              </Button>
+            // Conditional styling
+            ...(ui.isFullScreen ? {
+              position: 'absolute',
+              top: theme.spacing(8), 
+              right: theme.spacing(2),
+              backgroundColor: theme.palette.background.paper, 
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: theme.shape.borderRadius,
+              boxShadow: theme.shadows[5], 
+              zIndex: theme.zIndex.modal + 2, 
+            } : {
+              borderLeft: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.background.default, 
+            })
+          }}
+        >
+          <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
+            <Typography variant="subtitle1" sx={{fontWeight: 600}}>Controls</Typography>
+            <Tooltip title="Map Information & Help">
+              <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
             </Tooltip>
           </Box>
-        )}
+          <Divider sx={{my:1}}/>
+          
+          <Typography variant="caption" display="block" gutterBottom>View</Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, justifyContent: 'center' }}>
+            <Tooltip title="Zoom In"><IconButton onClick={onZoomIn} size="small"><ZoomInIcon /></IconButton></Tooltip>
+            <Tooltip title="Zoom Out"><IconButton onClick={onZoomOut} size="small"><ZoomOutIcon /></IconButton></Tooltip>
+            <Tooltip title="Fit View"><IconButton onClick={onFitView} size="small"><FitScreenIcon /></IconButton></Tooltip>
+          </Box>
+          <Divider sx={{my:1}}/>
+
+          <Typography variant="caption" display="block" id="depth-slider-label" gutterBottom>Exploration Depth: {ui.depth}</Typography>
+          <Slider size="small" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby="depth-slider-label" valueLabelDisplay="auto" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
+          <Divider sx={{my:1}}/>
+
+          <Typography variant="caption" display="block" gutterBottom>Filter Nodes by Type</Typography>
+          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
+            {Object.entries(ui.nodeFilters || {}).map(([type, checked]) => (
+              <Chip key={type} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size="small" color={checked ? "primary" : "default"} variant={checked ? "filled" : "outlined"}/>
+            ))}
+          </Box>
+          <Divider sx={{my:1}}/>
+          
+          <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
+          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
+            {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (
+              <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size="small" color={checked ? "secondary" : "default"} variant={checked ? "filled" : "outlined"} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}/ >
+            ))}
+          </Box>
+          <Divider sx={{my:1}}/>
+
+          <Tooltip title={ui.showLowSignal ? "Low signal items are visible" : "Low signal items are hidden"}>
+            <Button variant="outlined" size="small" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
+              {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'}
+            </Button>
+          </Tooltip>
+        </Box>
       </Box>
     </Paper>
   );
