@@ -17,145 +17,161 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
   console.log('[Dagre] Applying hierarchical layout to', nodes?.length || 0, 'nodes.');
   
   if (!nodes || nodes.length === 0) {
+    console.warn('[Dagre] No nodes provided to getDagreLayout.');
     return { nodes: [], edges: [] };
   }
 
   try {
-    // Initialize Dagre graph with compound node support
     const g = new dagre.graphlib.Graph({ compound: true, multigraph: true }); 
 
     const defaultOptions = {
-      rankdir: 'TB', // Top-to-Bottom ranking
-      align: undefined, // Node alignment (e.g., 'UL', 'UR', 'DL', 'DR')
-      nodesep: 80,    // Separation between nodes in the same rank
-      ranksep: 100,   // Separation between ranks
-      marginx: 20,    // Margin for the x-axis
-      marginy: 20,    // Margin for the y-axis
-      nodeWidth: 170, // Default width for standard nodes
-      nodeHeight: 60, // Default height for standard nodes
-      centerNodeWidth: 190, // Width for the central node
-      centerNodeHeight: 70, // Height for the central node
-      // For future fine-tuning of compound node internal spacing, consider:
-      // rankPadding: <value>, // Padding between ranks for compound nodes
-      // nodePadding: <value>, // Padding around each node within a compound node
+      rankdir: 'TB', 
+      align: undefined, 
+      nodesep: 80,    
+      ranksep: 100,   
+      marginx: 20,    
+      marginy: 20,    
+      nodeWidth: 170, 
+      nodeHeight: 60, 
+      centerNodeWidth: 190, 
+      centerNodeHeight: 70, 
     };
     const config = { ...defaultOptions, ...options };
 
     g.setGraph(config);
-    g.setDefaultEdgeLabel(() => ({})); // Default label for edges if not specified
+    g.setDefaultEdgeLabel(() => ({}));
 
     const dagreNodeIds = new Set(); 
     nodes.forEach((node) => {
-      // Determine visual dimensions for the node itself (not inflated for children)
+      if (!node || !node.id) {
+        console.warn('[Dagre] Encountered invalid node object during setNode:', node);
+        return; // Skip invalid node
+      }
       const visualWidth = node.data.isCenter ? config.centerNodeWidth : config.nodeWidth;
       const visualHeight = node.data.isCenter ? config.centerNodeHeight : config.nodeHeight;
 
       g.setNode(node.id, {
         label: node.data.label,
-        width: visualWidth,  // Use actual visual width for Dagre node
-        height: visualHeight, // Use actual visual height for Dagre node
-        // Store visual dimensions separately if needed for React Flow rendering style
+        width: visualWidth,  
+        height: visualHeight, 
         visualWidth: visualWidth, 
         visualHeight: visualHeight 
       });
       dagreNodeIds.add(node.id); 
     });
 
-    // Set parent-child relationships for compound nodes
-    // This must be done after all nodes are added to the graph.
+    console.log(`[Dagre] Added ${g.nodeCount()} nodes to Dagre graph.`);
+
     nodes.forEach((node) => {
+      if (!node || !node.id) return; // Skip invalid node already warned about
       if (node.data && node.data.parentId) {
         if (dagreNodeIds.has(node.data.parentId) && dagreNodeIds.has(node.id)) {
           g.setParent(node.id, node.data.parentId);
-          console.log(`[Dagre] Set parent for ${node.id} to ${node.data.parentId}`);
+          // console.log(`[Dagre] Set parent for ${node.id} to ${node.data.parentId}`);
         } else {
           if (!dagreNodeIds.has(node.data.parentId)) {
-            console.warn(`[Dagre] Parent node ${node.data.parentId} for child ${node.id} not found in Dagre graph. Skipping setParent.`);
-          }
-          if (!dagreNodeIds.has(node.id)) {
-            // This case should ideally not happen if the outer loop iterates over `nodes`
-            // which are the source for `dagreNodeIds`.
-            console.warn(`[Dagre] Child node ${node.id} itself not found in Dagre graph. Skipping setParent.`);
+            // console.warn(`[Dagre] Parent node ${node.data.parentId} for child ${node.id} not found in Dagre graph. Skipping setParent.`);
           }
         }
       }
     });
     
-    // Filter edges to ensure both source and target nodes exist in the Dagre graph
     const edgesForLayout = edges.filter(edge => {
+      if (!edge || !edge.source || !edge.target) {
+        console.warn('[Dagre] Encountered invalid edge object:', edge);
+        return false; // Skip invalid edge
+      }
       const sourceExists = dagreNodeIds.has(edge.source);
       const targetExists = dagreNodeIds.has(edge.target);
-      if (!sourceExists) console.warn(`[Dagre Pre-filter] Edge ${edge.id || 'N/A'} source node ${edge.source} not in Dagre graph. Filtering out edge.`);
-      if (!targetExists) console.warn(`[Dagre Pre-filter] Edge ${edge.id || 'N/A'} target node ${edge.target} not in Dagre graph. Filtering out edge.`);
-      return sourceExists && targetExists;
+      if (!sourceExists || !targetExists) {
+        // console.warn(`[Dagre Pre-filter] Edge source/target not in Dagre graph. Edge:`, edge);
+        return false;
+      }
+      return true;
     });
 
-    console.log(`[Dagre] Number of edges after filtering for valid nodes: ${edgesForLayout.length}`);
+    console.log(`[Dagre] Number of valid edges for layout: ${edgesForLayout.length}`);
     
     edgesForLayout.forEach((edge) => {
-      // Dagre uses edge names to support multigraphs. Using edge.id or a unique string.
-      const edgeName = edge.id || `edge-${edge.source}-${edge.target}`;
+      const edgeName = edge.id || `edge-${edge.source}-${edge.target}-${Math.random().toString(36).substring(7)}`;
       g.setEdge(edge.source, edge.target, { 
-        minlen: 1, // Minimum length of an edge (number of ranks)
-        weight: 1, // Weight of an edge (higher weight pulls nodes closer)
+        minlen: 1, 
+        weight: 1, 
         label: edge.data?.shortLabel || edge.label || '' 
       }, edgeName); 
     });
-    
-    console.log('[Dagre] Graph structure BEFORE layout call:');
-    g.nodes().forEach(nodeId => {
-      const nodeDetails = { id: nodeId, data: g.node(nodeId), parent: g.parent(nodeId) };
-      if (g.children(nodeId) && g.children(nodeId).length > 0) {
-        nodeDetails.children = g.children(nodeId);
-      }
-      console.log(JSON.stringify(nodeDetails));
-    });
-    console.log('[Dagre] Edges in graph object (g.edges()):', JSON.stringify(g.edges()));
+    console.log(`[Dagre] Added ${g.edgeCount()} edges to Dagre graph.`);
 
-    console.log('[Dagre] Running Dagre layout algorithm');
+    console.log('[Dagre] Running Dagre layout algorithm...');
     dagre.layout(g);
+    console.log('[Dagre] Dagre layout algorithm complete.');
 
-    console.log('[Dagre] Layout complete. Extracting node positions.');
-    const layoutedNodes = nodes.map((node) => {
-      const dagreNode = g.node(node.id); // Get the layouted node from Dagre graph
-      if (dagreNode) {
+    // DEBUG: Inspect a few nodes directly from Dagre graph object after layout
+    if (g.nodeCount() > 0) {
+      const sampleNodeIds = g.nodes().slice(0, Math.min(5, g.nodeCount()));
+      console.log('[Dagre DEBUG] Sample nodes from graph post-layout:');
+      sampleNodeIds.forEach(id => {
+        const dagreInternalNode = g.node(id);
+        console.log(`  ID: ${id}, X: ${dagreInternalNode?.x}, Y: ${dagreInternalNode?.y}, Width: ${dagreInternalNode?.width}, Height: ${dagreInternalNode?.height}`);
+      });
+    }
+
+    let fallbackIndex = 0;
+    const layoutedNodes = nodes.map((originalInputNode) => {
+      if (!originalInputNode || !originalInputNode.id) {
+        console.warn('[Dagre] Skipping invalid originalInputNode in final map stage.');
+        return null; // Or some placeholder to filter out later
+      }
+      const dagreNodeData = g.node(originalInputNode.id); 
+
+      if (dagreNodeData && typeof dagreNodeData.x === 'number' && typeof dagreNodeData.y === 'number') {
         return {
-          ...node,
+          ...originalInputNode,
           position: {
-            // Dagre provides center x,y; adjust for top-left for React Flow
-            x: dagreNode.x - dagreNode.width / 2, 
-            y: dagreNode.y - dagreNode.height / 2,
+            x: dagreNodeData.x - (dagreNodeData.width / 2), 
+            y: dagreNodeData.y - (dagreNodeData.height / 2),
           },
-          // Ensure React Flow uses the original visual dimensions for styling,
-          // as Dagre might have different width/height internally after layout.
           style: { 
-            ...node.style, 
-            width: dagreNode.visualWidth || config.nodeWidth, 
-            height: dagreNode.visualHeight || config.nodeHeight 
+            ...originalInputNode.style, 
+            width: dagreNodeData.visualWidth || dagreNodeData.width, 
+            height: dagreNodeData.visualHeight || dagreNodeData.height 
           },
-          // Store dagre calculated width/height if needed for debugging or advanced rendering
-          dagreLayout: {
-            width: dagreNode.width,
-            height: dagreNode.height,
-            x: dagreNode.x,
-            y: dagreNode.y
+          data: {
+            ...originalInputNode.data,
+            dagreCalculated: {
+                x: dagreNodeData.x,
+                y: dagreNodeData.y,
+                width: dagreNodeData.width,
+                height: dagreNodeData.height,
+            }
           }
         };
+      } else {
+        // Fallback if node not found in Dagre graph OR x/y are not numbers
+        console.warn(`[Dagre FALLBACK] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) either not found in Dagre graph post-layout or has invalid x/y. Dagre node data:`, JSON.stringify(dagreNodeData));
+        fallbackIndex++;
+        return { 
+          ...originalInputNode, 
+          position: { x: (fallbackIndex % 5) * 200, y: Math.floor(fallbackIndex / 5) * 150 + 50 } // Staggered fallback positions
+        }; 
       }
-      // Fallback if node not found in Dagre graph (should not happen if logic is correct)
-      console.warn(`[Dagre] Node ${node.id} not found in Dagre graph after layout. Returning original node.`);
-      return node; 
-    });
+    }).filter(node => node !== null); // Filter out any null nodes from invalid input
 
-    return { nodes: layoutedNodes, edges: edgesForLayout }; // Return edgesForLayout as they were the ones used
+    if (fallbackIndex > 0) {
+        console.warn(`[Dagre] ${fallbackIndex} nodes used fallback positioning.`);
+    }
+    console.log('[Dagre] Node position mapping complete.');
+    return { nodes: layoutedNodes, edges: edgesForLayout };
 
   } catch (error) {
     console.error('[Dagre Layout Error Caught]', error); 
-    // Fallback: return original nodes to prevent UI crash
     const fallbackNodes = nodes.map((n, i) => {
-      if (!n.position) n.position = { x: (i % 5) * 200, y: Math.floor(i / 5) * 150 };
-      return n;
-    });
+      if (!n) return null;
+      return {
+        ...n,
+        position: n.position || { x: (i % 5) * 200, y: Math.floor(i / 5) * 150 + 1000 } // Position far away if error
+      }
+    }).filter(Boolean);
     return { nodes: fallbackNodes, edges: edges || [] };
   }
 };
