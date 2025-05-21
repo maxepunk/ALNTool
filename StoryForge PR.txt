@@ -236,11 +236,28 @@ While the dashboard is currently a placeholder, understanding these personas and
 *   Global search functionality.
 *   Notifications or alerts for items needing attention (e.g., an Element marked "To Build" that's required for an upcoming playtest).
 
-**D. UX Principles for Graph Clarity in Relationship Mapper:**
+**D. UX Principles for Graph Clarity in Relationship Mapper (Revised for Focused Dagre/Compound Node Strategy):**
 
-*   **Tell a Story, Don't Just Show Data:** The graph should intuitively guide the user through the most relevant connections. This means prioritizing relationships that are key to understanding the central entity's role and narrative function.
-*   **Reduce Cognitive Load:** Avoid overwhelming the user with a "hairball" of lines. The layout should be clean, and connections should be easy to follow.
-*   **Optimized Information Display on Nodes & Edges (Leveraging Color and Hover Text):**
+To achieve the overarching goal of a Relationship Mapper that "tells a story" and is intuitively understandable, especially with the adoption of a focused Dagre-based compound node layout strategy, we will adhere to the following UX principles:
+
+*   **1. Prioritize Hierarchical Grouping for Meaning:**
+    *   **Principle:** The most critical aspect for clarity is the explicit visual grouping of semantically related hierarchical units.
+    *   **Implementation:**
+        *   **Compound Nodes:** Dagre's compound node feature, activated via `g.setParent()` based on frontend `data.parentId` assignment, will be the primary mechanism. This will visually encapsulate:
+            *   Elements `Contains`-ed within a parent Element (container).
+            *   Elements `Required For` or `Rewards`-ed by a Puzzle.
+        *   **Visual Distinction of Groups:** Parent/group nodes rendered by React Flow (using the `parentNode` attribute) will have distinct styling (e.g., subtle background, border) to clearly delineate their boundaries and visually separate their internal content from the wider graph.
+    *   **Benefit:** Users will immediately see these "sub-systems" or collections (e.g., "everything in this backpack," "all elements directly involved in this puzzle") as coherent visual units, drastically reducing the need to trace multiple edges to infer these groupings.
+
+*   **2. Streamlined Layout for Reduced Cognitive Load:**
+    *   **Principle:** Avoid overwhelming the user with excessive options or an overly dense "hairball" of lines and nodes. The layout should be clean, and connections easy to follow.
+    *   **Implementation:**
+        *   **Single Core Layout Strategy:** Focus on a highly refined Dagre-based hierarchical layout. Remove alternative, less effective layout options (Radial, Force-Directed as previously implemented) to simplify user choice and developer effort.
+        *   **Consistent Orientation:** Employ a default Dagre orientation (e.g., 'TB' - Top-to-Bottom) that best serves the primary use cases, particularly for Character and Puzzle maps, ensuring predictability.
+        *   **Adequate Spacing:** Utilize Dagre's layout parameters (e.g., `nodesep`, `ranksep`, and internal padding for compound nodes like `nodePadding`, `rankPadding`) to ensure sufficient whitespace within and between groups, and between individual nodes.
+    *   **Benefit:** A cleaner, more predictable layout reduces visual clutter and makes the graph easier to parse.
+
+*   **3. Optimized Information Display on Nodes & Edges (Leveraging Color and Hover Text):**
     *   **Principle:** Provide the right amount of information at the right time, balancing immediate visual clarity with access to comprehensive details. This involves minimizing on-node/on-edge text by strategically using color-coding and making detailed information readily available via hover interactions (tooltips).
     *   **Implementation - Node Information Strategy:**
         *   **Color-Coding for Type Identification:**
@@ -271,6 +288,15 @@ While the dashboard is currently a placeholder, understanding these personas and
         *   **Contextual Tooltips for Full Edge Semantics:**
             *   Tooltips on edges (managed by `CustomEdge.jsx`) will display the full `contextualLabel` (e.g., "Character A (Character) --Owns--> Element B (Prop)") from `graphData.edges[e].data.contextualLabel`, providing unambiguous detail about the source, target, and relationship when needed.
     *   **Benefit:** This multi-layered approach (color -> concise on-screen labels -> detailed tooltips) minimizes visual noise on the map itself, making it cleaner and easier to scan for patterns and primary connections. Detailed information remains easily accessible on demand, supporting both quick overviews and in-depth exploration. This directly aligns with the goal of reducing cognitive load and making the map more intuitive.
+
+*   **4. Intelligent Edge Display (Leveraging Grouping):**
+    *   **Principle:** With robust visual grouping via compound nodes, the need for complex edge pruning for "Single Point of Connection" (SPOC) might be reduced, as the grouping itself handles much of the visual simplification.
+    *   **Implementation:**
+        *   The primary means of simplifying edge views will be the strong visual grouping of nodes within compound parents. This inherently localizes many edges.
+        *   The existing `filterGraph.js` SPOC logic will be re-evaluated. If compound grouping is highly effective, SPOC might be simplified or its parameters adjusted to only prune genuinely redundant inter-group edges, or it might be deferred if the initial grouped layout is sufficiently clear. Basic depth and type-based filtering will remain.
+    *   **Benefit:** Clearer pathways between major entities or groups, with less visual distraction from potentially redundant direct links if a clear grouped path exists.
+
+These revised principles will guide the technical implementation of the Relationship Mapper, ensuring the frontend presents the narrative web in the most understandable and actionable way, leveraging the strengths of Dagre for hierarchical layout and React Flow for rendering. The aim is to move from a map that "shows all data" to one that "explains key relationships" effectively.
 
 **7. Assumptions & Dependencies**
 *   **The Notion workspace structured precisely according to Section 4 is maintained.** Unauthorized changes to this Notion structure will break the tool.
