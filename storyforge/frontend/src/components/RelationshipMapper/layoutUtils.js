@@ -25,6 +25,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
 
   try {
     // PRD Objective: Re-enable compound: true
+    // For this debug step, compound is still true, but setParent calls are disabled below.
     g = new dagre.graphlib.Graph({ compound: true, multigraph: true }); 
     console.log('[DagreLayout] Initialized Dagre graph with compound: true, multigraph: true.');
 
@@ -71,6 +72,9 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     });
     console.log(`[DagreLayout] Added ${g.nodeCount()} nodes to Dagre graph. Node IDs:`, Array.from(dagreNodeIds));
 
+    // --- DEBUG: Temporarily disable setParent calls ---
+    console.log('[DagreLayout DEBUG] g.setParent() calls are TEMPORARILY DISABLED.');
+    /*
     console.log('[DagreLayout] Attempting to set parent relationships...');
     const parentAssignmentsLog = [];
     nodes.forEach((node) => {
@@ -104,6 +108,8 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     } else {
         console.log('[DagreLayout] No parentId assignments found in input nodes.');
     }
+    */
+    // --- END DEBUG ---
     
     const edgesForLayout = edges.filter(edge => {
       if (!edge || !edge.source || !edge.target) {
@@ -142,12 +148,15 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     dagre.layout(g); 
     console.log('[DagreLayout] Dagre layout algorithm complete.');
 
+    // No need to log parent/child compound node details if setParent is disabled for this test
+    /*
     g.nodes().forEach(nodeId => {
         const dagreInternalNode = g.node(nodeId);
         if (dagreInternalNode && (g.children(nodeId)?.length > 0 || dagreInternalNode._isCompound)) { 
             console.log(`[DagreLayout DEBUG] Node (potential parent): ${nodeId}, X: ${dagreInternalNode.x?.toFixed(2)}, Y: ${dagreInternalNode.y?.toFixed(2)}, Width: ${dagreInternalNode.width?.toFixed(2)}, Height: ${dagreInternalNode.height?.toFixed(2)}, Children: ${JSON.stringify(g.children(nodeId))}, IsCompound: ${dagreInternalNode._isCompound}`);
         }
     });
+    */
 
     let fallbackIndex = 0;
     const layoutedNodes = nodes.map((originalInputNode) => {
@@ -179,8 +188,9 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
                 y: dagreNodeData.y,
                 width: dagreNodeData.width,
                 height: dagreNodeData.height,
-                isCompound: (g.children(originalInputNode.id)?.length > 0) || false, // Simplified isCompound check based on children presence
-                children: g.children(originalInputNode.id) || []
+                // isCompound will be false if setParent is disabled
+                isCompound: false, 
+                children: [] 
             }
           }
         };
