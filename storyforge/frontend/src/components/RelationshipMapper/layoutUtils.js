@@ -153,9 +153,9 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
             detectedCycles.forEach((cycle, index) => {
                 console.error(`  Cycle ${index + 1}: ${cycle.join(' -> ')}`);
             });
-            console.error('[DagreLayout] These cycles are highly likely to cause the Dagre ''rank'' error.');
+            console.error("[DagreLayout] These cycles are highly likely to cause the Dagre 'rank' error.");
         } else {
-            console.log('[DagreLayout] No cycles detected in parent-child relationships.');
+            console.log("[DagreLayout] No cycles detected in parent-child relationships.");
         }
         // --- END CYCLE DETECTION ---
     } else {
