@@ -30,6 +30,45 @@ import RelationshipMapper from '../components/RelationshipMapper';
 import { api } from '../services/api';
 import { Link as RouterLink } from 'react-router-dom';
 
+// Helper function to parse memory attributes from description
+function parseMemoryAttributes(description) {
+  if (!description) return null;
+  
+  const attributes = {};
+  
+  // Parse SF_RFID values
+  const rfidMatch = description.match(/SF_RFID:\s*\[([^\]]+)\]/i);
+  if (rfidMatch) {
+    attributes.rfid = rfidMatch[1].trim();
+  }
+  
+  // Parse Memory Type (e.g., "Memory Type: [Audio]")
+  const typeMatch = description.match(/Memory Type:\s*\[([^\]]+)\]/i);
+  if (typeMatch) {
+    attributes.type = typeMatch[1].trim();
+  }
+  
+  // Parse Memory Owner (e.g., "Memory Owner: [Character Name]")
+  const ownerMatch = description.match(/Memory Owner:\s*\[([^\]]+)\]/i);
+  if (ownerMatch) {
+    attributes.owner = ownerMatch[1].trim();
+  }
+  
+  // Parse Memory Date (e.g., "Memory Date: [2024-01-15]")
+  const dateMatch = description.match(/Memory Date:\s*\[([^\]]+)\]/i);
+  if (dateMatch) {
+    attributes.date = dateMatch[1].trim();
+  }
+  
+  // Parse Memory Location (e.g., "Memory Location: [Office]")
+  const locationMatch = description.match(/Memory Location:\s*\[([^\]]+)\]/i);
+  if (locationMatch) {
+    attributes.location = locationMatch[1].trim();
+  }
+  
+  return Object.keys(attributes).length > 0 ? attributes : null;
+}
+
 function ElementDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -256,11 +295,78 @@ function ElementDetail() {
                       Memory Data
                     </Typography>
                     <Box sx={{ mb: 2, mt: 1 }}>
-                      {/* This would be enhanced in future to parse and display specific memory attributes */}
-                      <Typography variant="body2">
-                        This is a memory-type element. Additional memory-specific data 
-                        can be found in the description.
-                      </Typography>
+                      {(() => {
+                        const memoryAttrs = parseMemoryAttributes(element.description);
+                        if (memoryAttrs) {
+                          return (
+                            <Box sx={{ 
+                              bgcolor: 'background.paper', 
+                              border: 1, 
+                              borderColor: 'secondary.main',
+                              borderRadius: 1,
+                              p: 1.5
+                            }}>
+                              {memoryAttrs.rfid && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    RFID Tag:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'secondary.main' }}>
+                                    {memoryAttrs.rfid}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {memoryAttrs.type && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Memory Type:
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {memoryAttrs.type}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {memoryAttrs.owner && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Memory Owner:
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {memoryAttrs.owner}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {memoryAttrs.date && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Memory Date:
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {memoryAttrs.date}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {memoryAttrs.location && (
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Memory Location:
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {memoryAttrs.location}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        } else {
+                          return (
+                            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                              This is a memory-type element. Check the description for 
+                              memory-specific data formatted as SF_RFID: [value].
+                            </Typography>
+                          );
+                        }
+                      })()}
                     </Box>
                   </>
                 )}

@@ -58,6 +58,8 @@ import SecondaryEntityNode from './SecondaryEntityNode';
 // import { ClusterHull } from './ClusterHull'; // Removed ClusterHull
 // Edge types
 import CustomEdge from './CustomEdge';
+// Zone components
+import ZoneLayer from './ZoneLayer';
 
 // Layout algorithm related hooks
 import useGraphTransform from './useGraphTransform';
@@ -80,7 +82,7 @@ const RelationshipMapperContent = ({
   console.log('RelationshipMapper GraphData:', graphData);
   console.log('EntityType:', entityType);
 
-  const { nodes: transformedNodes, edges: transformedEdges, error: graphError } = useGraphTransform({
+  const { nodes: transformedNodes, edges: transformedEdges, zones, error: graphError } = useGraphTransform({
     entityType,
     entityId,
     entityName,
@@ -101,6 +103,10 @@ const RelationshipMapperContent = ({
   const reactFlowInstance = useReactFlow();
   const navigate = useNavigate();
   const theme = useTheme();
+  
+  // Zone state management
+  const [expandedZones, setExpandedZones] = useState(new Set());
+  const [highlightedZone, setHighlightedZone] = useState(null);
 
   useEffect(() => {
     if (transformedNodes) {
@@ -147,6 +153,48 @@ const RelationshipMapperContent = ({
   const onFitView = useCallback(() => reactFlowInstance.fitView({ padding: 0.2, duration: 300 }), [reactFlowInstance]);
   const onZoomIn = useCallback(() => reactFlowInstance.zoomIn({ duration: 300 }), [reactFlowInstance]);
   const onZoomOut = useCallback(() => reactFlowInstance.zoomOut({ duration: 300 }), [reactFlowInstance]);
+  
+  // Zone interaction handlers
+  const toggleZone = useCallback((zoneId) => {
+    setExpandedZones(prev => {
+      const next = new Set(prev);
+      if (next.has(zoneId)) {
+        next.delete(zoneId);
+        // Expand nodes in zone
+        setNodes(nodes => nodes.map(node => {
+          const zone = zones.get(zoneId);
+          if (zone?.members.has(node.id)) {
+            return { ...node, hidden: false };
+          }
+          return node;
+        }));
+      } else {
+        next.add(zoneId);
+        // Collapse non-primary nodes in zone
+        setNodes(nodes => nodes.map(node => {
+          const zone = zones.get(zoneId);
+          if (zone?.members.has(node.id) && !node.data?.isCenter) {
+            // Keep the main node visible
+            const isPrimary = 
+              (zone.type === 'puzzle' && node.data?.type === 'Puzzle') ||
+              (zone.type === 'container' && zones.get(zoneId)?.members.values().next().value === node.id);
+            
+            return { ...node, hidden: !isPrimary };
+          }
+          return node;
+        }));
+      }
+      return next;
+    });
+  }, [zones]);
+  
+  const onZoneHover = useCallback((zoneId, isEntering) => {
+    if (isEntering) {
+      setHighlightedZone(zoneId);
+    } else {
+      setHighlightedZone(null);
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -241,6 +289,13 @@ const RelationshipMapperContent = ({
             panOnScroll
             selectionOnDrag
           >
+            <ZoneLayer 
+              zones={zones}
+              expandedZones={expandedZones}
+              highlightedZone={highlightedZone}
+              onToggleZone={toggleZone}
+              onZoneHover={onZoneHover}
+            />
             <Background color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} gap={24} size={1.2} variant="dots" />
             <Controls showInteractive={false} position="bottom-left" />
             <MiniMap nodeColor={(n) => n.data?.isCenter ? theme.palette.primary.main : (theme.palette.text.secondary)} style={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }} maskColor={theme.palette.mode === 'dark' ? 'rgba(40,40,40,0.7)' : 'rgba(245,245,245,0.7)'}/>
@@ -340,6 +395,37 @@ const RelationshipMapperContent = ({
               {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'}
             </Button>
           </Tooltip>
+          
+          {zones && zones.size > 0 && (
+            <>
+              <Divider sx={{my:1}}/>
+              <Typography variant="caption" display="block" gutterBottom>
+                Visual Zones ({zones.size})
+              </Typography>
+              <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1.5, maxHeight: 150, overflowY: 'auto'}}>
+                {Array.from(zones.entries()).map(([zoneId, zone]) => (
+                  <Chip
+                    key={zoneId}
+                    label={`${zone.title} (${zone.members.size})`}
+                    size="small"
+                    onClick={() => toggleZone(zoneId)}
+                    onMouseEnter={() => onZoneHover(zoneId, true)}
+                    onMouseLeave={() => onZoneHover(zoneId, false)}
+                    color={expandedZones.has(zoneId) ? "primary" : "default"}
+                    variant={expandedZones.has(zoneId) ? "filled" : "outlined"}
+                    sx={{
+                      justifyContent: 'flex-start',
+                      '& .MuiChip-label': {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'block'
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+            </>
+          )}
         </Box>
       </Box>
     </Paper>

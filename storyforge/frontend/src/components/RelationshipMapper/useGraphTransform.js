@@ -4,6 +4,153 @@ import { getDagreLayout } from './layoutUtils';
 import filterGraph from './filterGraph';
 import { MarkerType } from '@xyflow/react';
 
+// Zone detection function
+function detectNarrativeZones(nodes, edges, entityId, entityType) {
+  const zones = new Map();
+  
+  // Helper to ensure zone exists
+  const ensureZone = (id, type, title) => {
+    if (!zones.has(id)) {
+      zones.set(id, {
+        id,
+        type,
+        title,
+        members: new Set(),
+        bounds: null
+      });
+    }
+    return zones.get(id);
+  };
+  
+  // 1. Detect puzzle zones (inputs/outputs grouped with puzzle)
+  nodes.forEach(node => {
+    if (node.data?.type === 'Puzzle') {
+      const zone = ensureZone(
+        `puzzle-${node.id}`,
+        'puzzle',
+        `🧩 ${node.data.label || 'Puzzle'}`
+      );
+      zone.members.add(node.id);
+      
+      // Add required elements
+      edges.forEach(edge => {
+        if (edge.target === node.id && edge.data?.shortLabel === 'Required For') {
+          zone.members.add(edge.source);
+        }
+        if (edge.source === node.id && edge.data?.shortLabel === 'Rewards') {
+          zone.members.add(edge.target);
+        }
+      });
+    }
+  });
+  
+  // 2. Detect container zones
+  edges.forEach(edge => {
+    if (edge.data?.shortLabel === 'Contains') {
+      const containerNode = nodes.find(n => n.id === edge.source);
+      if (containerNode) {
+        const zone = ensureZone(
+          `container-${edge.source}`,
+          'container',
+          `📦 ${containerNode.data?.label || 'Container'}`
+        );
+        zone.members.add(edge.source);
+        zone.members.add(edge.target);
+      }
+    }
+  });
+  
+  // 3. For character views, detect journey stages
+  if (entityType === 'Character') {
+    // Starting points (owned puzzles/elements)
+    const startZone = ensureZone(
+      `journey-start-${entityId}`,
+      'journey',
+      '🚀 Starting Items'
+    );
+    
+    nodes.forEach(node => {
+      if (node.data?.properties?.ownerId === entityId) {
+        startZone.members.add(node.id);
+      }
+    });
+    
+    // Collaboration points
+    const collabZone = ensureZone(
+      `journey-collab-${entityId}`,
+      'journey',
+      '🤝 Collaborations'
+    );
+    
+    // Find elements this character needs from others
+    edges.forEach(edge => {
+      if (edge.data?.shortLabel === 'Required For') {
+        const puzzle = nodes.find(n => n.id === edge.target);
+        const element = nodes.find(n => n.id === edge.source);
+        
+        if (puzzle?.data?.properties?.ownerId === entityId && 
+            element?.data?.properties?.ownerId && 
+            element.data.properties.ownerId !== entityId) {
+          collabZone.members.add(element.id);
+        }
+      }
+    });
+  }
+  
+  // 4. Detect narrative thread zones
+  const narrativeThreads = new Map();
+  nodes.forEach(node => {
+    const threads = node.data?.properties?.narrativeThreads || [];
+    threads.forEach(thread => {
+      if (!narrativeThreads.has(thread)) {
+        narrativeThreads.set(thread, new Set());
+      }
+      narrativeThreads.get(thread).add(node.id);
+    });
+  });
+  
+  // Only create zones for threads with multiple members
+  narrativeThreads.forEach((members, thread) => {
+    if (members.size > 2) {
+      const zone = ensureZone(
+        `narrative-${thread.replace(/\s+/g, '-').toLowerCase()}`,
+        'narrative',
+        `📖 ${thread}`
+      );
+      members.forEach(id => zone.members.add(id));
+    }
+  });
+  
+  return zones;
+}
+
+// Function to calculate zone bounds
+function calculateZoneBounds(nodes, zoneMembers) {
+  const members = nodes.filter(n => zoneMembers.has(n.id));
+  if (members.length === 0) return null;
+  
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  members.forEach(node => {
+    const x = node.position?.x || 0;
+    const y = node.position?.y || 0;
+    const width = node.style?.width || 170;
+    const height = node.style?.height || 60;
+    
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+  
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  };
+}
+
 const edgeStyles = {
   dependency: { stroke: '#f57c00', strokeWidth: 2.5, animated: true },
   containment: { stroke: '#03a9f4', strokeWidth: 1.5, strokeDasharray: '6, 4' },
@@ -83,7 +230,7 @@ export default function useGraphTransform({
   layoutOptions = {},
   isFullScreenForLogging, // ADDED FOR DEBUGGING
 }) {
-  const { nodes, edges, error } = useMemo(() => {
+  const { nodes, edges, zones, error } = useMemo(() => {
     // ADDED FOR DEBUGGING: General layout calculation log
     console.log(`[useGraphTransform DEBUG] Recalculating layout. Is Fullscreen: ${isFullScreenForLogging}. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}`);
     console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
@@ -186,10 +333,18 @@ export default function useGraphTransform({
       });
       // console.log('[useGraphTransform] parentNode mapping complete. Final nodes:', finalReactFlowNodes?.length); // Original log
 
-      return { nodes: finalReactFlowNodes, edges: layoutedEdges, error: null };
+      // Detect zones after layout
+      const zones = detectNarrativeZones(finalNodesForLayout, filteredEdges, entityId, entityType);
+      
+      // Calculate zone bounds
+      zones.forEach((zone, zoneId) => {
+        zone.bounds = calculateZoneBounds(layoutedNodes, zone.members);
+      });
+      
+      return { nodes: finalReactFlowNodes, edges: layoutedEdges, zones, error: null };
     } catch (err) {
       console.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
-      return { nodes: [], edges: [], error: err };
+      return { nodes: [], edges: [], zones: new Map(), error: err };
     }
   }, [
     entityType, 
@@ -205,5 +360,5 @@ export default function useGraphTransform({
     isFullScreenForLogging, // ADDED FOR DEBUGGING
   ]);
 
-  return { nodes, edges, error };
+  return { nodes, edges, zones, error };
 }
