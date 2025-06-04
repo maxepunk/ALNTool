@@ -39,9 +39,22 @@ const columns = [
       />
     ) : null
   },
-  { id: 'logline', label: 'Logline', sortable: true, width: '35%' },
   { 
-    id: 'ownedElements', label: 'Items', sortable: false, // Sorting by array length can be complex
+    id: 'properties.actFocus', // Assuming actFocus is nested under properties
+    label: 'Act Focus',
+    sortable: true,
+    width: '10%',
+    format: (value) => value ? (
+      <Chip
+        size="small"
+        label={value}
+        color={value === 'Act 1' ? 'warning' : value === 'Act 2' ? 'info' : value === 'Act 3' ? 'secondary' : 'default'}
+      />
+    ) : <Typography variant="caption" color="textSecondary">N/A</Typography>
+  },
+  { id: 'logline', label: 'Logline', sortable: true, width: '30%' }, // Adjusted width slightly
+  {
+    id: 'ownedElements', label: 'Items', sortable: false,
     format: (value) => value?.length || 0, 
     align: 'center', width: '5%'
   },

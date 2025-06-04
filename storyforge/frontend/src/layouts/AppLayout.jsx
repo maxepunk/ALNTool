@@ -36,6 +36,7 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import SearchIcon from '@mui/icons-material/Search';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'; // Import chosen icon
 import { Link as RouterLink } from 'react-router-dom';
 import { api } from '../services/api';
 
@@ -47,6 +48,7 @@ const navItems = [
   { text: 'Timelines', icon: <TimelineIcon />, path: '/timelines' },
   { text: 'Puzzles', icon: <ExtensionIcon />, path: '/puzzles' },
   { text: 'Elements', icon: <InventoryIcon />, path: '/elements' },
+  { text: 'Memory Economy', icon: <MonetizationOnIcon />, path: '/memory-economy' }, // New nav item
 ];
 
 const getIconForType = (type) => {

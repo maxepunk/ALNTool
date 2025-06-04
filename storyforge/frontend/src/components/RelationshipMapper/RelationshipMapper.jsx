@@ -31,9 +31,12 @@ import {
   // ListItemIcon, // No longer used for layout toggles
   // ListItemText, // No longer used for layout toggles
   Slider,
-  // ToggleButtonGroup, // No longer used for layout selection
-  // ToggleButton, // No longer used for layout selection
   Snackbar,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  ListSubheader, // For "Select All" / "Deselect All" in theme potentially
 } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
@@ -77,23 +80,26 @@ const RelationshipMapperContent = ({
   const ui = useRelationshipMapperUIState({ entityId });
   const layoutManager = useLayoutManager(); // Simplified call, no initialLayout needed
 
-  console.log('RelationshipMapper GraphData:', graphData);
-  console.log('EntityType:', entityType);
+  // console.log('RelationshipMapper GraphData:', graphData); // Keep for debugging if needed
+  // console.log('EntityType:', entityType); // Keep for debugging if needed
 
   const { nodes: transformedNodes, edges: transformedEdges, error: graphError } = useGraphTransform({
     entityType,
     entityId,
     entityName,
-    // rawData: relationshipData, // Pass graphData directly or ensure it contains all necessary info
-    graphData, // Assuming graphData from BFF is the sole source now
+    graphData,
     viewMode: ui.viewMode,
     depth: ui.depth,
     nodeFilters: ui.nodeFilters,
     edgeFilters: ui.edgeFilters,
+    // Pass new filters to useGraphTransform - will be used in next subtask
+    actFocusFilter: ui.actFocusFilter,
+    themeFilters: ui.themeFilters,
+    memorySetFilter: ui.memorySetFilter,
     suppressLowSignal: !ui.showLowSignal,
-    layoutType: layoutManager.layoutType, // Will be 'dagre'
-    layoutOptions: layoutManager.options, // Standardized Dagre options
-    isFullScreenForLogging: ui.isFullScreen, // ADDED FOR DEBUGGING
+    layoutType: layoutManager.layoutType,
+    layoutOptions: layoutManager.options,
+    isFullScreenForLogging: ui.isFullScreen,
   });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -101,6 +107,44 @@ const RelationshipMapperContent = ({
   const reactFlowInstance = useReactFlow();
   const navigate = useNavigate();
   const theme = useTheme();
+
+  // Effect to extract available themes and memory sets from graphData.nodes
+  useEffect(() => {
+    if (graphData?.nodes) {
+      const themes = new Set();
+      const memorySets = new Set();
+      graphData.nodes.forEach(node => {
+        if (node.properties?.themes) {
+          node.properties.themes.forEach(theme => themes.add(theme));
+        }
+        if (node.properties?.memorySets) {
+          node.properties.memorySets.forEach(set => memorySets.add(set));
+        }
+      });
+
+      const sortedThemes = Array.from(themes).sort();
+      ui.setAvailableThemes(sortedThemes);
+
+      // Initialize themeFilters: set all available themes to true by default
+      // This should only run once when themes are first populated, or if sortedThemes array identity changes.
+      if (sortedThemes.length > 0 && Object.keys(ui.themeFilters).length === 0) { // Check if not already initialized
+        const initialThemeFilters = {};
+        sortedThemes.forEach(theme => {
+          initialThemeFilters[themeName] = true; // Default to all selected
+        });
+        ui.setThemeFilters(initialThemeFilters);
+      } else if (sortedThemes.length === 0 && Object.keys(ui.themeFilters).length > 0) {
+        // Clear filters if no themes are available (e.g. graphData cleared)
+        ui.setThemeFilters({});
+      }
+
+
+      ui.setAvailableMemorySets(Array.from(memorySets).sort());
+    }
+  // ui.setThemeFilters is a dependency for initialization logic, ensure it's stable or handle carefully.
+  // Adding ui.themeFilters to dependency array to correctly re-evaluate initialization if it changes externally.
+  }, [graphData?.nodes, ui.setAvailableThemes, ui.setAvailableMemorySets, ui.setThemeFilters, ui.themeFilters]);
+
 
   useEffect(() => {
     if (transformedNodes) {
@@ -117,7 +161,7 @@ const RelationshipMapperContent = ({
   const nodeTypes = useMemo(() => ({ 
     entityNode: (props) => <EntityNode {...props} centralEntityType={entityType} isFullScreen={ui.isFullScreen} />,
     secondaryNode: SecondaryEntityNode 
-  }), [entityType, ui.isFullScreen]); // Add dependencies
+  }), [entityType, ui.isFullScreen]);
   const edgeTypes = useMemo(() => ({ custom: CustomEdge }), []);
 
   useEffect(() => {
@@ -127,7 +171,7 @@ const RelationshipMapperContent = ({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [nodes, layoutManager.layoutType, reactFlowInstance, ui.isFullScreen]); // layoutType dependency remains for now, but will be fixed
+  }, [nodes, layoutManager.layoutType, reactFlowInstance, ui.isFullScreen]);
 
   const onNodeClick = useCallback((event, node) => {
     if (node.data?.route && node.id !== entityId) {
@@ -327,6 +371,63 @@ const RelationshipMapperContent = ({
           </Box>
           <Divider sx={{my:1}}/>
           
+          {/* Act Focus Filter */}
+          <Typography variant="caption" display="block" gutterBottom>Filter by Act Focus</Typography>
+          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+            <InputLabel id="act-focus-filter-label">Act Focus</InputLabel>
+            <Select
+              labelId="act-focus-filter-label"
+              value={ui.actFocusFilter}
+              label="Act Focus"
+              onChange={(e) => ui.setActFocusFilter(e.target.value)}
+            >
+              <MenuItem value="All">All Acts</MenuItem>
+              <MenuItem value="Act 1">Act 1</MenuItem>
+              <MenuItem value="Act 2">Act 2</MenuItem>
+              <MenuItem value="Act 3">Act 3</MenuItem>
+              {/* Add more acts if needed */}
+            </Select>
+          </FormControl>
+          <Divider sx={{my:1}}/>
+
+          {/* Theme Filters */}
+          <Typography variant="caption" display="block" gutterBottom>Filter by Theme</Typography>
+          <Box sx={{display: 'flex', gap: 0.5, mb: 0.5}}>
+            <Button size="small" onClick={() => ui.setAllThemeFilters(true)} sx={{fontSize: '0.7rem', mr:0.5}}>All</Button>
+            <Button size="small" onClick={() => ui.setAllThemeFilters(false)} sx={{fontSize: '0.7rem'}}>None</Button>
+          </Box>
+          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
+            {ui.availableThemes.map((themeName) => (
+              <Chip
+                key={themeName}
+                label={themeName}
+                onClick={() => ui.toggleThemeFilter(themeName)}
+                size="small"
+                color={ui.themeFilters[themeName] ? "info" : "default"}
+                variant={ui.themeFilters[themeName] ? "filled" : "outlined"}
+              />
+            ))}
+          </Box>
+          <Divider sx={{my:1}}/>
+
+          {/* Memory Set Filter */}
+          <Typography variant="caption" display="block" gutterBottom>Highlight Memory Set</Typography>
+          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+            <InputLabel id="memory-set-filter-label">Memory Set</InputLabel>
+            <Select
+              labelId="memory-set-filter-label"
+              value={ui.memorySetFilter}
+              label="Memory Set"
+              onChange={(e) => ui.setMemorySetFilter(e.target.value)}
+            >
+              <MenuItem value="All">All Sets</MenuItem>
+              {ui.availableMemorySets.map((setName) => (
+                <MenuItem key={setName} value={setName}>{setName}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Divider sx={{my:1}}/>
+
           <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
           <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
             {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (

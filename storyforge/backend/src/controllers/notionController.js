@@ -73,7 +73,7 @@ const getCharacterById = catchAsync(async (req, res) => {
 const getCharacterGraph = catchAsync(async (req, res) => {
   const { id } = req.params;
   const depth = parseInt(req.query.depth || '1', 10);
-  const cacheKey = makeCacheKey('graph-character-v3.1', { id, depth });
+  const cacheKey = makeCacheKey('graph-character-v3.2', { id, depth }); // Cache key updated
   const cached = notionCache.get(cacheKey);
   if (cached) {
     console.log(`[CACHE HIT] ${cacheKey}`);
@@ -485,7 +485,7 @@ function setCacheHeaders(res, seconds = 300) {
 const getElementGraph = catchAsync(async (req, res) => {
   const { id } = req.params;
   const depth = parseInt(req.query.depth || '1', 10);
-  const cacheKey = makeCacheKey('graph-element-v3.1', { id, depth });
+  const cacheKey = makeCacheKey('graph-element-v3.2', { id, depth }); // Cache key updated
   const cached = notionCache.get(cacheKey);
   if (cached) {
     console.log(`[CACHE HIT] ${cacheKey}`);
@@ -639,7 +639,7 @@ const getElementGraph = catchAsync(async (req, res) => {
 const getPuzzleGraph = catchAsync(async (req, res) => {
   const { id } = req.params;
   const depth = parseInt(req.query.depth || '1', 10);
-  const cacheKey = makeCacheKey('graph-puzzle-v3.1', { id, depth });
+  const cacheKey = makeCacheKey('graph-puzzle-v3.2', { id, depth }); // Cache key updated
   const cached = notionCache.get(cacheKey);
   if (cached) {
     console.log(`[CACHE HIT] ${cacheKey}`);
@@ -788,7 +788,7 @@ const getPuzzleGraph = catchAsync(async (req, res) => {
 const getTimelineGraph = catchAsync(async (req, res) => {
   const { id } = req.params;
   const depth = parseInt(req.query.depth || '1', 10);
-  const cacheKey = makeCacheKey('graph-timeline-v3.1', { id, depth });
+  const cacheKey = makeCacheKey('graph-timeline-v3.2', { id, depth }); // Cache key updated
   const cached = notionCache.get(cacheKey);
   if (cached) {
     console.log(`[CACHE HIT] ${cacheKey}`);
@@ -977,6 +977,12 @@ function _createGraphNodeInternal(entityData, entityType, nodesArray, addedNodeI
       // Allow creation with just common props if type is unknown but data is valid
       break;
   }
+
+  // Add new universal properties if they exist on entityData
+  if (entityData.actFocus) specificProps.actFocus = entityData.actFocus;
+  if (entityData.themes && entityData.themes.length > 0) specificProps.themes = entityData.themes;
+  if (entityData.memorySets && entityData.memorySets.length > 0) specificProps.memorySets = entityData.memorySets;
+
   const finalNodeData = { ...commonProps, ...specificProps };
   
   // Check if this node ID was already added, perhaps as a different type or less complete version

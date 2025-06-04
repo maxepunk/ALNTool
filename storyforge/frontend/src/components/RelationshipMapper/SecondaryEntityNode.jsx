@@ -35,11 +35,12 @@ const getEntityPresentation = (type) => {
 
 // A smaller, simpler node for second-level connections
 const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType }) => {
-  const { id, type, indirect = false } = data;
+  const { id, type, indirect = false, properties } = data; // Assume properties might be passed for actFocus
   const nodeLabel = data.name || data.label || data.type || id || 'Unknown';
   const { color: entityColor, icon: entityIcon } = getEntityPresentation(type);
   
   const nodeAriaLabel = `Secondary Entity: ${type}: ${nodeLabel}`;
+  const actFocus = data.actFocus || properties?.actFocus; // Check both data and data.properties
 
   // Simple tooltip content for secondary nodes
   const tooltipContent = (
@@ -50,7 +51,6 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
       <Typography variant="caption" display="block" sx={{ whiteSpace: 'normal' }}>
         <Box component="span" sx={{ fontWeight: 'bold' }}>Type:</Box> {type}
       </Typography>
-      {/* Optionally, add one or two more key fields from data if available and simple to display */}
       {data.tier && (
         <Typography variant="caption" display="block" sx={{ whiteSpace: 'normal' }}>
           <Box component="span" sx={{ fontWeight: 'bold' }}>Tier:</Box> {data.tier}
@@ -66,8 +66,44 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
           <Box component="span" sx={{ fontWeight: 'bold' }}>Timing:</Box> {data.timing}
         </Typography>
       )}
+      {actFocus && (
+        <Typography variant="caption" display="block" sx={{ whiteSpace: 'normal' }}>
+          <Box component="span" sx={{ fontWeight: 'bold' }}>Act Focus:</Box> {actFocus}
+        </Typography>
+      )}
     </Box>
   );
+
+  let subtleTierStyle = {};
+  if (type === 'Character' && data.tier) {
+    switch (data.tier) {
+      case 'Core':
+        subtleTierStyle = { borderColor: `${entityColor}CC`, borderWidth: '1px' }; // Slightly more prominent border
+        break;
+      case 'Tertiary':
+        subtleTierStyle = { borderColor: `${entityColor}66`, opacity: indirect ? 0.6 : 0.85 }; // More transparent border
+        break;
+      default: // Secondary
+        subtleTierStyle = { borderColor: selected ? entityColor : `${entityColor}88` }; // Default as is
+        break;
+    }
+  } else {
+    subtleTierStyle = { borderColor: selected ? entityColor : `${entityColor}88` }; // Default for non-characters
+  }
+
+  const actFocusColorMap = {
+    1: 'rgba(220, 50, 50, 0.7)',
+    'Act1': 'rgba(220, 50, 50, 0.7)',
+    'act1': 'rgba(220, 50, 50, 0.7)',
+    2: 'rgba(50, 200, 50, 0.7)',
+    'Act2': 'rgba(50, 200, 50, 0.7)',
+    'act2': 'rgba(50, 200, 50, 0.7)',
+    3: 'rgba(50, 50, 220, 0.7)',
+    'Act3': 'rgba(50, 50, 220, 0.7)',
+    'act3': 'rgba(50, 50, 220, 0.7)',
+  };
+  const actFocusDisplayColor = actFocus ? actFocusColorMap[String(actFocus)] || 'rgba(128, 128, 128, 0.5)' : null;
+
 
   return (
     // Main Tooltip wrapping the Paper for SecondaryEntityNode
@@ -79,13 +115,16 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
           borderRadius: 1,
           width: 120, 
           minHeight: 32,
-          border: `1px solid ${selected ? entityColor : entityColor + '88'}`,
+          borderWidth: '1px', // Base border width
+          borderStyle: 'solid',
+          ...subtleTierStyle, // Apply tier-specific border styles or default
           bgcolor: 'rgba(25, 25, 25, 0.8)',
-          opacity: indirect ? 0.7 : 1,
+          opacity: indirect && !subtleTierStyle.opacity ? 0.7 : (subtleTierStyle.opacity || 1), // Respect tier opacity if set
           transition: 'all 0.15s ease-in-out',
           transform: selected ? 'scale(1.05)' : 'scale(1)',
+          position: 'relative', // For positioning Act Focus dot
           '&:hover': {
-            borderColor: entityColor,
+            borderColor: entityColor, // Full color on hover
             opacity: 1,
             transform: 'scale(1.03)',
           },
@@ -98,6 +137,24 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
         role="button"
         tabIndex={0}
       >
+        {actFocusDisplayColor && (
+          <Tooltip title={`Act Focus: ${actFocus}`} placement="top" arrow>
+            <Box
+              sx={{
+                width: 5,
+                height: 5,
+                bgcolor: actFocusDisplayColor,
+                borderRadius: '50%',
+                position: 'absolute',
+                top: 2,
+                left: 2,
+                border: '0.5px solid rgba(255,255,255,0.5)',
+                boxShadow: `0 0 2px 0.5px ${actFocusDisplayColor}88`,
+                zIndex: 1,
+              }}
+            />
+          </Tooltip>
+        )}
         <Handle 
           type="target" 
           position={Position.Top} 
@@ -105,7 +162,7 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
           style={{ background: entityColor, width: 5, height: 5, opacity: 0.7 }} 
         />
         
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pl: actFocusDisplayColor ? 1 : 0 /* Adjust padding if dot is present */ }}>
           <Box sx={{ mr: 0.5, color: entityColor, fontSize: '0.9rem', lineHeight: 1 }}>
             {React.cloneElement(entityIcon, { fontSize: 'inherit' })}
           </Box>
@@ -145,9 +202,13 @@ SecondaryEntityNode.propTypes = {
     type: PropTypes.string.isRequired,
     indirect: PropTypes.bool,
     route: PropTypes.string,
-    tier: PropTypes.string,
-    status: PropTypes.string,
-    timing: PropTypes.string,
+    tier: PropTypes.string, // Already present
+    status: PropTypes.string, // Already present
+    timing: PropTypes.string, // Already present
+    actFocus: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), // Added for Act Focus
+    properties: PropTypes.shape({ // If actFocus is nested under properties
+        actFocus: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    }),
   }).isRequired,
   isConnectable: PropTypes.bool,
   selected: PropTypes.bool,

@@ -21,7 +21,7 @@ export default function CustomEdge({
   data, // Should now contain { ..., contextualLabel: "Source Name (Type) Label Target Name (Type)" }
 }) {
   const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [edgePath, labelX, labelY] = getBezierPath({ // labelX, labelY are provided by React Flow for optimal label positioning
     sourceX,
     sourceY,
     sourcePosition,
@@ -30,65 +30,76 @@ export default function CustomEdge({
     targetPosition,
   });
 
-  // Calculate label position (e.g., 70% along the path)
-  const t = 0.7; // Parameter for position along the Bezier curve (0=source, 1=target)
-  const B0 = (s) => (1 - s) ** 3;
-  const B1 = (s) => 3 * s * (1 - s) ** 2;
-  const B2 = (s) => 3 * s ** 2 * (1 - s);
-  const B3 = (s) => s ** 3;
-
-  // Approximate point for label for a simple Bezier (cubic)
-  // More accurate calculation would involve curve length parametrization
-  const pathLabelX = B0(t) * sourceX + B1(t) * (sourceX) + B2(t) * (targetX) + B3(t) * targetX; 
-  const pathLabelY = B0(t) * sourceY + B1(t) * (sourceY) + B2(t) * (targetY) + B3(t) * targetY;
-  // This simple interpolation is not perfect for Bezier, let's use React Flow's provided labelX, labelY for now and adjust later if needed.
-  // For Bezier, labelX, labelY from getBezierPath is the midpoint of the quadratic control point, which works okay.
-
-  // For a simpler approach, let's calculate a point slightly offset from the middle for the label
-  // Calculate midpoint
-  const midX = (sourceX + targetX) / 2;
-  const midY = (sourceY + targetY) / 2;
-  // Calculate vector from source to target
-  const dX = targetX - sourceX;
-  const dY = targetY - sourceY;
-  // Position label 70% along this vector
-  const customLabelX = sourceX + dX * 0.7;
-  const customLabelY = sourceY + dY * 0.7;
-
   // Determine the text/tooltip for the edge label
-  const edgeDisplayLabel = data?.shortLabel || label || ''; // New way: Prioritize shortLabel, fallback to original label, then empty string
-  const edgeTooltip = data?.contextualLabel || label || 'Edge Connection'; // Use rich contextual label if available, fallback to original label
+  const edgeDisplayLabel = data?.shortLabel || label || '';
+  const edgeTooltip = data?.contextualLabel || label || 'Edge Connection';
 
-  // *** Add this log to inspect edge data and tooltip content ***
-  // if (id) { // Log only if id is present, to reduce noise from potential temp edges
-  //   console.log(`CustomEdge (ID: ${id}, Label: ${label}): data:`, data, `edgeTooltip:`, edgeTooltip);
-  // }
-  // Let's log more consistently for now during this specific verification phase:
-  console.log(
-    `CustomEdge Rendered - ID: ${id}, SimpleLabel (props.label): '${label}', EdgeDisplayLabel: '${edgeDisplayLabel}', EdgeTooltip: '${edgeTooltip}'`, 
-    {
-      propsLabel: label,
-      propsData: data,
-      // computedEdgeDisplayLabel: edgeDisplayLabel, // Redundant with above
-      // computedEdgeTooltip: edgeTooltip, // Redundant with above
+  // Styling an Kante basierend auf data.type (edgeCategory) und data.shortLabel (für "STRONG")
+  // 1. Basis-Style von Props (gesetzt in transformToGraphElements.js)
+  let finalEdgeStyle = { ...style };
+
+  // 2. StrokeDasharray basierend auf data.type (edgeCategory)
+  // Diese Kategorien werden in `transformToGraphElements.js` zugewiesen
+  const edgeCategory = data?.type;
+  let strokeDasharray;
+  switch (edgeCategory) {
+    case 'dependency': // z.B. Requires, Unlocks
+      strokeDasharray = undefined; // Solid line
+      break;
+    case 'containment': // z.B. Contains
+      strokeDasharray = '3, 3'; // Dotted
+      break;
+    case 'character': // Charakter-spezifische Verbindungen
+      strokeDasharray = '5, 5'; // Lighter dash
+      break;
+    case 'timeline': // Timeline-spezifische Verbindungen
+      strokeDasharray = '6, 4'; // Different dash
+      break;
+    case 'association': // Allgemeine Assoziationen
+       strokeDasharray = '4, 4';
+       break;
+    default: // Fallback für 'default' oder nicht definierte Typen
+      strokeDasharray = '2, 3'; // Subtle dash
+      break;
+  }
+  if (strokeDasharray) {
+    finalEdgeStyle.strokeDasharray = strokeDasharray;
+  }
+
+  // 3. Anpassungen für "STRONG" Beziehungen (basierend auf data.shortLabel)
+  // Die STRONG Menge wird hier definiert. Sie sollte kritische Bezeichnungen enthalten.
+  const STRONG_RELATIONSHIPS = new Set(["Requires", "Unlocks", "Required For", "Rewards", "Reward From", "Locked In", "Has Sub-Puzzle", "Sub-Puzzle Of"]);
+  // "Dependency" als shortLabel ist unwahrscheinlich, aber data.type === 'dependency' wird oben behandelt.
+
+  const isStrongRelationship = STRONG_RELATIONSHIPS.has(data?.shortLabel);
+
+  if (isStrongRelationship) {
+    finalEdgeStyle.opacity = style.opacity !== undefined ? Math.min(1, style.opacity * 1.2) : 0.95; // Slightly more opaque or default to 0.95
+    // Potenzielle Erhöhung der Strichstärke für starke Beziehungen, falls gewünscht.
+    // finalEdgeStyle.strokeWidth = (style.strokeWidth || 1) * 1.2; // Beispiel: 20% dicker
+    // Sei vorsichtig, dies nicht zu übertreiben, da die Basisbreite bereits variiert.
+  } else {
+    // Standard-Opazität für nicht-starke Beziehungen, kann je nach Kategorie angepasst werden
+    if (edgeCategory === 'dependency' || edgeCategory === 'containment') {
+      finalEdgeStyle.opacity = style.opacity !== undefined ? style.opacity : 0.8;
+    } else {
+      finalEdgeStyle.opacity = style.opacity !== undefined ? style.opacity : 0.65; // Weniger wichtige Linien etwas transparenter
     }
-  );
-  // ***********************************************************
+  }
+  // Ensure strokeWidth is present, defaulting if necessary.
+  finalEdgeStyle.strokeWidth = finalEdgeStyle.strokeWidth || 1;
 
-  // Determine stroke styling based on relationship strength
-  const STRONG = new Set(["Requires", "Required For", "Rewards", "Reward From", "Unlocks", "Locked In", "Dependency"]);
-  const edgeStroke = STRONG.has(edgeDisplayLabel) ? (style.stroke || '#90caf9') : (style.stroke || '#90caf9');
-  const edgeOpacity = STRONG.has(edgeDisplayLabel) ? 0.85 : 0.4;
-  const edgeWidth = STRONG.has(edgeDisplayLabel) ? 2 : 1;
 
-  const mergedPathStyle = { ...style, stroke: edgeStroke, strokeWidth: edgeWidth, opacity: edgeOpacity };
+  // Logging der finalen Style-Entscheidungen (optional, für Debugging)
+  // console.log(`CustomEdge (ID: ${id}) Style Decision:`,
+  //   { edgeCategory, shortLabel: data?.shortLabel, isStrongRelationship, initialStyle: style, finalEdgeStyle });
 
   return (
     <>
       <path
         id={id}
-        style={mergedPathStyle}
-        className={`react-flow__edge-path ${animated ? 'animated' : ''}`}
+        style={finalEdgeStyle} // Use the refined style object
+        className={`react-flow__edge-path ${animated || style.animated ? 'animated' : ''}`} // Respect animated prop from style or direct prop
         d={edgePath}
         markerEnd={markerEnd}
       />
@@ -98,13 +109,13 @@ export default function CustomEdge({
             <Box
               style={{
                 position: 'absolute',
-                transform: `translate(-50%, -50%) translate(${customLabelX}px,${customLabelY}px)`,
+                transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, // Use labelX, labelY from getBezierPath
                 pointerEvents: 'all',
-                ...(labelBgStyle || {}),
+                ...(labelBgStyle || {}), // Background style from props
                 padding: `${labelBgPadding?.[1] || 5}px ${labelBgPadding?.[0] || 3}px`,
                 borderRadius: labelBgBorderRadius || 3,
               }}
-              className="nodrag nopan"
+              className="nodrag nopan" // Standard React Flow classes to prevent dragging of label
             >
               <Typography sx={{...(labelStyle || {}), userSelect: 'none'}} variant="caption">
                 {edgeDisplayLabel}
@@ -115,4 +126,4 @@ export default function CustomEdge({
       )}
     </>
   );
-} 
+}

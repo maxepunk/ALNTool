@@ -37,6 +37,14 @@ export default function useRelationshipMapperUIState({
     severity: 'info',
   });
 
+  // New state for advanced filters
+  const [actFocusFilter, setActFocusFilter] = useState("All"); // "All", "Act 1", "Act 2", etc.
+  const [themeFilters, setThemeFilters] = useState({}); // e.g., {"Data Privacy": true, "Trust": false}
+  const [memorySetFilter, setMemorySetFilter] = useState("All"); // "All", "Set Name 1", etc.
+  const [availableThemes, setAvailableThemes] = useState([]);
+  const [availableMemorySets, setAvailableMemorySets] = useState([]);
+
+
   // Handlers
   const toggleFullScreen = useCallback(() => setIsFullScreen((v) => !v), []);
   const openFilterMenu = useCallback((event) => setFilterMenuAnchor(event.currentTarget), []);
@@ -47,6 +55,26 @@ export default function useRelationshipMapperUIState({
   const toggleEdgeFilter = useCallback((edgeType) => {
     setEdgeFilters((prev) => ({ ...prev, [edgeType]: !prev[edgeType] }));
   }, []);
+
+  // New filter handlers
+  const toggleThemeFilter = useCallback((themeName) => {
+    setThemeFilters((prev) => ({
+      ...prev,
+      [themeName]: !prev[themeName],
+    }));
+  }, []);
+
+  const setAllThemeFilters = useCallback((isSelected) => {
+    setThemeFilters((prev) => {
+      const newFilters = {};
+      Object.keys(prev).forEach(themeName => {
+        newFilters[themeName] = isSelected;
+      });
+      return newFilters;
+    });
+  }, []);
+
+
   const toggleLowSignal = useCallback(() => setShowLowSignal((v) => !v), []);
   const changeViewMode = useCallback((mode) => {
     setViewMode(mode);
@@ -78,6 +106,12 @@ export default function useRelationshipMapperUIState({
     showLowSignal,
     hoveredElement,
     snackbar,
+    // New advanced filter states
+    actFocusFilter,
+    themeFilters,
+    memorySetFilter,
+    availableThemes,
+    availableMemorySets,
     // Setters
     setIsFullScreen,
     setViewMode,
@@ -89,15 +123,25 @@ export default function useRelationshipMapperUIState({
     setShowLowSignal,
     setHoveredElement,
     setSnackbar,
+    // New advanced filter setters
+    setActFocusFilter,
+    setThemeFilters, // Direct setter for themes if needed, though toggle is primary
+    setMemorySetFilter,
+    setAvailableThemes,
+    setAvailableMemorySets,
     // Handlers
     toggleFullScreen,
     openFilterMenu,
     closeFilterMenu,
     toggleNodeFilter,
     toggleEdgeFilter,
+    // New advanced filter handlers
+    toggleThemeFilter,
+    setAllThemeFilters,
+
     toggleLowSignal,
     changeViewMode,
     handleLayoutChange,
     handleCloseSnackbar,
   };
-} 
+}

@@ -321,6 +321,10 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
       associatedElements: associatedElements.map(page => toIdName(page, 'Name')),
       connections: extractNumber(properties.Connections),
       lastEdited: notionCharacter.last_edited_time,
+      // New properties
+      actFocus: extractSelectByName(properties, 'Act Focus'),
+      themes: extractMultiSelectByName(properties, 'Themes'),
+      memorySets: extractMultiSelectByName(properties, 'Memory Sets'), // Characters might have associated memory sets
     };
   } catch (error) {
     console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);
@@ -364,6 +368,10 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
       memType: extractRichTextByName(properties, 'mem type'),
       notes: extractRichTextByName(properties, 'Notes'),
       lastEdited: notionEvent.last_edited_time,
+      // New properties
+      actFocus: extractSelectByName(properties, 'Act Focus'),
+      themes: extractMultiSelectByName(properties, 'Themes'),
+      // memorySets might not be directly on Timeline events, but associated via Elements
     };
   } catch (error) {
     console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);
@@ -423,6 +431,11 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
       description: extractRichTextByName(properties, 'Description/Solution'),
       narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
       lastEdited: notionPuzzle.last_edited_time,
+      // New properties
+      actFocus: extractSelectByName(properties, 'Act Focus'),
+      themes: extractMultiSelectByName(properties, 'Themes'),
+      // memorySets might be relevant if a puzzle directly involves a set
+      memorySets: extractMultiSelectByName(properties, 'Memory Sets'),
     };
   } catch (error) {
     console.error(`Error mapping puzzle with ID ${notionPuzzle?.id || 'unknown'}:`, error);
@@ -488,6 +501,10 @@ async function mapElementWithNames(notionElement, notionService) {
       contentLink: extractUrlByName(properties, 'Content Link'),
       productionNotes: extractRichTextByName(properties, 'Production/Puzzle Notes'),
       lastEdited: notionElement.last_edited_time,
+      // New properties
+      actFocus: extractSelectByName(properties, 'Act Focus'),
+      themes: extractMultiSelectByName(properties, 'Themes'),
+      memorySets: extractMultiSelectByName(properties, 'Memory Set'), // Primarily for Elements
     };
   } catch (error) {
     console.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);

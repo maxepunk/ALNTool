@@ -12,6 +12,7 @@ import Puzzles from './pages/Puzzles';
 import PuzzleDetail from './pages/PuzzleDetail';
 import Elements from './pages/Elements';
 import ElementDetail from './pages/ElementDetail';
+import MemoryEconomyPage from './pages/MemoryEconomyPage'; // Import MemoryEconomyPage
 import NotFound from './pages/NotFound';
 import { api } from './services/api';
 
@@ -96,6 +97,9 @@ function App() {
         {/* Elements routes */}
         <Route path="/elements" element={<Elements />} />
         <Route path="/elements/:id" element={<ElementDetail />} />
+
+        {/* Memory Economy Page Route */}
+        <Route path="/memory-economy" element={<MemoryEconomyPage />} />
         
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />

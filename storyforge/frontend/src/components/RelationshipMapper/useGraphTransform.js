@@ -82,10 +82,14 @@ export default function useGraphTransform({
   suppressLowSignal = true,
   layoutOptions = {},
   isFullScreenForLogging, // ADDED FOR DEBUGGING
+  // New filter props
+  actFocusFilter = "All",
+  themeFilters = {},
+  memorySetFilter = "All",
 }) {
   const { nodes, edges, error } = useMemo(() => {
     // ADDED FOR DEBUGGING: General layout calculation log
-    console.log(`[useGraphTransform DEBUG] Recalculating layout. Is Fullscreen: ${isFullScreenForLogging}. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}`);
+    console.log(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
     console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
 
 
@@ -144,7 +148,17 @@ export default function useGraphTransform({
       const { nodes: filteredNodes, edges: filteredEdges } = filterGraph(
         nodesWithParentId,
         baseEdges,
-        { centerNodeId: entityId, depth, nodeFilters, edgeFilters, suppressLowSignal }
+        {
+          centerNodeId: entityId,
+          depth,
+          nodeFilters,
+          edgeFilters,
+          suppressLowSignal,
+          // Pass new filters to filterGraph
+          actFocusFilter,
+          themeFilters,
+          memorySetFilter,
+        }
       );
       // console.log('[useGraphTransform] Step 3 (filterGraph) Done. Filtered nodes:', filteredNodes?.length, 'Filtered edges:', filteredEdges?.length); // Original log
 
@@ -203,6 +217,10 @@ export default function useGraphTransform({
     suppressLowSignal, 
     JSON.stringify(layoutOptions),
     isFullScreenForLogging, // ADDED FOR DEBUGGING
+    // Add new filters to dependency array
+    actFocusFilter,
+    JSON.stringify(themeFilters), // Stringify object for stable dependency check
+    memorySetFilter,
   ]);
 
   return { nodes, edges, error };

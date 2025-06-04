@@ -21,6 +21,10 @@ function filterGraph(
     nodeFilters = {},
     edgeFilters = {},
     // suppressLowSignal = true, // SPOC logic that might use this is currently disabled
+    // New filter parameters
+    actFocusFilter = "All",
+    themeFilters = {},
+    memorySetFilter = "All",
   } = {}
 ) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) {
@@ -184,38 +188,60 @@ function filterGraph(
     console.warn(`[filterGraph] Center node ${centerNodeId} for depth filtering not found in the provided nodes. Returning all nodes/edges.`);
   }
 
+  // --- Act Focus Filtering ---
+  if (actFocusFilter && actFocusFilter !== "All" && workingNodeMap.has(centerNodeId)) {
+    workingNodes = workingNodes.filter(n =>
+      n.id === centerNodeId ||
+      (n.data?.properties?.actFocus === actFocusFilter)
+    );
+    workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
+    workingEdges = workingEdges.filter(e => workingNodeMap.has(e.source) && workingNodeMap.has(e.target));
+  }
+
+  // --- Theme Filtering ---
+  // Check if any theme filters are active (at least one theme is true, and not all themes are true if that's a possible state)
+  const activeThemeFilterKeys = Object.keys(themeFilters).filter(key => themeFilters[key]);
+  if (activeThemeFilterKeys.length > 0 && workingNodeMap.has(centerNodeId)) {
+     // If some themes are selected, but not all (implicitly, if some are false)
+     // or if the setup is such that activeThemeFilterKeys.length > 0 means "filter by these"
+    workingNodes = workingNodes.filter(n => {
+      if (n.id === centerNodeId) return true;
+      if (!n.data?.properties?.themes || n.data.properties.themes.length === 0) return false; // Node must have themes
+      return n.data.properties.themes.some(theme => themeFilters[theme]); // Keep if node has at least one selected theme
+    });
+    workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
+    workingEdges = workingEdges.filter(e => workingNodeMap.has(e.source) && workingNodeMap.has(e.target));
+  }
+
+  // --- Memory Set Filtering ---
+  if (memorySetFilter && memorySetFilter !== "All" && workingNodeMap.has(centerNodeId)) {
+    workingNodes = workingNodes.filter(n => {
+      if (n.id === centerNodeId) return true;
+      if (!n.data?.properties?.memorySets || n.data.properties.memorySets.length === 0) return false; // Node must have memory sets
+      return n.data.properties.memorySets.includes(memorySetFilter); // Keep if node includes the selected memory set
+    });
+    workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
+    workingEdges = workingEdges.filter(e => workingNodeMap.has(e.source) && workingNodeMap.has(e.target));
+  }
 
   // --- Node Type Filtering ---
   const activeNodeFilters = Object.keys(nodeFilters).filter((t) => nodeFilters[t]);
   if (activeNodeFilters.length > 0 && activeNodeFilters.length < Object.keys(nodeFilters).length) {
-    // Initial filter based on type or being the center node
-    let tempFilteredNodes = workingNodes.filter((n) => 
-      (n.data.isCenter && workingNodeMap.has(n.id)) || 
-      activeNodeFilters.includes(n.data.type)
-    );
-    
-    // Ensure children of kept, type-valid parents are also kept, even if child's type *would* be filtered (this is debatable UX, but aims to preserve group structure if parent is shown)
-    // This specific part might be too aggressive or counter-intuitive if a type is EXPLICITLY filtered out.
-    // For now, let's simplify: if a node's type is filtered out, it's out. The group will show the parent without that specific child.
-    // The primary goal is that if a child's type IS NOT filtered out, but it might have been pruned by earlier filters, it should be kept if its parent is kept.
-    // The depth filter already handles bringing children in. Node type filter should be respected.
-    
-    // Revised Node Type Filtering:
-    // A node is kept if:
-    // 1. It's the center node.
-    // 2. Its type is in activeNodeFilters.
     workingNodes = workingNodes.filter(n => {
-        if (n.data.isCenter && workingNodeMap.has(n.id)) return true; // Keep center
-        if (activeNodeFilters.includes(n.data.type)) return true; // Keep if type matches
-        return false; // Otherwise, filter out
+        // Always keep the center node if it hasn't been filtered out by previous steps
+        if (n.id === centerNodeId && workingNodeMap.has(n.id)) return true;
+        // For other nodes, check if their type is in the activeNodeFilters
+        // And ensure the node itself hasn't been filtered out by previous steps (actFocus, themes, memorySets)
+        return activeNodeFilters.includes(n.data.type) && workingNodeMap.has(n.id);
     });
-
     // After filtering nodes, update the map and filter edges
     workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
     workingEdges = workingEdges.filter((e) => workingNodeMap.has(e.source) && workingNodeMap.has(e.target));
   }
 
   // --- Edge Type Filtering ---
+  // This section includes logic to remove orphaned nodes and re-add children of kept parents.
+  // This should ideally run after all node filtering steps.
   const activeEdgeFilters = typeof edgeFilters === 'object' && edgeFilters !== null 
     ? Object.keys(edgeFilters).filter((et) => edgeFilters[et])
     : [];
