@@ -163,4 +163,5 @@ apiClient.interceptors.response.use(
   }
 );
 
-export default apiClient; 
+export { apiClient }; // Named export for apiClient
+export default api; // Default export the api object with methods
