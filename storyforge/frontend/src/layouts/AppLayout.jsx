@@ -45,10 +45,10 @@ const drawerWidth = 240;
 const navItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Characters', icon: <PeopleIcon />, path: '/characters' },
-  { text: 'Timelines', icon: <TimelineIcon />, path: '/timelines' },
+  { text: 'Timeline Events', icon: <TimelineIcon />, path: '/timelines' }, // Changed "Timelines" to "Timeline Events"
   { text: 'Puzzles', icon: <ExtensionIcon />, path: '/puzzles' },
   { text: 'Elements', icon: <InventoryIcon />, path: '/elements' },
-  { text: 'Memory Economy', icon: <MonetizationOnIcon />, path: '/memory-economy' }, // New nav item
+  { text: 'Memory Economy', icon: <MonetizationOnIcon />, path: '/memory-economy' },
 ];
 
 const getIconForType = (type) => {
@@ -290,7 +290,7 @@ export default function AppLayout({ children }) {
           {!searchLoading && !searchError && searchResults && (Object.entries(searchResults).map(([type, items]) => (
             items.length > 0 && (
               <Box key={type} sx={{ mb: 2.5 }}>
-                <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', borderBottom: 1, borderColor: 'divider', pb: 0.5, mb: 1, fontWeight: 'medium' }}>{type} ({items.length})</Typography>
+                <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', borderBottom: 1, borderColor: 'divider', pb: 0.5, mb: 1, fontWeight: 'medium' }}>{type.charAt(0).toUpperCase() + type.slice(1)} ({items.length})</Typography> {/* Capitalized type */}
                 <MUIList dense>
                   {items.map((item) => (
                     <MUIListItem button key={`${type}-${item.id}`} onClick={() => handleResultClick(type, item.id)} sx={{ borderRadius: 1, '&:hover': { bgcolor: 'action.hover' }, mb: 0.5 }}>

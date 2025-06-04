@@ -54,17 +54,17 @@ const columns = [
   },
   { id: 'logline', label: 'Logline', sortable: true, width: '30%' }, // Adjusted width slightly
   {
-    id: 'ownedElements', label: 'Items', sortable: false,
+    id: 'ownedElements', label: 'Elements', sortable: false, // Changed from "Items"
     format: (value) => value?.length || 0, 
     align: 'center', width: '5%'
   },
   { 
-    id: 'events', label: 'Events', sortable: false, 
+    id: 'events', label: 'Events (Count)', sortable: false, // Added (Count)
     format: (value) => value?.length || 0,
     align: 'center', width: '5%'
   },
   { 
-    id: 'puzzles', label: 'Puzzles', sortable: false, 
+    id: 'puzzles', label: 'Puzzles (Count)', sortable: false, // Added (Count)
     format: (value) => value?.length || 0,
     align: 'center', width: '5%'
   },

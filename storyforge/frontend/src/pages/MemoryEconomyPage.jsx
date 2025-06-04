@@ -5,7 +5,7 @@ import {
   TableContainer, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel,
   FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
-import PageHeader from '../components/Common/PageHeader';
+import PageHeader from '../components/PageHeader'; // Corrected Path
 import api from '../services/api';
 
 // Constants from Game Design Document

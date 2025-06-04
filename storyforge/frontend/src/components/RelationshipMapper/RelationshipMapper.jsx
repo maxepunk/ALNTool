@@ -411,7 +411,7 @@ const RelationshipMapperContent = ({
           <Divider sx={{my:1}}/>
 
           {/* Memory Set Filter */}
-          <Typography variant="caption" display="block" gutterBottom>Highlight Memory Set</Typography>
+          <Typography variant="caption" display="block" gutterBottom>Filter by Memory Set</Typography>
           <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
             <InputLabel id="memory-set-filter-label">Memory Set</InputLabel>
             <Select
