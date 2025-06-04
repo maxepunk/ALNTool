@@ -155,7 +155,23 @@ const MemoryEconomyPage = () => {
       }
     },
     { id: 'inferredCategory', label: 'Category', minWidth: 100 },
-    { id: 'memorySets', label: 'Memory Sets', minWidth: 150, format: (setsArray) => Array.isArray(setsArray) && setsArray.length > 0 ? setsArray.join(', ') : 'N/A' },
+    {
+      id: 'memorySets',
+      label: 'Memory Sets',
+      minWidth: 150,
+      format: (setsArray) => {
+        if (!Array.isArray(setsArray) || setsArray.length === 0) {
+          return <Typography variant="caption" color="textSecondary">N/A</Typography>;
+        }
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {setsArray.map((set, i) => (
+              <Chip key={i} label={set} size="small" variant="outlined" color="info" />
+            ))}
+          </Box>
+        );
+      }
+    },
     { id: 'baseValueLevel', label: 'Level', minWidth: 80, align: 'right', format: (value) => value },
     { id: 'baseValueAmount', label: 'Base Value ($)', minWidth: 100, align: 'right', format: (value) => value.toLocaleString() },
     { id: 'typeMultiplierValue', label: 'Multiplier', minWidth: 80, align: 'right', format: (value) => `x${value}` },

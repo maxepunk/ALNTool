@@ -87,7 +87,16 @@ const NarrativeThreadTrackerPage = () => {
         </FormControl>
         {threadsLoading && <CircularProgress size={20} sx={{mt:1}}/>}
         {threadsError && <Alert severity="error" sx={{mt:1}}>Error loading narrative threads: {threadsError.message}</Alert>}
+        {!threadsLoading && !threadsError && (!availableThreads || availableThreads.length === 0) && (
+          <Typography color="text.secondary" sx={{mt:1, textAlign: 'center'}}>No narrative threads found in the project.</Typography>
+        )}
       </Paper>
+
+      {!selectedThread && !threadsLoading && !threadsError && availableThreads && availableThreads.length > 0 && (
+        <Typography sx={{textAlign: 'center', mt: 2, color: 'text.secondary'}}>
+          Please select a narrative thread to view associated entities.
+        </Typography>
+      )}
 
       {selectedThread && (
         isLoadingEntities ? (
@@ -96,9 +105,9 @@ const NarrativeThreadTrackerPage = () => {
             <Typography sx={{ ml: 2 }}>Loading entities for "{selectedThread}"...</Typography>
           </Box>
         ) : entityError ? (
-          <Alert severity="error">Error loading entities: {entityError.message}</Alert>
+          <Alert severity="error" sx={{mt: 2}}>Error loading entities: {entityError.message}</Alert>
         ) : (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{mt: 1}}>
             <Grid item xs={12} md={6} lg={3}>
               <Paper sx={{p:2, height:'100%'}} elevation={2}>
                 <Typography variant="h6" gutterBottom>Characters ({charactersQuery.data?.length || 0})</Typography>

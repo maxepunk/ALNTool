@@ -178,7 +178,7 @@ function Dashboard() {
                       </ListItemButton>
                     ))}
                   </List>
-                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No puzzles currently need attention.</Typography>}
+                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No puzzles require attention at this time.</Typography>}
 
                 <Divider sx={{my:1.5}}/>
                 <Typography variant="subtitle2" sx={{mt:1, fontWeight:'medium'}}>Elements ({elementsWithWarningsData?.length || 0}):</Typography>
@@ -198,7 +198,7 @@ function Dashboard() {
                       </ListItemButton>
                     ))}
                   </List>
-                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No elements currently need special attention.</Typography>}
+                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No elements require attention at this time.</Typography>}
 
                 <Divider sx={{my:1.5}}/>
                 <Typography variant="subtitle2" sx={{mt:1, fontWeight:'medium'}}>Characters ({charactersWithWarningsData?.length || 0}):</Typography>
@@ -216,7 +216,7 @@ function Dashboard() {
                       </ListItemButton>
                     ))}
                   </List>
-                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No characters currently need special attention.</Typography>}
+                ) : <Typography variant="body2" color="text.secondary" sx={{pl:2, py:1}}>No characters require attention at this time.</Typography>}
               </>
             )}
           </Paper>
@@ -238,9 +238,9 @@ function Dashboard() {
             <List dense>
               <QuickAccessItem icon={<CategoryIcon />} text="Puzzle Flow View" to="/puzzles" />
               <QuickAccessItem icon={<MonetizationOnIcon />} text="Element Economy for Puzzles" to="/element-puzzle-economy" />
-              <QuickAccessItem icon={<CategoryIcon />} text="Puzzle-Narrative Cohesion" to="#" />
+              <QuickAccessItem icon={<CategoryIcon />} text="Resolution Path Analyzer" to="/resolution-path-analyzer" /> {/* Updated link and text */}
               <QuickAccessItem icon={<PeopleIcon />} text="Character Arc Mapper" to="/character-sociogram" />
-              <QuickAccessItem icon={<TimelineIcon />} text="Narrative Thread Tracker" to="/narrative-thread-tracker" /> {/* Updated link */}
+              <QuickAccessItem icon={<TimelineIcon />} text="Narrative Thread Tracker" to="/narrative-thread-tracker" />
             </List>
             <Typography variant="caption" color="text.secondary" sx={{display: 'block', textAlign: 'center', mt:1}}>(Specialized views coming soon)</Typography>
           </Paper>

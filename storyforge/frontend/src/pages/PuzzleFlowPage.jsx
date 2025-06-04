@@ -5,7 +5,8 @@ import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState,
 import { Box, Typography, CircularProgress, Alert, Paper, useTheme } from '@mui/material';
 import PageHeader from '../components/PageHeader';
 import api from '../services/api';
-import { getDagreLayout } from '../components/RelationshipMapper/layoutUtils'; // Assuming this can be reused
+import { getDagreLayout } from '../components/RelationshipMapper/layoutUtils';
+import CustomEdge from '../components/RelationshipMapper/CustomEdge'; // Import CustomEdge
 
 // Simple Node component for this view
 const FlowNode = ({ data }) => {
@@ -42,7 +43,7 @@ const FlowNode = ({ data }) => {
         textAlign: 'center'
       }}
     >
-      <Typography variant="caption" sx={{fontWeight: 'bold'}}>{data.label}</Typography>
+      <Typography variant="caption" sx={{fontWeight: 'bold', wordBreak: 'break-word'}}>{data.label}</Typography>
       {data.subLabel && <Typography variant="caption" display="block" sx={{fontSize: '0.65rem'}}>{data.subLabel}</Typography>}
     </Paper>
   );
@@ -50,6 +51,10 @@ const FlowNode = ({ data }) => {
 
 const nodeTypes = {
   flowNode: FlowNode,
+};
+
+const edgeTypes = { // Define edgeTypes to use CustomEdge
+  custom: CustomEdge,
 };
 
 const PuzzleFlowPage = () => {
@@ -73,15 +78,13 @@ const PuzzleFlowPage = () => {
     const newEdges = [];
     const centralPuzzleId = flowData.centralPuzzle.id;
 
-    // Central Puzzle
     newNodes.push({
       id: centralPuzzleId,
       type: 'flowNode',
       data: { label: flowData.centralPuzzle.name, flowNodeType: 'centralPuzzle', entityId: centralPuzzleId, entityType: 'Puzzle' },
-      position: { x: 0, y: 0 }, // Initial position, layout will adjust
+      position: { x: 0, y: 0 },
     });
 
-    // Input Elements
     (flowData.inputElements || []).forEach(el => {
       newNodes.push({
         id: el.id,
@@ -93,13 +96,14 @@ const PuzzleFlowPage = () => {
         id: `input-${el.id}-to-${centralPuzzleId}`,
         source: el.id,
         target: centralPuzzleId,
+        type: 'custom', // Use custom edge
         label: 'requires',
+        data: { type: 'dependency', shortLabel: 'requires', contextualLabel: `${el.name} requires ${flowData.centralPuzzle.name}` },
         markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.error.main },
         style: { stroke: theme.palette.error.light, strokeWidth: 1.5 },
       });
     });
 
-    // Output Elements
     (flowData.outputElements || []).forEach(el => {
       newNodes.push({
         id: el.id,
@@ -111,13 +115,14 @@ const PuzzleFlowPage = () => {
         id: `reward-${centralPuzzleId}-to-${el.id}`,
         source: centralPuzzleId,
         target: el.id,
+        type: 'custom', // Use custom edge
         label: 'rewards',
+        data: { type: 'default', shortLabel: 'rewards', contextualLabel: `${flowData.centralPuzzle.name} rewards ${el.name}` },
         markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.success.main },
         style: { stroke: theme.palette.success.light, strokeWidth: 1.5 },
       });
     });
 
-    // Prerequisite Puzzles
     (flowData.prerequisitePuzzles || []).forEach(p => {
       newNodes.push({
         id: p.id,
@@ -129,13 +134,14 @@ const PuzzleFlowPage = () => {
         id: `prereq-${p.id}-to-${centralPuzzleId}`,
         source: p.id,
         target: centralPuzzleId,
+        type: 'custom', // Use custom edge
         label: 'unlocks',
+        data: { type: 'default', shortLabel: 'unlocks', contextualLabel: `${p.name} unlocks ${flowData.centralPuzzle.name}` },
         markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.info.main },
         style: { stroke: theme.palette.info.light, strokeDasharray: '5,5', strokeWidth: 1.5 },
       });
     });
 
-    // Unlocks Puzzles
     (flowData.unlocksPuzzles || []).forEach(p => {
       newNodes.push({
         id: p.id,
@@ -147,13 +153,14 @@ const PuzzleFlowPage = () => {
         id: `unlocks-${centralPuzzleId}-to-${p.id}`,
         source: centralPuzzleId,
         target: p.id,
+        type: 'custom', // Use custom edge
         label: 'unlocks',
+        data: { type: 'default', shortLabel: 'unlocks', contextualLabel: `${flowData.centralPuzzle.name} unlocks ${p.name}` },
         markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.info.main },
         style: { stroke: theme.palette.info.light, strokeDasharray: '5,5', strokeWidth: 1.5 },
       });
     });
 
-    // Remove duplicate nodes (e.g. if an element is both input and output, though unlikely for this model)
     const uniqueNodes = Array.from(new Map(newNodes.map(node => [node.id, node])).values());
 
     return getDagreLayout(uniqueNodes, newEdges, { direction: 'LR' });
@@ -187,11 +194,11 @@ const PuzzleFlowPage = () => {
   }
 
   if (error) {
-    return <Alert severity="error">Error loading puzzle flow: {error.message}</Alert>;
+    return <Alert severity="error" sx={{m:2}}>Error loading puzzle flow: {error.message}</Alert>;
   }
 
   if (!flowData) {
-    return <Alert severity="info">No flow data available for this puzzle.</Alert>;
+    return <Alert severity="info" sx={{m:2}}>No flow data available for this puzzle.</Alert>;
   }
 
   return (
@@ -205,6 +212,7 @@ const PuzzleFlowPage = () => {
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes} // Pass edgeTypes
           fitView
           fitViewOptions={{ padding: 0.1 }}
           proOptions={{ hideAttribution: true }}

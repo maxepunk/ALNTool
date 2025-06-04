@@ -16,7 +16,8 @@ import MemoryEconomyPage from './pages/MemoryEconomyPage';
 import PuzzleFlowPage from './pages/PuzzleFlowPage';
 import ElementPuzzleEconomyPage from './pages/ElementPuzzleEconomyPage';
 import CharacterSociogramPage from './pages/CharacterSociogramPage';
-import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage'; // Import NarrativeThreadTrackerPage
+import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
+import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // Import ResolutionPathAnalyzerPage
 import NotFound from './pages/NotFound';
 import { api } from './services/api';
 
@@ -107,7 +108,8 @@ function App() {
         <Route path="/memory-economy" element={<MemoryEconomyPage />} />
         <Route path="/element-puzzle-economy" element={<ElementPuzzleEconomyPage />} />
         <Route path="/character-sociogram" element={<CharacterSociogramPage />} />
-        <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} /> {/* New Route */}
+        <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
+        <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
         
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />
