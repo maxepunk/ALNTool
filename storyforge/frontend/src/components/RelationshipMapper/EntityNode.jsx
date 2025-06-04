@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { Handle, Position, useViewport } from '@xyflow/react'; // Added useViewport
-import { Paper, Typography, Box, Chip, Tooltip } from '@mui/material';
+import { Paper, Typography, Box, Chip, Tooltip, Divider } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import EventIcon from '@mui/icons-material/Event';
@@ -51,8 +51,8 @@ const getEntityPresentation = (type, properties = {}, isCenter = false) => {
   return { color, icon, contrastColor };
 };
 
-// Tooltip Content Component (remains largely the same)
-const NodeTooltipContent = ({ type, nodeData = {}, centralEntityType, label = '', isFullScreen = false }) => {
+// Renamed existing component to avoid conflict and reflect its purpose
+const ContextualDetailsTooltipContent = ({ type, nodeData = {}, centralEntityType, label = '', isFullScreen = false }) => {
   if (!nodeData || !nodeData.properties) return label || type || 'Details';
   const props = nodeData.properties;
 
@@ -180,13 +180,128 @@ const NodeTooltipContent = ({ type, nodeData = {}, centralEntityType, label = ''
   );
 };
 
-NodeTooltipContent.propTypes = {
+ContextualDetailsTooltipContent.propTypes = {
   type: PropTypes.string.isRequired, 
   nodeData: PropTypes.object, 
   centralEntityType: PropTypes.string.isRequired, 
   label: PropTypes.string, 
   isFullScreen: PropTypes.bool,
 };
+
+// New Tooltip Content component as per PRD requirements
+const NodeTooltipContent = ({ data }) => {
+  if (!data) return null;
+
+  const { label, type, properties } = data;
+  const props = properties || {}; // Ensure props is an object
+
+  // Helper to build property lines, avoiding errors if props is undefined
+  const renderProperty = (label, value) => {
+    if (value === undefined || value === null || value === '') return null;
+    return <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}><Box component="span" sx={{ fontWeight: 'bold' }}>{label}:</Box> {String(value)}</Typography>;
+  };
+
+  let keyProperties = [];
+
+  switch (type) {
+    case 'Character':
+      keyProperties.push(renderProperty('Tier', props.tier));
+      keyProperties.push(renderProperty('Role', props.role));
+      keyProperties.push(renderProperty('Primary Action Snippet', props.primaryActionSnippet));
+      break;
+    case 'Element':
+      keyProperties.push(renderProperty('Basic Type', props.basicType));
+      keyProperties.push(renderProperty('Status', props.status));
+      break;
+    case 'Puzzle':
+      keyProperties.push(renderProperty('Timing', props.timing));
+      keyProperties.push(renderProperty('Owner Name', props.ownerName));
+      break;
+    case 'Timeline':
+      keyProperties.push(renderProperty('Date String', props.dateString));
+      keyProperties.push(renderProperty('Participant Summary', props.participantSummary));
+      break;
+    default:
+      break;
+  }
+  // Filter out null entries from keyProperties
+  keyProperties = keyProperties.filter(Boolean);
+
+  // Add filter-related properties
+  const filterProperties = [];
+  if (props.actFocus) {
+    filterProperties.push(renderProperty('Act Focus', props.actFocus));
+  }
+  if (props.themes && props.themes.length > 0) {
+    filterProperties.push(renderProperty('Themes', props.themes.join(', ')));
+  }
+  if (type === 'Element' && props.memorySets && props.memorySets.length > 0) {
+    filterProperties.push(renderProperty('Memory Sets', props.memorySets.join(', ')));
+  }
+  const filteredFilterProperties = filterProperties.filter(Boolean);
+
+
+  return (
+    <Box sx={{ p: 1, maxWidth: 350 }}> {/* Increased maxWidth for better content display */}
+      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>{props.name || label}</Typography>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+        Type: {type} {props.type && props.type !== type ? `(${props.type})` : ''} {/* Display internal type if different */}
+      </Typography>
+
+      {keyProperties.length > 0 && (
+        <>
+          <Divider sx={{ my: 0.5 }} />
+          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Key Properties</Typography>
+          {keyProperties}
+        </>
+      )}
+
+      {filteredFilterProperties.length > 0 && (
+        <>
+          <Divider sx={{ my: 0.5 }} />
+          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Filter Attributes</Typography>
+          {filteredFilterProperties}
+        </>
+      )}
+
+      {props.fullDescription && (
+        <>
+          <Divider sx={{ my: 0.5 }} />
+          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Description</Typography>
+          <Typography variant="body2" sx={{ maxHeight: 150, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+            {props.fullDescription}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+};
+
+NodeTooltipContent.propTypes = {
+  data: PropTypes.shape({
+    label: PropTypes.string,
+    type: PropTypes.string.isRequired,
+    properties: PropTypes.shape({
+      name: PropTypes.string, // Full name often in properties
+      type: PropTypes.string, // Internal type if different from general type
+      tier: PropTypes.string,
+      role: PropTypes.string,
+      primaryActionSnippet: PropTypes.string,
+      basicType: PropTypes.string,
+      status: PropTypes.string,
+      timing: PropTypes.string,
+      ownerName: PropTypes.string,
+      dateString: PropTypes.string,
+      participantSummary: PropTypes.string,
+      fullDescription: PropTypes.string,
+      // For filter properties
+      actFocus: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      themes: PropTypes.arrayOf(PropTypes.string),
+      memorySets: PropTypes.arrayOf(PropTypes.string),
+    }),
+  }).isRequired,
+};
+
 
 // Zoom thresholds for dynamic label display
 const ICON_ONLY_ZOOM_THRESHOLD = 0.4;
@@ -198,36 +313,36 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
   const { zoom } = useViewport();
   const { id, label, type, isCenter = false, timelineEvents, properties = {}, isActualParentGroup = false } = data;
   
+  // Use the main 'type' for presentation, but 'properties.type' if available for more specific data.
   const presentationType = type; 
-  const actualDataType = properties?.type || type; 
-  // Pass properties to getEntityPresentation for icon/color decisions (e.g. Memory elements)
+  const actualDataType = properties?.type || type; // This is the type we'll use for data lookups in tooltip
+  const nodeDisplayData = { ...data, type: actualDataType, label: properties?.name || label }; // Consolidate data for tooltip
+
   const { color: entityColor, icon: entityIcon } = getEntityPresentation(presentationType, properties, isCenter);
   
+  // Chip generation logic remains, but their individual tooltips might be redundant
   const getNodeChips = () => {
     const chips = [];
-    // Ensure properties object exists and is not empty before trying to access its members
     if (!properties || Object.keys(properties).length === 0) return chips;
 
-    // Common chips based on actualDataType
     switch (actualDataType) {
       case 'Character':
-        if (properties.tier) chips.push({ label: properties.tier, title: `Tier: ${properties.tier}` });
-        if (properties.role) chips.push({ label: properties.role, title: `Role: ${properties.role}` });
+        if (properties.tier) chips.push({ label: properties.tier, originalTitle: `Tier: ${properties.tier}` });
+        if (properties.role) chips.push({ label: properties.role, originalTitle: `Role: ${properties.role}` });
         break;
       case 'Element':
-        if (properties.basicType) chips.push({ label: properties.basicType, title: `Basic Type: ${properties.basicType}` });
-        if (properties.status) chips.push({ label: properties.status, title: `Status: ${properties.status}` });
-        // SF_RFID chip for Memory elements, with truncation
+        if (properties.basicType) chips.push({ label: properties.basicType, originalTitle: `Basic Type: ${properties.basicType}` });
+        if (properties.status) chips.push({ label: properties.status, originalTitle: `Status: ${properties.status}` });
         if (properties.basicType?.toLowerCase().includes('memory') && properties.SF_RFID) {
           const rfidLabel = properties.SF_RFID.length > 8 ? `${properties.SF_RFID.substring(0,8)}…` : properties.SF_RFID;
-          chips.push({ label: `RFID: ${rfidLabel}`, title: `SF_RFID: ${properties.SF_RFID}` });
+          chips.push({ label: `RFID: ${rfidLabel}`, originalTitle: `SF_RFID: ${properties.SF_RFID}` });
         }
         break;
       case 'Puzzle':
-        if (properties.timing) chips.push({ label: properties.timing, title: `Timing: ${properties.timing}` });
+        if (properties.timing) chips.push({ label: properties.timing, originalTitle: `Timing: ${properties.timing}` });
         break;
       case 'Timeline':
-        if (properties.dateString) chips.push({ label: properties.dateString, title: properties.dateString }); 
+        if (properties.dateString) chips.push({ label: properties.dateString, originalTitle: properties.dateString });
         break;
       default: return chips;
     }
@@ -238,7 +353,7 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
   };
   
   const nodeChips = getNodeChips();
-  const fullNodeName = properties?.name || label || actualDataType || id || 'Unknown';
+  const fullNodeName = properties?.name || label || actualDataType || id || 'Unknown'; // Used for aria-label and potentially displayedLabel
   
   let displayedNodeLabel = '';
   let showLabel = true;
@@ -258,44 +373,59 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
     displayedNodeLabel = fullNodeName.length > 28 ? `${fullNodeName.slice(0, 25)}…` : fullNodeName;
   }
 
+  // Use the new NodeTooltipContent, passing the consolidated nodeDisplayData
+  const tooltipContent = <NodeTooltipContent data={nodeDisplayData} />;
+  // The aria-label should reflect the most accurate name and type
   const nodeAriaLabel = `${isCenter ? 'Central Entity: ' : ''}${actualDataType}: ${fullNodeName}${nodeChips.map(c => `, ${c.label}`).join('')}`;
-  const tooltipContent = <NodeTooltipContent type={actualDataType} nodeData={data} centralEntityType={centralEntityType} label={fullNodeName} isFullScreen={isFullScreen} />;
 
   // Character Tier specific styling
   const characterTier = properties?.tier;
-  let tierBorderStyle = {}; // Renamed to avoid conflict with sx properties if any
+  let tierBorderStyle = {};
+  // Base border style - can be augmented by tier or parent group status
+  let baseBorder = {
+    borderWidth: '2px', // Default borderWidth
+    borderColor: entityColor + 'aa', // Default border color opacity
+  };
+
+  if (isActualParentGroup && !selected && !isCenter) {
+    baseBorder.borderColor = entityColor + 'CC'; // More opaque for parent group
+    baseBorder.borderWidth = '2.5px'; // Slightly thicker for parent group
+  }
+
+  if (selected) { // Selected nodes always get solid entity color border
+      baseBorder.borderColor = entityColor;
+      baseBorder.borderWidth = '2.5px';
+  }
+
+  tierBorderStyle = { ...baseBorder }; // Start with base or parent-group specific border
+
   if (actualDataType === 'Character') {
     switch (characterTier) {
       case 'Core':
-        // Using a gold-like color for Core, can be adjusted. Adding subtle shadow for pop.
-        tierBorderStyle = {
+        tierBorderStyle = { // Core overrides most, but respects selected state for brightness
           borderWidth: '3px',
-          borderColor: selected || isCenter ? '#ffb300' : '#ffc107', // Brighter gold when selected/center
+          borderColor: selected || isCenter ? '#ffb300' : '#ffc107',
           boxShadow: selected || isCenter ? `0 0 12px 3px #ffc10799` : `0 0 8px 2px #ffc10766`,
         };
         break;
       case 'Tertiary':
-        tierBorderStyle = {
-          borderStyle: 'dashed',
-          borderWidth: '1.5px',
-          borderColor: selected || isCenter ? entityColor : `${entityColor}99`,
-        };
+        tierBorderStyle.borderStyle = 'dashed'; // Add dashed to base/parent border
+        tierBorderStyle.borderWidth = '1.5px'; // Tertiary is thinner
+        // borderColor will be from baseBorder (which includes parent/selected logic)
+        // If selected, it will be solid entityColor, if parent, slightly more opaque.
+        // If just tertiary, it will be entityColor + '99' (or as per baseBorder)
+        if (!selected && !isCenter) { // Ensure tertiary specific opacity if not selected/center
+            tierBorderStyle.borderColor = entityColor + '99';
+        }
         break;
       case 'Secondary': // Default style for Secondary or if tier is undefined
       default:
-        tierBorderStyle = {
-          borderWidth: '2px',
-          borderColor: selected ? entityColor : (isActualParentGroup ? entityColor + '99' : entityColor + 'aa'),
-        }; // Standard border as per existing logic
+        // Uses the already established baseBorder or parentGroup border style
+        // No specific overrides for Secondary other than what's in baseBorder
         break;
     }
-  } else {
-    // Default border for non-Character nodes
-    tierBorderStyle = {
-      borderWidth: '2px',
-      borderColor: selected ? entityColor : (isActualParentGroup ? entityColor + '99' : entityColor + 'aa'),
-    };
   }
+  // For non-character nodes, tierBorderStyle remains baseBorder (which includes parent/selected logic)
 
   // Act Focus visual cue
   const actFocus = properties?.actFocus;
@@ -324,53 +454,52 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
   ) : null;
 
   return (
+    // Main tooltip now uses the new NodeTooltipContent
     <Tooltip title={tooltipContent} placement="top" arrow disableInteractive>
       <Paper
         elevation={isCenter ? 6 : (selected ? 8 : 3)}
         sx={{
           p: isCenter ? 1.5 : 1.25,
-          borderRadius: isActualParentGroup ? 2.5 : 1.5,
+          borderRadius: isActualParentGroup ? 3 : 1.5, // Slightly more rounded for parent groups
           width: '100%',
           height: '100%',
           minHeight: isCenter ? 60 : 50, 
-          // borderStyle and borderColor will be driven by tierBorderStyle or default
-          borderStyle: 'solid', // Default, can be overridden by tierBorderStyle (e.g. for dashed)
-          ...tierBorderStyle, // Apply character tier border styles or default for non-characters
-          // Memory Element visual cue: slightly different background if not selected/center
+          borderStyle: 'solid', // Default, tierBorderStyle can override (e.g., for dashed)
+          ...tierBorderStyle, // Apply combined border styles
           bgcolor: selected 
-            ? 'background.paper' 
+            ? 'background.paper' // Selected nodes have standard paper background
             : isCenter 
-              ? `${entityColor}4D` 
+              ? `${entityColor}4D` // Center nodes have a semi-transparent entity color background
               : (actualDataType === 'Element' && properties.basicType?.toLowerCase().includes('memory'))
-                ? `${entityColor}30` // Slightly different background for memory items
+                ? `${entityColor}30` // Memory elements have a specific transparent background
                 : isActualParentGroup
-                  ? `${entityColor}1A`
-                  : `${entityColor}26`,
-          transition: 'all 0.15s ease-in-out, border-color 0.15s, background-color 0.15s, box-shadow 0.15s ease-in-out', // Added box-shadow transition
+                  ? (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' // More distinct, less color-tied bg for parents
+                  : `${entityColor}26`, // Default node background
+          transition: 'all 0.15s ease-in-out, border-color 0.15s, background-color 0.15s, box-shadow 0.15s ease-in-out',
           transform: selected ? 'scale(1.05)' : 'scale(1)',
           '&:hover': {
-            // Hover border color logic: Core characters retain gold, others use entityColor
-            borderColor: (actualDataType === 'Character' && characterTier === 'Core')
-                ? (selected || isCenter ? '#ffb300' : '#ffc107')
-                : entityColor,
+            borderColor: (actualDataType === 'Character' && characterTier === 'Core' && !(selected || isCenter))
+              ? '#ffc107' // Core character hover (non-selected, non-center)
+              : (selected || isCenter ? tierBorderStyle.borderColor : entityColor), // Keep current border if selected/center, else entityColor
             bgcolor: selected
               ? 'background.paper'
               : isCenter
                 ? `${entityColor}66`
                 : (actualDataType === 'Element' && properties.basicType?.toLowerCase().includes('memory'))
-                  ? `${entityColor}40` // Slightly darker on hover for memory
+                  ? `${entityColor}40`
                   : isActualParentGroup
-                    ? `${entityColor}2A`
+                    ? (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'
                     : 'background.paper',
             transform: 'scale(1.03)',
-            // Enhance shadow for Core characters on hover
             boxShadow: (actualDataType === 'Character' && characterTier === 'Core')
                 ? (selected || isCenter ? `0 0 14px 4px #ffc107aa` : `0 0 10px 3px #ffc10788`)
-                : (selected ? (theme) => theme.shadows[8] : (isActualParentGroup ? theme => theme.shadows[2] : undefined)),
+                : (selected ? (theme) => theme.shadows[8] : (isActualParentGroup ? theme => theme.shadows[3] : theme.shadows[4])), // Adjusted shadow for parents on hover
           },
           display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative',
           textAlign: 'center', cursor: 'pointer',
-          boxShadow: selected ? (theme) => theme.shadows[6] : (isActualParentGroup ? theme => theme.shadows[1] : undefined),
+          boxShadow: selected
+            ? (theme) => theme.shadows[6]
+            : (isActualParentGroup ? (theme) => theme.shadows[2] : (isCenter ? (theme) => theme.shadows[3] : undefined)), // Adjusted base shadow for parents
         }}
         aria-label={nodeAriaLabel} role="button" tabIndex={0}
       >
@@ -419,10 +548,12 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
         {(showLabel || zoom >= ICON_ONLY_ZOOM_THRESHOLD ) && nodeChips.length > 0 && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center', mt: 0.5, maxWidth: '95%', mx: 'auto', opacity: zoom < SHORT_LABEL_ZOOM_THRESHOLD ? 0.7 : 1, transition: 'opacity 0.2s' }}>
             {nodeChips.map((chipInfo, index) => (
-              <Tooltip key={index} title={chipInfo.title} placement="bottom" arrow disableInteractive>
+              // Removed individual tooltips from chips as info is now in the main tooltip
                 <Chip 
+                  key={index}
                   label={chipInfo.displayLabel}
                   size="small" 
+                  title={chipInfo.originalTitle} // Keep title for native browser tooltip on truncated chips, just in case
                   sx={{ 
                     bgcolor: `${entityColor}33`, 
                     color: entityColor, 

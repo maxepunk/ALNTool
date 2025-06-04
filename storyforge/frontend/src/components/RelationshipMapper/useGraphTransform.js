@@ -88,6 +88,7 @@ export default function useGraphTransform({
   memorySetFilter = "All",
 }) {
   const { nodes, edges, error } = useMemo(() => {
+    console.log('[useGraphTransform DEBUG] ALL parentId assignments ENABLED (Dagre rank error testing - default state).');
     // ADDED FOR DEBUGGING: General layout calculation log
     console.log(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
     console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));

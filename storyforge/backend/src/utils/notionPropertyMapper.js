@@ -314,7 +314,7 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Puzzle'] || page.properties['Description'] || { title: [] }) });
 
-    return {
+    const mappedChar = {
       id: notionCharacter.id,
       name: extractTitle(properties.Name),
       type: extractSelectByName(properties, 'Type'),
@@ -329,16 +329,16 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
       associatedElements: associatedElements.map(page => toIdName(page, 'Name')),
       connections: extractNumber(properties.Connections),
       lastEdited: notionCharacter.last_edited_time,
-      // Existing new properties
-      actFocus: extractSelectByName(properties, 'Act Focus'),
-      themes: extractMultiSelectByName(properties, 'Themes'),
-      memorySets: extractMultiSelectByName(properties, 'Memory Sets'),
-      // New properties for sociogram
+      actFocus: extractSelectByName(properties, 'Act Focus'), // Assumes Character has "Act Focus"
+      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
+      // memorySets: undefined, // Characters likely don't have memory sets directly
       linkedCharacters: linkedCharactersPages.map(page => toIdName(page, 'Name')),
       resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
-      // Ensure Narrative Threads is present
-      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
+      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed elsewhere
     };
+    if (mappedChar.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedChar.actFocus} for char: ${mappedChar.name}`);
+    if (mappedChar.themes && mappedChar.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedChar.themes.join(', ')} for char: ${mappedChar.name}`);
+    return mappedChar;
   } catch (error) {
     console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);
     
@@ -372,7 +372,7 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Description'] || { title: [] }) });
 
-    return {
+    const mappedEvent = {
       id: notionEvent.id,
       description: extractTitle(properties.Description),
       date: extractDate(properties.Date),
@@ -381,13 +381,13 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
       memType: extractRichTextByName(properties, 'mem type'),
       notes: extractRichTextByName(properties, 'Notes'),
       lastEdited: notionEvent.last_edited_time,
-      // New properties
-      actFocus: extractSelectByName(properties, 'Act Focus'),
-      themes: extractMultiSelectByName(properties, 'Themes'),
-      // memorySets might not be directly on Timeline events, but associated via Elements
-      // Ensure Narrative Threads is present
-      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
+      actFocus: extractSelectByName(properties, 'Act Focus'), // Assumes Timeline Event has "Act Focus"
+      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
+      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed elsewhere
     };
+    if (mappedEvent.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
+    if (mappedEvent.themes && mappedEvent.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedEvent.themes.join(', ')} for event: ${mappedEvent.description}`);
+    return mappedEvent;
   } catch (error) {
     console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);
     
@@ -446,7 +446,7 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
     // Helper to map to {id, name}
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Puzzle'] || page.properties['Description'] || { title: [] }) });
 
-    return {
+    const mappedPuzzle = {
       id: notionPuzzle.id,
       puzzle: extractTitle(properties.Puzzle),
       owner: owners.map(page => toIdName(page, 'Name')),
@@ -459,17 +459,18 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
       subPuzzles: subPuzzles.map(page => toIdName(page, 'Puzzle')),
       assetLink: extractUrlByName(properties, 'Asset Link'),
       description: extractRichTextByName(properties, 'Description/Solution'),
-      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
+      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed
       lastEdited: notionPuzzle.last_edited_time,
-      // Existing new properties
-      actFocus: extractSelectByName(properties, 'Act Focus'),
-      themes: extractMultiSelectByName(properties, 'Themes'),
-      memorySets: extractMultiSelectByName(properties, 'Memory Sets'),
-      // Properties for narrative cohesion
+      actFocus: extractSelectByName(properties, 'Timing'), // actFocus from "Timing"
+      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
+      // memorySets: undefined, // Puzzles likely don't have memory sets
       impactedCharacters: impactedCharactersPages.map(page => toIdName(page, 'Name')),
       relatedTimelineEvents: relatedTimelineEventPages.map(page => toIdName(page, 'Description')),
       resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
     };
+    if (mappedPuzzle.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
+    if (mappedPuzzle.themes && mappedPuzzle.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
+    return mappedPuzzle;
   } catch (error) {
     console.error(`Error mapping puzzle with ID ${notionPuzzle?.id || 'unknown'}:`, error);
     
@@ -515,7 +516,7 @@ async function mapElementWithNames(notionElement, notionService) {
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Description'] || page.properties['Puzzle'] || { title: [] }) });
 
-    return {
+    const mappedElement = {
       id: notionElement.id,
       name: extractTitle(properties.Name),
       owner: owners.map(page => toIdName(page, 'Name')),
@@ -534,16 +535,54 @@ async function mapElementWithNames(notionElement, notionService) {
       contentLink: extractUrlByName(properties, 'Content Link'),
       productionNotes: extractRichTextByName(properties, 'Production/Puzzle Notes'),
       lastEdited: notionElement.last_edited_time,
-      // Existing new properties
-      actFocus: extractSelectByName(properties, 'Act Focus'),
-      themes: extractMultiSelectByName(properties, 'Themes'),
-      memorySets: extractMultiSelectByName(properties, 'Memory Set'), // Corrected to "Memory Set"
-      // Ensure Narrative Threads is present (it was already correctly here)
-      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
-      // Ensure no sociogram properties are here
-      // linkedCharacters: undefined,
-      // resolutionPaths: undefined,
+      actFocus: extractSelectByName(properties, 'First Available'), // actFocus from "First Available"
+      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
+      memorySets: extractMultiSelectByName(properties, 'Memory Sets'), // Use "Memory Sets" as per prompt assumption (or "Memory Set" if that was the final decision)
+      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed
     };
+
+    if (mappedElement.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedElement.actFocus} for element: ${mappedElement.name}`);
+    if (mappedElement.themes && mappedElement.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedElement.themes.join(', ')} for element: ${mappedElement.name}`);
+    if (mappedElement.memorySets && mappedElement.memorySets.length > 0) console.log(`[GRAPH DATA MAP] Mapped memorySets: ${mappedElement.memorySets.join(', ')} for element: ${mappedElement.name}`);
+
+    // Parse SF_RFID from Description/Text for memory-type Elements
+    const descriptionText = mappedElement.description; // Already extracted
+    const basicType = mappedElement.basicType; // Already extracted
+
+    if (descriptionText && basicType) {
+      const memoryTypeKeywords = ['memory', 'rfid', 'corrupted']; // Case-insensitive check later
+      const isMemoryType = memoryTypeKeywords.some(keyword => basicType.toLowerCase().includes(keyword));
+
+      if (isMemoryType) {
+        // Ensure properties object exists
+        if (!mappedElement.properties) {
+            mappedElement.properties = {};
+        }
+
+        const rfidRegex = /^SF_RFID:\s*(\S+)/m;
+        const rfidMatch = descriptionText.match(rfidRegex);
+        if (rfidMatch && rfidMatch[1]) {
+          mappedElement.properties.parsed_sf_rfid = rfidMatch[1]; // Moved to properties
+          console.log('[RFID PARSE] Found RFID:', mappedElement.properties.parsed_sf_rfid, 'for Element:', mappedElement.name);
+        }
+
+        const valueRatingRegex = /^SF_ValueRating:\s*([1-5])/m;
+        const valueRatingMatch = descriptionText.match(valueRatingRegex);
+        if (valueRatingMatch && valueRatingMatch[1]) {
+          mappedElement.properties.sf_value_rating = parseInt(valueRatingMatch[1], 10);
+          console.log('[RFID PARSE] Found SF_ValueRating:', mappedElement.properties.sf_value_rating, 'for Element:', mappedElement.name);
+        }
+
+        const memoryTypeRegex = /^SF_MemoryType:\s*(Personal|Business|Technical)/im;
+        const memoryTypeMatch = descriptionText.match(memoryTypeRegex);
+        if (memoryTypeMatch && memoryTypeMatch[1]) {
+          mappedElement.properties.sf_memory_type = memoryTypeMatch[1];
+          console.log('[RFID PARSE] Found SF_MemoryType:', mappedElement.properties.sf_memory_type, 'for Element:', mappedElement.name);
+        }
+      }
+    }
+
+    return mappedElement;
   } catch (error) {
     console.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);
     

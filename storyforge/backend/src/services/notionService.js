@@ -165,4 +165,65 @@ module.exports = {
   clearCache,
   notionCache,
   makeCacheKey,
-}; 
+  fetchPuzzleFlowDataStructure, // Added new function
+};
+
+// New function to fetch all data needed for puzzle flow view
+async function fetchPuzzleFlowDataStructure(puzzleId, notionServiceInstance = module.exports) {
+  const puzzlePage = await notionServiceInstance.getPage(puzzleId);
+  if (!puzzlePage) {
+    throw new Error('Puzzle not found');
+  }
+
+  const centralPuzzle = await propertyMapper.mapPuzzleWithNames(puzzlePage, notionServiceInstance);
+  if (centralPuzzle.error) {
+    throw new Error(`Failed to map central puzzle data: ${centralPuzzle.error}`);
+  }
+
+  const relatedEntityIds = new Set();
+  (centralPuzzle.puzzleElements || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.rewards || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.lockedItem || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.parentItem || []).forEach(p => p.id && relatedEntityIds.add(p.id));
+  (centralPuzzle.subPuzzles || []).forEach(p => p.id && relatedEntityIds.add(p.id));
+  (centralPuzzle.owner || []).forEach(o => o.id && relatedEntityIds.add(o.id));
+
+  const relatedPages = await notionServiceInstance.getPagesByIds(Array.from(relatedEntityIds));
+  const mappedRelatedEntities = new Map();
+
+  for (const page of relatedPages) {
+    if (!page || !page.id) continue;
+
+    let mappedEntity;
+    // Infer type based on which list the ID came from, or by checking page properties if necessary
+    if ((centralPuzzle.puzzleElements || []).find(s => s.id === page.id) ||
+        (centralPuzzle.rewards || []).find(s => s.id === page.id) ||
+        (centralPuzzle.lockedItem || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapElementWithNames(page, notionServiceInstance);
+    } else if ((centralPuzzle.parentItem || []).find(s => s.id === page.id) ||
+               (centralPuzzle.subPuzzles || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionServiceInstance);
+    } else if ((centralPuzzle.owner || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapCharacterWithNames(page, notionServiceInstance);
+    } else {
+      // Fallback or more robust type checking if needed
+      if (page.properties.Puzzle) { // Heuristic for Puzzle
+          mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionServiceInstance);
+      } else if (page.properties.Name && page.properties['Basic Type']) { // Heuristic for Element
+          mappedEntity = await propertyMapper.mapElementWithNames(page, notionServiceInstance);
+      } else if (page.properties.Name && page.properties.Tier) { // Heuristic for Character
+          mappedEntity = await propertyMapper.mapCharacterWithNames(page, notionServiceInstance);
+      } else {
+          console.warn(`[fetchPuzzleFlowDataStructure] Could not determine type for related page ${page.id}`);
+          continue;
+      }
+    }
+
+    if (mappedEntity && !mappedEntity.error) {
+      mappedRelatedEntities.set(page.id, mappedEntity);
+    } else if (mappedEntity && mappedEntity.error) {
+      console.warn(`[fetchPuzzleFlowDataStructure] Error mapping entity ${page.id}: ${mappedEntity.error}`);
+    }
+  }
+  return { centralPuzzle, mappedRelatedEntities };
+}

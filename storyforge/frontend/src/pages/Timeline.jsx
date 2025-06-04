@@ -50,8 +50,7 @@ function Timeline() {
   // API filters (server-side)
   const apiFilters = {};
   if (memType !== 'All Types') apiFilters.memType = memType;
-  // If actFocus is a server-side filterable 'Select' property in Notion for Timeline:
-  // if (actFocusFilter !== 'All Acts') apiFilters.actFocus = actFocusFilter;
+  if (actFocusFilter !== 'All Acts') apiFilters.actFocus = actFocusFilter; // Pass actFocus for server-side filtering
 
   const { data: events, isLoading, error, refetch } = useQuery(
     ['timelineEvents', apiFilters],
@@ -90,9 +89,7 @@ function Timeline() {
     if (!events) return [];
     let currentEvents = [...events];
 
-    if (actFocusFilter !== 'All Acts') {
-      currentEvents = currentEvents.filter(event => event.properties?.actFocus === actFocusFilter);
-    }
+    // Client-side filtering for actFocusFilter is removed as it's now handled server-side.
 
     const activeThemeFilters = Object.entries(selectedThemes)
       .filter(([,isSelected]) => isSelected)

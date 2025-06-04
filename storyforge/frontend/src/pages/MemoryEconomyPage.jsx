@@ -1,272 +1,174 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from 'react-query';
-import {
-  Box, Typography, CircularProgress, Alert, Paper,
-  TableContainer, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel,
-  FormControl, InputLabel, Select, MenuItem, Link as MuiLink, Chip // Added MuiLink and Chip
-} from '@mui/material';
-import PageHeader from '../components/PageHeader'; // Corrected Path
-import api from '../services/api';
-import { Link as RouterLink } from 'react-router-dom'; // Added RouterLink
+import { Box, Container, CircularProgress, Typography, Paper, Alert, Chip } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
-// Constants from Game Design Document
-const VALUE_MAPPING = { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 };
-const TYPE_MULTIPLIERS = { Personal: 1, Business: 3, Technical: 5 };
+import PageHeader from '../components/PageHeader';
+import DataTable from '../components/DataTable';
+import { api } from '../services/api';
 
-const KEYWORDS_TECHNICAL = ["ip", "algorithm", "breakthrough", "neurobiology", "sensory triggers", "ai pattern", "neurochemical catalyst", "validation system", "protocol", "patent", "research", "data model", "encryption"];
-const KEYWORDS_BUSINESS = ["deal", "corporate", "funding", "company", "market", "ledger", "investment", "ceo", "board", "acquisition", "merger", "stock", "trade secret", "client list", "supply chain"];
-const KEYWORDS_PERSONAL = ["relationship", "emotion", "personal", "secret", "rumor", "affair", "family", "love", "fear", "friendship", "betrayal"];
+const VALUE_RATING_MAP = {
+  1: 100,
+  2: 500,
+  3: 1000,
+  4: 5000,
+  5: 10000,
+};
 
-// Helper function to infer memory category
-function inferMemoryCategory(properties) {
-  const textToSearch = `${properties?.name || ''} ${properties?.description || ''} ${properties?.notes || ''}`.toLowerCase();
-  if (KEYWORDS_TECHNICAL.some(keyword => textToSearch.includes(keyword))) return 'Technical';
-  if (KEYWORDS_BUSINESS.some(keyword => textToSearch.includes(keyword))) return 'Business';
-  if (KEYWORDS_PERSONAL.some(keyword => textToSearch.includes(keyword))) return 'Personal';
-  return 'Personal'; // Default
-}
+const TYPE_MULTIPLIER_MAP = {
+  Personal: 1,
+  Business: 3,
+  Technical: 5,
+};
 
-// Helper function to infer base value level
-function inferBaseValueLevel(properties) {
-  const textToSearch = `${properties?.name || ''} ${properties?.description || ''}`.toLowerCase();
-  if (["core technical", "crime evidence", "blackmail", "critical vulnerability"].some(kw => textToSearch.includes(kw))) return 5;
-  if (["crucial business", "deep secret", "major exploit", "strategic plan"].some(kw => textToSearch.includes(kw))) return 4;
-  if (["personal revelation", "significant interaction", "contract detail"].some(kw => textToSearch.includes(kw))) return 3;
-  if (["minor interaction", "rumor", "gossip", "routine report"].some(kw => textToSearch.includes(kw))) return 2;
-  if (["mundane observation", "daily log", "casual note"].some(kw => textToSearch.includes(kw))) return 1;
+const MEMORY_TYPE_KEYWORDS = ['memory', 'rfid', 'corrupted']; // For client-side filtering
 
-  if (properties?.SF_RFID) {
-    const match = properties.SF_RFID.match(/L(\d)/);
-    if (match && match[1] && VALUE_MAPPING[parseInt(match[1])]) {
-      return parseInt(match[1]);
-    }
-  }
-  console.warn(`Could not reliably infer base value level for element: ${properties?.name || 'Unknown'}. Defaulting to Level 3.`);
-  return 3;
-}
+function MemoryEconomyPage() {
+  const { data: memoryElementsData, isLoading, error } = useQuery(
+    'memoryTypeElementsForEconomy', // Updated queryKey to reflect filtered data
+    () => api.getElements({ filterGroup: 'memoryTypes' }), // Fetch only memory-type elements
+    { staleTime: 5 * 60 * 1000 }
+  );
 
-const MemoryEconomyPage = () => {
-  const { data: elements, isLoading, error: queryError, isError } = useQuery('allElementsForMemoryEconomy', api.getElements);
+  const processedMemoryData = useMemo(() => {
+    if (!memoryElementsData) return [];
 
-  const [orderBy, setOrderBy] = useState('finalValue');
-  const [order, setOrder] = useState('desc');
-  const [selectedMemorySetFilter, setSelectedMemorySetFilter] = useState("All");
-  const [availableMemorySetsForFilter, setAvailableMemorySetsForFilter] = useState([]);
+    // Client-side filtering for MEMORY_TYPE_KEYWORDS is no longer needed as server handles it.
+    // const memoryElements = memoryElementsData.filter(element =>
+    //   element.basicType && MEMORY_TYPE_KEYWORDS.some(keyword => element.basicType.toLowerCase().includes(keyword))
+    // );
 
-  const processedMemoryTokens = useMemo(() => {
-    if (!elements) return [];
-    const filteredTokens = elements.filter(el =>
-      el.properties?.basicType?.toLowerCase().includes('memory') ||
-      el.properties?.basicType?.toLowerCase().includes('token')
-    );
+    return memoryElementsData.map(element => { // Process data directly from the filtered API response
+      const properties = element.properties || {};
+      const valueRating = properties.sf_value_rating; // From B030
+      const memoryType = properties.sf_memory_type;   // From B030
 
-    return filteredTokens.map(el => {
-      const inferredCategory = inferMemoryCategory(el.properties);
-      const baseValueLevel = inferBaseValueLevel(el.properties);
-      const baseValueAmount = VALUE_MAPPING[baseValueLevel] || 0;
-      const typeMultiplierValue = TYPE_MULTIPLIERS[inferredCategory] || 1;
-      const finalValue = baseValueAmount * typeMultiplierValue;
+      const baseValueAmount = VALUE_RATING_MAP[valueRating] || 0;
+      const typeMultiplierValue = TYPE_MULTIPLIER_MAP[memoryType] || 1;
+      const finalCalculatedValue = baseValueAmount * typeMultiplierValue;
+
+      let discoveredVia = 'N/A';
+      // The element data from api.getElements() now includes rich relation data due to map...WithNames functions
+      if (element.rewardedByPuzzle && element.rewardedByPuzzle.length > 0) {
+        discoveredVia = `Puzzle: ${element.rewardedByPuzzle[0].name || element.rewardedByPuzzle[0].puzzle}`; // puzzle title prop might be 'puzzle'
+      } else if (element.timelineEvent && element.timelineEvent.length > 0) {
+        // timelineEvent relation on Element maps to an array of {id, name (description)}
+        discoveredVia = `Event: ${element.timelineEvent[0].name || element.timelineEvent[0].description}`;
+      }
+
 
       return {
-        id: el.id,
-        name: el.properties?.name || el.id,
-        sfRfid: el.properties?.SF_RFID || 'N/A',
-        descriptionSnippet: el.properties?.descriptionSnippet || el.properties?.description || '',
-        originalProperties: el.properties,
-        inferredCategory,
-        baseValueLevel,
+        ...element,
+        id: element.id,
+        name: element.name,
+        parsed_sf_rfid: properties.parsed_sf_rfid, // From B030 (via properties)
+        sf_value_rating: valueRating,
         baseValueAmount,
+        sf_memory_type: memoryType,
         typeMultiplierValue,
-        finalValue,
-        memorySets: el.properties?.memorySets || [],
-        sourcePuzzles: [
-          ...(el.properties?.rewardedByPuzzle || []),
-          ...(el.properties?.containerPuzzle || [])
-        ]
-        // Basic de-duplication if a puzzle is in both (though unlikely for these distinct relations)
-        .filter((puzzle, index, self) => puzzle.id && self.findIndex(p => p.id === puzzle.id) === index),
+        finalCalculatedValue,
+        discoveredVia,
       };
     });
-  }, [elements]);
+  }, [allElements]);
 
-  useEffect(() => {
-    if (processedMemoryTokens) {
-      const allSets = new Set();
-      processedMemoryTokens.forEach(token => {
-        if (token.memorySets && Array.isArray(token.memorySets)) {
-          token.memorySets.forEach(set => {
-            if (typeof set === 'string') {
-              allSets.add(set);
-            }
-          });
-        }
-      });
-      setAvailableMemorySetsForFilter(Array.from(allSets).sort());
-    }
-  }, [processedMemoryTokens]);
-
-  const handleRequestSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const filteredAndSortedTokens = useMemo(() => {
-    let filtered = processedMemoryTokens;
-    if (selectedMemorySetFilter !== "All") {
-      filtered = processedMemoryTokens.filter(token =>
-        token.memorySets && Array.isArray(token.memorySets) && token.memorySets.includes(selectedMemorySetFilter)
-      );
-    }
-
-    return [...filtered].sort((a, b) => {
-      let comparison = 0;
-      if (a[orderBy] < b[orderBy]) {
-        comparison = -1;
-      }
-      if (a[orderBy] > b[orderBy]) {
-        comparison = 1;
-      }
-      return order === 'asc' ? comparison : -comparison;
-    });
-  }, [processedMemoryTokens, order, orderBy, selectedMemorySetFilter]);
-
-  const columns = [
-    { id: 'name', label: 'Name', minWidth: 170 },
+  const columns = useMemo(() => [
     {
-      id: 'sourcePuzzles',
-      label: 'Source Puzzle(s)',
-      minWidth: 200,
-      format: (puzzlesArray) => {
-        if (!puzzlesArray || puzzlesArray.length === 0) {
-          return <Typography variant="caption" color="textSecondary">N/A</Typography>;
-        }
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {puzzlesArray.map(puzzle => (
-              puzzle.id && puzzle.name ? (
-                <MuiLink component={RouterLink} to={`/puzzles/${puzzle.id}`} key={puzzle.id} sx={{ textDecoration: 'none', '&:hover': {textDecoration: 'underline'} }}>
-                  <Chip label={puzzle.name} size="small" clickable variant="outlined" />
-                </MuiLink>
-              ) : null
-            ))}
-          </Box>
-        );
-      }
+      id: 'name',
+      label: 'Memory Name',
+      sortable: true,
+      width: '25%',
+      format: (value, row) => <RouterLink to={`/elements/${row.id}`}>{value}</RouterLink>
     },
-    { id: 'inferredCategory', label: 'Category', minWidth: 100 },
     {
-      id: 'memorySets',
-      label: 'Memory Sets',
-      minWidth: 150,
-      format: (setsArray) => {
-        if (!Array.isArray(setsArray) || setsArray.length === 0) {
-          return <Typography variant="caption" color="textSecondary">N/A</Typography>;
-        }
-        return (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {setsArray.map((set, i) => (
-              <Chip key={i} label={set} size="small" variant="outlined" color="info" />
-            ))}
-          </Box>
-        );
-      }
+      id: 'parsed_sf_rfid',
+      label: 'RFID',
+      sortable: true,
+      width: '10%',
+      format: (value) => value || 'N/A'
     },
-    { id: 'baseValueLevel', label: 'Level', minWidth: 80, align: 'right', format: (value) => value },
-    { id: 'baseValueAmount', label: 'Base Value ($)', minWidth: 100, align: 'right', format: (value) => value.toLocaleString() },
-    { id: 'typeMultiplierValue', label: 'Multiplier', minWidth: 80, align: 'right', format: (value) => `x${value}` },
-    { id: 'finalValue', label: 'Final Value ($)', minWidth: 120, align: 'right', format: (value) => value.toLocaleString() },
-    { id: 'sfRfid', label: 'SF_RFID', minWidth: 100 },
-  ];
+    {
+      id: 'sf_value_rating',
+      label: 'Value Rating',
+      sortable: true,
+      align: 'center',
+      width: '10%',
+      format: (value) => value ? <Chip label={value} size="small" color={value >=4 ? "error" : value === 3 ? "warning" : "default"}/> : 'N/A'
+    },
+    {
+      id: 'baseValueAmount',
+      label: 'Base Value ($)',
+      sortable: true,
+      align: 'right',
+      width: '10%',
+      format: (value) => value.toLocaleString()
+    },
+    {
+      id: 'sf_memory_type',
+      label: 'Memory Type',
+      sortable: true,
+      width: '10%',
+      format: (value) => value ? <Chip label={value} size="small" variant="outlined" /> : 'N/A'
+    },
+    {
+      id: 'typeMultiplierValue',
+      label: 'Multiplier',
+      sortable: true,
+      align: 'center',
+      width: '10%',
+      format: (value) => `x${value}`
+    },
+    {
+      id: 'finalCalculatedValue',
+      label: 'Final Value ($)',
+      sortable: true,
+      align: 'right',
+      width: '10%',
+      format: (value) => value.toLocaleString()
+    },
+    {
+      id: 'discoveredVia',
+      label: 'Discovered Via',
+      sortable: true,
+      width: '15%',
+      format: (value) => value || 'N/A'
+    }
+  ], []);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Memory Economy Data...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{mt: 2}}>
+        <Alert severity="error">Error loading element data: {error.message}</Alert>
+      </Container>
+    );
+  }
 
   return (
-    <Box sx={{ m: 2 }}>
-      <PageHeader title="Memory Economy Overview" />
-
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 4 }}>
-          <CircularProgress />
-          <Typography sx={{ ml: 2 }}>Loading Memory Elements...</Typography>
-        </Box>
-      )}
-
-      {isError && (
-        <Alert severity="error" sx={{ my: 2 }}>
-          Error fetching elements: {queryError?.message || 'An unknown error occurred.'}
-        </Alert>
-      )}
-
-      {!isLoading && !isError && (
-        <>
-          <FormControl sx={{ m: 1, minWidth: 240, mb: 2 }} size="small">
-            <InputLabel id="memory-set-filter-label">Filter by Memory Set</InputLabel>
-            <Select
-              labelId="memory-set-filter-label"
-              id="memory-set-filter-select"
-              value={selectedMemorySetFilter}
-              label="Filter by Memory Set"
-              onChange={(e) => setSelectedMemorySetFilter(e.target.value)}
-            >
-              <MenuItem value="All">
-                <em>All Sets</em>
-              </MenuItem>
-              {availableMemorySetsForFilter.map((setName) => (
-                <MenuItem key={setName} value={setName}>
-                  {setName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Paper sx={{ width: '100%', overflow: 'hidden', mt: 1 }}>
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}> {/* Adjusted maxHeight */}
-              <Table stickyHeader aria-label="memory tokens table">
-                <TableHead>
-                  <TableRow>
-                    {columns.map((column) => (
-                      <TableCell
-                        key={column.id}
-                        align={column.align}
-                        style={{ minWidth: column.minWidth, fontWeight: 'bold' }}
-                        sortDirection={orderBy === column.id ? order : false}
-                      >
-                        <TableSortLabel
-                          active={orderBy === column.id}
-                          direction={orderBy === column.id ? order : 'asc'}
-                          onClick={() => handleRequestSort(column.id)}
-                        >
-                          {column.label}
-                        </TableSortLabel>
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredAndSortedTokens.map((token) => (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={token.id}>
-                      {columns.map((column) => {
-                        const value = token[column.id];
-                        return (
-                          <TableCell key={column.id} align={column.align}>
-                            {column.format ? column.format(value) : value}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            {filteredAndSortedTokens.length === 0 && (
-               <Typography sx={{p: 2, textAlign: 'center'}}>
-                 {selectedMemorySetFilter === "All" ? "No memory tokens found." : `No memory tokens found for set: "${selectedMemorySetFilter}".`}
-               </Typography>
-            )}
-          </Paper>
-        </>
-      )}
-    </Box>
+    <Container maxWidth="xl">
+      <PageHeader title="Memory Economy Dashboard" />
+      <Paper sx={{ p: { xs: 1, sm: 2 } }} elevation={2}>
+        {processedMemoryData.length === 0 && !isLoading && (
+            <Alert severity="info" sx={{mb: 2}}>No memory-type elements found with economic data.</Alert>
+        )}
+        <DataTable
+          columns={columns}
+          data={processedMemoryData}
+          isLoading={isLoading}
+          initialSortBy="finalCalculatedValue"
+          initialSortDirection="desc"
+          emptyMessage="No memory elements match the current criteria."
+        />
+      </Paper>
+    </Container>
   );
-};
+}
 
 export default MemoryEconomyPage;

@@ -19,6 +19,7 @@ router.get('/timeline/:id/graph', notionController.getTimelineGraph);
 // Puzzle routes
 router.get('/puzzles', notionController.getPuzzles);
 router.get('/puzzles/:id/graph', notionController.getPuzzleGraph);
+router.get('/puzzles/:id/flowgraph', notionController.getPuzzleFlowGraph); // New endpoint for graph data
 router.get('/puzzles/:id', notionController.getPuzzleById);
 
 // Element routes

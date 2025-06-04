@@ -10,10 +10,11 @@ import Timeline from './pages/Timeline';
 import TimelineDetail from './pages/TimelineDetail';
 import Puzzles from './pages/Puzzles';
 import PuzzleDetail from './pages/PuzzleDetail';
+import PuzzleFlowPageWrapper from './pages/PuzzleFlowPage'; // Correct import is already here
 import Elements from './pages/Elements';
 import ElementDetail from './pages/ElementDetail';
 import MemoryEconomyPage from './pages/MemoryEconomyPage';
-import PuzzleFlowPage from './pages/PuzzleFlowPage';
+// import PuzzleFlowPage from './pages/PuzzleFlowPage'; // Remove redundant import
 import ElementPuzzleEconomyPage from './pages/ElementPuzzleEconomyPage';
 import CharacterSociogramPage from './pages/CharacterSociogramPage';
 import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
@@ -98,7 +99,7 @@ function App() {
         {/* Puzzles routes */}
         <Route path="/puzzles" element={<Puzzles />} />
         <Route path="/puzzles/:id" element={<PuzzleDetail />} />
-        <Route path="/puzzles/:id/flow" element={<PuzzleFlowPage />} /> {/* New Route for Puzzle Flow */}
+        <Route path="/puzzles/:id/flow" element={<PuzzleFlowPageWrapper />} /> {/* Corrected to use Wrapper */}
         
         {/* Elements routes */}
         <Route path="/elements" element={<Elements />} />

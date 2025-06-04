@@ -127,6 +127,14 @@ export const api = {
     const response = await apiClient.get('/characters/with-warnings');
     return response.data;
   },
+  getPuzzleFlowGraph: async (id) => { // For graph visualization of puzzle flow
+    const response = await apiClient.get(`/puzzles/${id}/flowgraph`);
+    return response.data;
+  },
+  getUniqueNarrativeThreads: async () => {
+    const response = await apiClient.get('/narrative-threads'); // Path from B023/B027
+    return response.data;
+  },
 };
 
 // Error interceptor for logging and potentially transforming errors

@@ -1,229 +1,178 @@
-import React, { useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
-import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
-import { Box, Typography, CircularProgress, Alert, Paper, useTheme } from '@mui/material';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useQuery, useQueryClient } from 'react-query';
+import { Box, Paper, CircularProgress, Alert, Typography, Button } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
+
 import PageHeader from '../components/PageHeader';
-import api from '../services/api';
-import { getDagreLayout } from '../components/RelationshipMapper/layoutUtils';
-import CustomEdge from '../components/RelationshipMapper/CustomEdge'; // Import CustomEdge
+// import RelationshipMapper from '../components/RelationshipMapper'; // Not directly using RelationshipMapper component
+import { api } from '../services/api';
+import useGraphTransform from '../components/RelationshipMapper/useGraphTransform';
+import EntityNode from '../components/RelationshipMapper/EntityNode';
+import CustomEdge from '../components/RelationshipMapper/CustomEdge';
 
-// Simple Node component for this view
-const FlowNode = ({ data }) => {
-  const theme = useTheme();
-  let backgroundColor = theme.palette.grey[200];
-  let textColor = theme.palette.getContrastText(backgroundColor);
-  let borderColor = theme.palette.grey[400];
+import '@xyflow/react/dist/style.css';
 
-  if (data.flowNodeType === 'centralPuzzle') {
-    backgroundColor = theme.palette.primary.main;
-    textColor = theme.palette.primary.contrastText;
-    borderColor = theme.palette.primary.dark;
-  } else if (data.flowNodeType === 'inputElement' || data.flowNodeType === 'outputElement') {
-    backgroundColor = theme.palette.secondary.light;
-    textColor = theme.palette.secondary.contrastText;
-    borderColor = theme.palette.secondary.main;
-  } else if (data.flowNodeType === 'linkedPuzzle') {
-    backgroundColor = theme.palette.info.light;
-    textColor = theme.palette.info.contrastText;
-    borderColor = theme.palette.info.main;
-  }
+const nodeTypes = { entityNode: EntityNode };
+const edgeTypes = { custom: CustomEdge };
 
-  return (
-    <Paper
-      elevation={3}
-      sx={{
-        p: 1,
-        borderRadius: 1,
-        border: `1px solid ${borderColor}`,
-        backgroundColor,
-        color: textColor,
-        minWidth: 120,
-        maxWidth: 200,
-        textAlign: 'center'
-      }}
-    >
-      <Typography variant="caption" sx={{fontWeight: 'bold', wordBreak: 'break-word'}}>{data.label}</Typography>
-      {data.subLabel && <Typography variant="caption" display="block" sx={{fontSize: '0.65rem'}}>{data.subLabel}</Typography>}
-    </Paper>
-  );
-};
-
-const nodeTypes = {
-  flowNode: FlowNode,
-};
-
-const edgeTypes = { // Define edgeTypes to use CustomEdge
-  custom: CustomEdge,
-};
-
-const PuzzleFlowPage = () => {
+function PuzzleFlowPage() {
   const { id: puzzleId } = useParams();
   const navigate = useNavigate();
-  const theme = useTheme();
+  const queryClient = useQueryClient();
 
-  const { data: flowData, isLoading, error } = useQuery(
-    ['puzzleFlow', puzzleId],
-    () => api.getPuzzleFlow(puzzleId),
-    { enabled: !!puzzleId }
+  const queryKey = ['puzzleFlowGraph', puzzleId];
+  const { data: rawGraphData, isLoading, isError, error, refetch, isFetching } = useQuery(
+    queryKey,
+    () => api.getPuzzleFlowGraph(puzzleId),
+    {
+      enabled: !!puzzleId,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+    }
   );
+
+  const centralEntityName = rawGraphData?.center?.name || puzzleId;
+
+  // useGraphTransform is used here primarily for layout application.
+  // The backend /flowgraph endpoint already structures nodes and edges.
+  // ParentId assignment and complex filtering are likely not needed here.
+  const { nodes: layoutedNodes, edges: layoutedEdges, error: layoutError } = useGraphTransform({
+    graphData: rawGraphData, // Pass the raw data from the new endpoint
+    entityId: puzzleId,
+    entityType: 'Puzzle', // The central entity is a Puzzle
+    entityName: centralEntityName,
+    viewMode: 'LR', // Use 'LR' (Left-to-Right) for Puzzle Flow
+    layoutOptions: {
+      rankdir: 'LR',
+      ranksep: 120,
+      nodesep: 70,
+    },
+    suppressLowSignal: false, // Show all fetched nodes/edges
+    depth: 99, // Assume backend sends the appropriate depth
+    // Disable specific parentId assignment logic if not using compound nodes for flow
+    // by not providing the typical edge shortLabels that trigger it,
+    // or by adding an option to useGraphTransform to disable it.
+    // For now, rely on the backend data structure not needing this.
+  });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const layoutedElements = useMemo(() => {
-    if (!flowData) return null;
-
-    const newNodes = [];
-    const newEdges = [];
-    const centralPuzzleId = flowData.centralPuzzle.id;
-
-    newNodes.push({
-      id: centralPuzzleId,
-      type: 'flowNode',
-      data: { label: flowData.centralPuzzle.name, flowNodeType: 'centralPuzzle', entityId: centralPuzzleId, entityType: 'Puzzle' },
-      position: { x: 0, y: 0 },
-    });
-
-    (flowData.inputElements || []).forEach(el => {
-      newNodes.push({
-        id: el.id,
-        type: 'flowNode',
-        data: { label: el.name, subLabel: `(${el.basicType || 'Element'})`, flowNodeType: 'inputElement', entityId: el.id, entityType: 'Element' },
-        position: { x: 0, y: 0 },
-      });
-      newEdges.push({
-        id: `input-${el.id}-to-${centralPuzzleId}`,
-        source: el.id,
-        target: centralPuzzleId,
-        type: 'custom', // Use custom edge
-        label: 'requires',
-        data: { type: 'dependency', shortLabel: 'requires', contextualLabel: `${el.name} requires ${flowData.centralPuzzle.name}` },
-        markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.error.main },
-        style: { stroke: theme.palette.error.light, strokeWidth: 1.5 },
-      });
-    });
-
-    (flowData.outputElements || []).forEach(el => {
-      newNodes.push({
-        id: el.id,
-        type: 'flowNode',
-        data: { label: el.name, subLabel: `(${el.basicType || 'Element'})`, flowNodeType: 'outputElement', entityId: el.id, entityType: 'Element' },
-        position: { x: 0, y: 0 },
-      });
-      newEdges.push({
-        id: `reward-${centralPuzzleId}-to-${el.id}`,
-        source: centralPuzzleId,
-        target: el.id,
-        type: 'custom', // Use custom edge
-        label: 'rewards',
-        data: { type: 'default', shortLabel: 'rewards', contextualLabel: `${flowData.centralPuzzle.name} rewards ${el.name}` },
-        markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.success.main },
-        style: { stroke: theme.palette.success.light, strokeWidth: 1.5 },
-      });
-    });
-
-    (flowData.prerequisitePuzzles || []).forEach(p => {
-      newNodes.push({
-        id: p.id,
-        type: 'flowNode',
-        data: { label: p.name, subLabel: '(Prerequisite)', flowNodeType: 'linkedPuzzle', entityId: p.id, entityType: 'Puzzle' },
-        position: { x: 0, y: 0 },
-      });
-      newEdges.push({
-        id: `prereq-${p.id}-to-${centralPuzzleId}`,
-        source: p.id,
-        target: centralPuzzleId,
-        type: 'custom', // Use custom edge
-        label: 'unlocks',
-        data: { type: 'default', shortLabel: 'unlocks', contextualLabel: `${p.name} unlocks ${flowData.centralPuzzle.name}` },
-        markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.info.main },
-        style: { stroke: theme.palette.info.light, strokeDasharray: '5,5', strokeWidth: 1.5 },
-      });
-    });
-
-    (flowData.unlocksPuzzles || []).forEach(p => {
-      newNodes.push({
-        id: p.id,
-        type: 'flowNode',
-        data: { label: p.name, subLabel: '(Unlocks)', flowNodeType: 'linkedPuzzle', entityId: p.id, entityType: 'Puzzle' },
-        position: { x: 0, y: 0 },
-      });
-      newEdges.push({
-        id: `unlocks-${centralPuzzleId}-to-${p.id}`,
-        source: centralPuzzleId,
-        target: p.id,
-        type: 'custom', // Use custom edge
-        label: 'unlocks',
-        data: { type: 'default', shortLabel: 'unlocks', contextualLabel: `${flowData.centralPuzzle.name} unlocks ${p.name}` },
-        markerEnd: { type: MarkerType.ArrowClosed, color: theme.palette.info.main },
-        style: { stroke: theme.palette.info.light, strokeDasharray: '5,5', strokeWidth: 1.5 },
-      });
-    });
-
-    const uniqueNodes = Array.from(new Map(newNodes.map(node => [node.id, node])).values());
-
-    return getDagreLayout(uniqueNodes, newEdges, { direction: 'LR' });
-
-  }, [flowData, theme]);
+  useEffect(() => {
+    if (layoutedNodes) setNodes(layoutedNodes);
+  }, [layoutedNodes, setNodes]);
 
   useEffect(() => {
-    if (layoutedElements) {
-      setNodes(layoutedElements.nodes);
-      setEdges(layoutedElements.edges);
-    } else {
-      setNodes([]);
-      setEdges([]);
-    }
-  }, [layoutedElements, setNodes, setEdges]);
+    if (layoutedEdges) setEdges(layoutedEdges);
+  }, [layoutedEdges, setEdges]);
 
   const onNodeClick = (event, node) => {
-    if (node.data?.entityId && node.data?.entityType) {
-      const path = `/${node.data.entityType.toLowerCase()}s/${node.data.entityId}`;
-      navigate(path);
+    // Navigate to detail page based on node type
+    const type = node.data?.type || node.type; // data.type from graphData, node.type from ReactFlow
+    if (type === 'Puzzle') {
+      navigate(`/puzzles/${node.id}`);
+    } else if (type === 'Element') {
+      navigate(`/elements/${node.id}`);
+    } else if (type === 'Character') {
+      navigate(`/characters/${node.id}`);
+    } else {
+      console.log('Clicked node with unhandled type:', node);
     }
   };
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading Puzzle Flow...</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress size={50} /> <Typography sx={{ml:2}}>Loading Puzzle Flow...</Typography>
       </Box>
     );
   }
 
-  if (error) {
-    return <Alert severity="error" sx={{m:2}}>Error loading puzzle flow: {error.message}</Alert>;
+  if (isError) {
+    return (
+      <Paper sx={{ p: 3, m:1 }} elevation={3}>
+        <Alert severity="error">Error loading puzzle flow: {error?.message || 'Unknown error'}</Alert>
+        <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/puzzles/${puzzleId}`} sx={{ mr: 1, mt: 2 }}>Back to Puzzle</Button>
+        <Button startIcon={<RefreshIcon />} onClick={() => refetch()} sx={{ mt: 2 }}>Retry</Button>
+      </Paper>
+    );
   }
 
-  if (!flowData) {
-    return <Alert severity="info" sx={{m:2}}>No flow data available for this puzzle.</Alert>;
+  if (layoutError) {
+     return (
+      <Paper sx={{ p: 3, m:1 }} elevation={3}>
+        <Alert severity="error">Error processing graph layout: {layoutError.message}</Alert>
+         <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/puzzles/${puzzleId}`} sx={{ mr: 1, mt: 2 }}>Back to Puzzle</Button>
+        <Button startIcon={<RefreshIcon />} onClick={() => refetch()} sx={{ mt: 2 }}>Retry</Button>
+      </Paper>
+    );
+  }
+
+  if (!rawGraphData || !layoutedNodes || !layoutedEdges) {
+    return (
+      <Paper sx={{ p: 3, m:1 }} elevation={3}>
+        <Alert severity="info">No flow data available for this puzzle or layout could not be generated.</Alert>
+         <Button startIcon={<ArrowBackIcon />} component={RouterLink} to={`/puzzles/${puzzleId}`} sx={{ mr: 1, mt: 2 }}>Back to Puzzle</Button>
+         <Button startIcon={<RefreshIcon />} onClick={() => refetch()} sx={{ mt: 2 }}>Refresh</Button>
+      </Paper>
+    );
   }
 
   return (
-    <Box sx={{ m: 2, height: 'calc(100vh - 120px)' /* Adjust height as needed */ }}>
-      <PageHeader title={`Puzzle Flow: ${flowData?.centralPuzzle?.name || puzzleId}`} />
-      <Paper sx={{ height: '100%', width: '100%' }} elevation={2}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes} // Pass edgeTypes
-          fitView
-          fitViewOptions={{ padding: 0.1 }}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-        </ReactFlow>
+    <Box>
+      <PageHeader
+        title={`${centralEntityName} - Flow View`}
+        breadcrumbs={[
+          { name: 'Puzzles', path: '/puzzles' },
+          { name: centralEntityName, path: `/puzzles/${puzzleId}` },
+          { name: 'Flow' },
+        ]}
+        action={
+            <Box sx={{display: 'flex', gap: 1}}>
+                <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching}>
+                    {isFetching ? 'Refreshing...' : 'Refresh Flow'}
+                </Button>
+                 <Button variant="contained" startIcon={<ArrowBackIcon />} component={RouterLink} to={`/puzzles/${puzzleId}`}>
+                    Back to Puzzle Details
+                </Button>
+            </Box>
+        }
+      />
+      <Paper sx={{ height: 'calc(100vh - 220px)', width: '100%', p: 0, position: 'relative' }} elevation={1}>
+        {isFetching && !rawGraphData ? ( // Show loading overlay only if fetching and no data yet
+           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+            <CircularProgress /> <Typography sx={{ml:2}}>Loading Graph...</Typography>
+          </Box>
+        ) : (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodeClick={onNodeClick}
+            fitView
+            attributionPosition="bottom-right"
+            defaultMarkerColor="#ccc" // Default marker color for edges
+          >
+            <Background />
+            <Controls />
+            <MiniMap nodeStrokeWidth={3} zoomable pannable />
+          </ReactFlow>
+        )}
       </Paper>
     </Box>
   );
-};
+}
 
-export default PuzzleFlowPage;
+export default function PuzzleFlowPageWrapper() {
+  return (
+    <ReactFlowProvider>
+      <PuzzleFlowPage />
+    </ReactFlowProvider>
+  );
+}

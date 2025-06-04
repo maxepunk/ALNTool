@@ -316,8 +316,15 @@ const getCharacterGraph = catchAsync(async (req, res) => {
 });
 
 const getTimelineEvents = catchAsync(async (req, res) => {
-  const propertyMap = { memType: 'mem type', date: 'Date', narrativeThreadContains: 'Narrative Threads' };
+  const propertyMap = {
+    memType: 'mem type',
+    date: 'Date',
+    narrativeThreadContains: 'Narrative Threads',
+    actFocus: 'Act Focus' // Added for server-side filtering
+  };
   const filter = buildNotionFilter(req.query, propertyMap);
+  // Log the constructed filter for debugging
+  // console.log('[Timeline Controller] Constructed Filter for Notion:', JSON.stringify(filter, null, 2));
   const notionEvents = await notionService.getTimelineEvents(filter);
   const events = await Promise.all(
     notionEvents.map(event => propertyMapper.mapTimelineEventWithNames(event, notionService))
@@ -387,6 +394,60 @@ const getElements = catchAsync(async (req, res) => {
   const propertyMap = { type: 'Basic Type', status: 'Status', firstAvailable: 'First Available', narrativeThreadContains: 'Narrative Threads' };
   const filter = buildNotionFilter(req.query, propertyMap);
   const notionElements = await notionService.getElements(filter);
+  const elements = await Promise.all(
+    notionElements.map(element => propertyMapper.mapElementWithNames(element, notionService))
+  );
+  setCacheHeaders(res);
+  res.json(elements);
+});
+
+// Define Memory Basic Types at a scope accessible by getElements
+const MEMORY_BASIC_TYPES = [
+  "Memory Token Video",
+  "Memory Token Audio",
+  "Memory Token Physical",
+  "Corrupted Memory RFID",
+  "Memory Fragment" // Add any other relevant types
+];
+
+const getElements = catchAsync(async (req, res) => {
+  const { filterGroup, ...otherQueryParams } = req.query;
+  let combinedFilter;
+
+  // Base filters from propertyMap for other query params
+  const propertyMap = {
+    type: 'Basic Type',
+    status: 'Status',
+    firstAvailable: 'First Available',
+    narrativeThreadContains: 'Narrative Threads'
+  };
+  const standardFilters = buildNotionFilter(otherQueryParams, propertyMap);
+
+  if (filterGroup === 'memoryTypes') {
+    const memoryTypeOrConditions = MEMORY_BASIC_TYPES.map(type => ({
+      property: 'Basic Type',
+      select: { equals: type },
+    }));
+
+    const memoryFilter = { or: memoryTypeOrConditions };
+
+    if (standardFilters) {
+      // If standardFilters is just one condition (not an 'and' object yet)
+      if (!standardFilters.and) {
+         combinedFilter = { and: [standardFilters, memoryFilter] };
+      } else { // If standardFilters is already an 'and' object
+         combinedFilter = { and: [...standardFilters.and, memoryFilter] };
+      }
+    } else {
+      combinedFilter = memoryFilter; // No other filters, just memory types
+    }
+    // console.log('[Elements Controller] Constructed Filter for Memory Types:', JSON.stringify(combinedFilter, null, 2));
+  } else {
+    combinedFilter = standardFilters;
+    // console.log('[Elements Controller] Constructed Standard Filter:', JSON.stringify(combinedFilter, null, 2));
+  }
+
+  const notionElements = await notionService.getElements(combinedFilter);
   const elements = await Promise.all(
     notionElements.map(element => propertyMapper.mapElementWithNames(element, notionService))
   );
@@ -1474,4 +1535,146 @@ module.exports = {
   getAllCharactersWithSociogramData,
   getCharactersWithWarnings,
   getAllUniqueNarrativeThreads, // Ensure this is in the final export
+  getPuzzleFlowGraph, // Added new controller
 };
+
+const getPuzzleFlowGraph = catchAsync(async (req, res) => {
+  const { id: puzzleId } = req.params;
+  // const depth = parseInt(req.query.depth || '1', 10); // Depth parameter for future expansion
+  const cacheKey = makeCacheKey('puzzle-flow-graph-v1', { id: puzzleId });
+  const cachedData = notionCache.get(cacheKey);
+
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow Graph)`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow Graph)`);
+
+  try {
+    const { centralPuzzle, mappedRelatedEntities } = await notionService.fetchPuzzleFlowDataStructure(puzzleId);
+
+    const nodes = [];
+    const edges = [];
+    const addedNodeIds = new Set();
+    // Using a simplified internal node creation for this specific graph,
+    // as _createGraphNodeInternal has broader side effects and property mappings not all relevant here.
+
+    const addNode = (entity, entityType, customProps = {}) => {
+      if (!entity || !entity.id || addedNodeIds.has(entity.id)) {
+        return processedFullEntities.get(entity.id); // Return existing if already processed by _createGraphNodeInternal
+      }
+
+      const node = {
+        id: entity.id,
+        name: entity.name || entity.puzzle || entity.description || `Unnamed ${entityType}`,
+        type: entityType,
+        properties: {
+          ...(entity.timing && { timing: entity.timing }),
+          ...(entity.ownerName && { ownerName: entity.ownerName }),
+          ...(entity.storyRevealSnippet && { storyRevealSnippet: createSnippet(entity.storyRevealSnippet) }),
+          ...(entity.basicType && { basicType: entity.basicType }),
+          ...customProps,
+        }
+      };
+      nodes.push(node);
+      addedNodeIds.add(entity.id);
+      return node;
+    };
+
+    const addEdge = (sourceNode, targetNode, label, type, customData = {}) => {
+      if (!sourceNode || !targetNode) return;
+      edges.push({
+        id: `edge-${sourceNode.id}-${targetNode.id}-${type}-${Math.random().toString(16).slice(2,8)}`,
+        source: sourceNode.id,
+        target: targetNode.id,
+        label: label, // simple label
+        data: {
+          shortLabel: label, // concise label for on-path
+          contextualLabel: `${sourceNode.name} (${sourceNode.type}) ${label} ${targetNode.name} (${targetNode.type})`,
+          type: type, // e.g., REQUIRES, REWARDS
+          ...customData,
+        }
+      });
+    };
+
+    // Add central puzzle node
+    const centralPuzzleNode = addNode(centralPuzzle, 'Puzzle', {
+        timing: centralPuzzle.timing,
+        ownerName: centralPuzzle.owner?.[0]?.name, // Assuming owner is an array
+        storyRevealSnippet: createSnippet(centralPuzzle.storyReveals),
+    });
+
+    // Process related entities
+    (centralPuzzle.puzzleElements || []).forEach(elStub => {
+      const element = mappedRelatedEntities.get(elStub.id);
+      if (element) {
+        const elementNode = addNode(element, 'Element', { isInput: true, basicType: element.basicType });
+        addEdge(elementNode, centralPuzzleNode, 'inputTo', 'REQUIRES');
+      }
+    });
+
+    (centralPuzzle.rewards || []).forEach(elStub => {
+      const element = mappedRelatedEntities.get(elStub.id);
+      if (element) {
+        const elementNode = addNode(element, 'Element', { isOutput: true, basicType: element.basicType });
+        addEdge(centralPuzzleNode, elementNode, 'rewards', 'REWARDS');
+      }
+    });
+
+    (centralPuzzle.lockedItem || []).forEach(elStub => {
+      const element = mappedRelatedEntities.get(elStub.id);
+      if (element) {
+        const elementNode = addNode(element, 'Element', { isOutput: true, basicType: element.basicType, isLockedItem: true });
+        addEdge(centralPuzzleNode, elementNode, 'unlocksItem', 'UNLOCKS_ITEM');
+      }
+    });
+
+    (centralPuzzle.parentItem || []).forEach(parentPzStub => {
+      const parentPuzzle = mappedRelatedEntities.get(parentPzStub.id);
+      if (parentPuzzle) {
+        const parentPuzzleNode = addNode(parentPuzzle, 'Puzzle', {timing: parentPuzzle.timing, ownerName: parentPuzzle.owner?.[0]?.name});
+        addEdge(parentPuzzleNode, centralPuzzleNode, 'unlocks', 'UNLOCKS_PUZZLE');
+      }
+    });
+
+    (centralPuzzle.subPuzzles || []).forEach(subPzStub => {
+      const subPuzzle = mappedRelatedEntities.get(subPzStub.id);
+      if (subPuzzle) {
+        const subPuzzleNode = addNode(subPuzzle, 'Puzzle', {timing: subPuzzle.timing, ownerName: subPuzzle.owner?.[0]?.name});
+        addEdge(centralPuzzleNode, subPuzzleNode, 'leadsTo', 'LEADS_TO_PUZZLE');
+      }
+    });
+
+    (centralPuzzle.owner || []).forEach(ownerStub => {
+        const owner = mappedRelatedEntities.get(ownerStub.id);
+        if(owner) {
+            const ownerNode = addNode(owner, 'Character'); // Add minimal character props if needed
+            addEdge(ownerNode, centralPuzzleNode, 'owns', 'OWNS_PUZZLE');
+        }
+    });
+
+
+    const graphData = {
+      center: { // Provide a center-like structure for consistency if frontend expects it
+        id: centralPuzzle.id,
+        name: centralPuzzle.puzzle,
+        type: 'Puzzle',
+        properties: centralPuzzle, // Full mapped properties of the central puzzle
+      },
+      nodes,
+      edges,
+    };
+
+    notionCache.set(cacheKey, graphData);
+    console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow Graph for ${centralPuzzle.puzzle})`);
+    setCacheHeaders(res);
+    res.json(graphData);
+
+  } catch (error) {
+    console.error(`Error generating puzzle flow graph for ID ${puzzleId}:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Failed to generate puzzle flow graph' });
+    }
+  }
+});

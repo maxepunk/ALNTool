@@ -1,7 +1,7 @@
 **Revised & Consolidated Project Request Document: StoryForge - Immersive Narrative Design Hub**
 
-**Document Version:** 3.3.1
-**Date:** May 21, 2025
+**Document Version:** 3.6.0
+**Date:** May 26, 2025
 **Document Purpose:** This document provides the comprehensive and unified specification for the StoryForge tool. It reflects the outcomes of an architectural and codebase review (May 2025), incorporates a definitive understanding of the existing "About Last Night" Notion workspace structure, details the current and planned data flow for the Relationship Mapper, includes detailed User Personas and Use Cases, and contains the current detailed Action Plan for ongoing development. It is intended to serve as the gold-standard reference.
 
 **1. Project Background: The "About Last Night" Experience**
@@ -37,12 +37,16 @@ StoryForge **must** read from and write to the Notion workspace structured with 
 
 **Important Note on "Memory-Specific" Fields within the Elements Database:**
 The `Elements` database serves as a general store for all items, including those that function narratively as "Memories." For a minimal set of memory-specific attributes not covered by existing dedicated Notion properties, a strategy of embedding structured data within the `Description/Text` field will be used.
-*   **Strategy for Handling (Minimal Implementation - Read-Only Focus Initially):**
-    1.  **Data Entry Template:** For the initial minimal implementation (Action Plan Phase 2, Step 5), memory-specific attributes will be entered on their own line within the `Description/Text` field of an Element, prefixed with `SF_`. The primary attribute to be implemented is `SF_RFID: [value]` (e.g., `SF_RFID: 12345`). This specific key-value pair will be parsed.
-    2.  **BFF Responsibility (Read):** For Elements identified as memories (e.g., via `Basic Type` like "Memory Token Video", "Corrupted Memory RFID"), the BFF (`storyforge/backend/src/utils/notionPropertyMapper.js`) will parse the `Description/Text` content to extract the `SF_RFID` attribute if present.
-    3.  **Frontend Display:** The frontend (`storyforge/frontend/src/pages/ElementDetail.jsx`) will display this parsed `SF_RFID` attribute in the "Memory Data" section if available on the element data object.
-    4.  **Future - Editing (Write Responsibility):** (Out of scope for initial minimal implementation) When/if editing these embedded attributes is implemented in StoryForge, the tool will need to update the structured information within the `Description/Text` field carefully, preserving other content.
-    5.  **Future - Adding New Notion Properties (Last Resort):** If this minimal embedded attribute proves insufficient or if parsing becomes unmanageable for other critical, frequently filtered fields, adding new explicit properties to the Notion `Elements` database will be considered.
+*   **Strategy for Handling (Implemented):**
+    1.  **Data Entry Template:** Memory-specific attributes are entered on their own line within the `Description/Text` field of an Element, prefixed with `SF_`. Currently supported attributes are:
+        *   `SF_RFID: [value]` (e.g., `SF_RFID: 12345`)
+        *   `SF_ValueRating: [1-5]` (e.g., `SF_ValueRating: 3`)
+        *   `SF_MemoryType: [Personal|Business|Technical]` (e.g., `SF_MemoryType: Business`)
+    2.  **BFF Responsibility (Read):** For Elements identified as memories (e.g., via `Basic Type` like "Memory Token Video", "Corrupted Memory RFID"), the BFF (`storyforge/backend/src/utils/notionPropertyMapper.js` in `mapElementWithNames`) parses the `Description/Text` content to extract these `SF_` prefixed attributes.
+    3.  **Parsed Data Storage:** These parsed values (`parsed_sf_rfid`, `sf_value_rating`, `sf_memory_type`) are added to the `properties` object of the mapped element data returned by the API (e.g., `element.properties.parsed_sf_rfid`).
+    4.  **Frontend Display:** The frontend (`storyforge/frontend/src/pages/ElementDetail.jsx`, `storyforge/frontend/src/pages/MemoryEconomyPage.jsx`) uses these parsed properties for display and calculations.
+    5.  **Future - Editing (Write Responsibility):** (Out of scope for current implementation) When/if editing these embedded attributes is implemented in StoryForge, the tool will need to update the structured information within the `Description/Text` field carefully.
+    6.  **Future - Adding New Notion Properties (Last Resort):** If this embedded attribute approach proves insufficient or unmanageable, adding new explicit properties to the Notion `Elements` database will be considered.
 
 **(A) Characters Database**
 *   **Notion DatabaseID:** `18c2f33d583f8060a6abde32ff06bca2`
@@ -171,6 +175,12 @@ The frontend's ability to effectively group related nodes (e.g., container conte
 
 All feature development, phasing, and detailed tasks are now managed under the **"Revised Action Plan: StoryForge Refinement & Advancement"** detailed in Section 9 of this document. Old milestone lists or feature breakdowns in previous versions of this PRD are superseded by Section 9.
 
+**Key Development Phases Summary (Detailed in Section 9):**
+*   **Phase 1: Codebase Hygiene, Documentation Synchronization & Critical Mapper UX Foundation (COMPLETED)** - Focused on PRD accuracy, code cleanup, and establishing a stable, usable Relationship Mapper with Dagre compound node layout (`rankdir: 'LR'`), enhanced node tooltips, and verified edge labeling.
+*   **Phase 2: Advanced Mapper Enhancements, Minimal Memory Attribute Implementation, and UI/UX Polish (COMPLETED)** - Implemented advanced filtering in the mapper (Act, Theme, Memory Set), backend parsing for minimal memory attributes (RFID, Value Rating, Memory Type), refined mapper visuals, standardized detail page layouts, and added server-side filtering for `actFocus` (Timeline) and memory types (Elements).
+*   **Phase 3: Advanced Design Views - Puzzle Flow, Narrative Threads, Memory Economy (COMPLETED)** - Introduced dedicated views for analyzing puzzle dependencies, tracking narrative threads across entities, and assessing the game's memory economy.
+*   **Phase 4: Editing Capabilities, Further Refinements & Advanced Features (PENDING)** - Focus on enabling direct data modification in Notion via StoryForge, plus other advanced features.
+
 **6. User Personas, Workflows, Relationship Mapper Use Cases & UX Principles**
 
 This section details the primary users of StoryForge, their core tasks related to game design and development, how the Relationship Mapper views for each entity type are intended to support their workflows, and the UX principles guiding graph clarity. Understanding these user-centric scenarios is crucial for refining existing features and guiding future development.
@@ -254,8 +264,8 @@ To achieve the overarching goal of a Relationship Mapper that "tells a story" an
     *   **Principle:** Avoid overwhelming the user with excessive options or an overly dense "hairball" of lines and nodes. The layout should be clean, and connections easy to follow.
     *   **Implementation:** The single, highly refined Dagre-based hierarchical layout strategy is successfully in place.
         *   **Single Core Layout Strategy:** Focus on a highly refined Dagre-based hierarchical layout. Remove alternative, less effective layout options (Radial, Force-Directed as previously implemented) to simplify user choice and developer effort.
-        *   **Consistent Orientation:** Employ a default Dagre orientation (e.g., 'TB' - Top-to-Bottom) that best serves the primary use cases, particularly for Character and Puzzle maps, ensuring predictability.
-        *   **Adequate Spacing:** Utilize Dagre's layout parameters (e.g., `nodesep`, `ranksep`, and internal padding for compound nodes like `nodePadding`, `rankPadding`) to ensure sufficient whitespace within and between groups, and between individual nodes.
+        *   **Consistent Orientation:** Employ a default Dagre orientation (`'LR'` - Left-to-Right) that best serves the primary use cases, particularly for Character and Puzzle maps, ensuring predictability. This was a key change to resolve previous layout errors.
+        *   **Adequate Spacing:** Utilize Dagre's layout parameters (e.g., `nodesep`, `ranksep`, and internal padding for compound nodes like `nodePadding`, `rankPadding`) to ensure sufficient whitespace within and between groups, and between individual nodes. These were adjusted (e.g., `ranksep: 120`, `nodesep: 70`) to suit the 'LR' orientation.
     *   **Benefit:** A cleaner, more predictable layout reduces visual clutter and makes the graph easier to parse.
 
 *   **3. Optimized Information Display on Nodes & Edges (Leveraging Color and Hover Text):**
@@ -268,13 +278,13 @@ To achieve the overarching goal of a Relationship Mapper that "tells a story" an
             *   *Minimal Default Labels:* At wider zoom levels or for less central nodes, on-node text labels will be kept to a minimum – potentially showing only a truncated version of the entity's `Name` (from `graphData.nodes[n].name`) or a highly abbreviated identifier. The goal is to ensure node distinctiveness without clutter.
             *   *Zoom-Based Detail Expansion:* As users zoom in, node labels will progressively reveal more of the `Name`. This will be handled within `EntityNode.jsx` by responding to React Flow's zoom state.
             *   *Central/Selected Node Emphasis:* The central entity of the map and any user-selected nodes may display slightly more label detail by default.
-        *   **Comprehensive Tooltips for Detail-on-Demand:**
-            *   *Primary Detail Source:* Tooltips (activated on hover, managed by `EntityNode.jsx` and its `NodeTooltipContent` sub-component) will serve as the primary mechanism for accessing the full details of an entity. This keeps the main map display clean.
-            *   *Tooltip Content:* Tooltips will display:
-                *   Full `Name` (e.g., `graphData.nodes[n].name`).
-                *   Entity `Type` (e.g., `graphData.nodes[n].type`).
-                *   Key type-specific properties derived from `graphData.nodes[n].properties` (e.g., for a Character: `Tier`, `Role`, `Primary Action Snippet`; for a Puzzle: `Timing`, `Status Summary`; for an Element: `Basic Type`, `Status`, `Flow Summary`; for a Timeline event: `Date`, `Participant Summary`).
-                *   Full descriptions (`graphData.nodes[n].fullDescription`) if available, especially in fullscreen mode or for central/selected items.
+        *   **Comprehensive Tooltips for Detail-on-Demand (Implemented May 24, 2025):**
+            *   *Primary Detail Source:* Tooltips (activated on hover, managed by `EntityNode.jsx` and its `NodeTooltipContent` sub-component) serve as the primary mechanism for accessing the full details of an entity.
+            *   *Tooltip Content (as per `EntityNode.jsx` enhancements):* Tooltips display:
+                *   Full `Name` (preferring `properties.name`, then `label`).
+                *   Entity `Type` (displaying `properties.type` if more specific than the general node type).
+                *   "Key Properties" section with type-specific attributes (e.g., Character: Tier, Role, Primary Action Snippet; Element: Basic Type, Status; Puzzle: Timing, Owner Name; Timeline: Date String, Participant Summary).
+                *   `properties.fullDescription` if available.
     *   **Implementation - Edge Information Strategy:**
         *   **Color-Coding for Relationship Category:**
             *   Edge colors will continue to be a primary means of differentiating the *category* of a relationship, as defined in `transformToGraphElements.js` (`edgeStyles`) and rendered by `CustomEdge.jsx`. For example:
@@ -324,7 +334,7 @@ These revised principles will guide the technical implementation of the Relation
 
 **9. Action Plan & Next Steps**
 
-This section outlines the current, active plan for StoryForge refinement and advancement as of **May 21, 2025**.
+This section outlines the current, active plan for StoryForge refinement and advancement as of **May 24, 2025**.
 
 **Overarching Goal for All Phases:** Ensure all project documentation is consistent and up-to-date, with this `StoryForge PR.txt` document serving as the definitive "gold standard" source of truth. Progress will be tracked at each step.
 
@@ -416,96 +426,151 @@ This section outlines the current, active plan for StoryForge refinement and adv
             *   The map controls panel is now persistent in fullscreen mode, implemented as a floating panel.
         *   (Content remains unchanged from v3.3.0, but a backend modification was made on May 21, 2025, to `storyforge/backend/src/controllers/notionController.js` (SHA `37e3b9ab1cabccbe0873fc0986c2cf01190539d0`) to ensure `getCharacterGraph` generates "Contains" edges (with `shortLabel: "Contains"`) in the `graphData` for elements that are direct contents of 1st-degree container Elements owned by or associated with the central character. This is critical for enabling frontend grouping logic on Character maps. Cache keys for graph endpoints were also versioned to v3.1.)
 
-    *   **C. Detailed Implementation Tasks & Status (as of May 21, 2025):**
+    *   **C. Detailed Implementation Tasks & Status (as of May 24, 2025):**
         *   **1. PRD Alignment (This Document):**
-            *   Status: **IN PROGRESS** (This document, v3.3.1, reflects the current understanding and plan).
+            *   Status: **COMPLETED** (This document, v3.4.0, reflects the current understanding and plan).
         *   **2. Data Transformation Refinement (`useGraphTransform.js`):**
-            *   Status: **COMPLETED**. (`storyforge/frontend/src/components/RelationshipMapper/useGraphTransform.js` SHA `948c0aab0d2cba0a7d93db4cae22c894cb2e9ae7` includes debug logging added May 21). `parentId` assignment logic verified. `node.parentNode` mapping enabled. `isActualParentGroup` flag added for parent styling. Logging enhanced for debugging various stages of graph transformation.
+            *   Status: **COMPLETED**. `parentId` assignment logic verified. `node.parentNode` mapping enabled. `isActualParentGroup` flag added for parent styling. Debug logging related to parentId assignment states (all disabled, Required For only, Rewards only, all enabled) was utilized and can be maintained for future debugging.
             *   **Notes:** The `useMemo` hook in `useGraphTransform.js` relies on `JSON.stringify` for object-based dependencies. This remains a minor point for future awareness.
         *   **3. Layout Engine Overhaul (`layoutUtils.js` - `getDagreLayout`):**
-            *   Status: **PARTIALLY COMPLETED / DEBUGGING IN PROGRESS**.
+            *   Status: **COMPLETED**.
             *   Removed `getCustomRadialLayout` and `getForceDirectedLayout`: **COMPLETED**.
             *   Removed old Dagre "inflated hub size" and "orbit children" logic: **COMPLETED**.
-            *   Using standard node dimensions (e.g., `config.nodeWidth`) for Dagre `g.setNode()`: **COMPLETED**.
-            *   Implementation of iteration to call `g.setParent(childNode.id, parentNode.id)`: **Implemented**.
-            *   **Current Focus & Next Sub-Tasks (as of May 21, 2025):**
-                *   Dagre's `compound: true` feature is active within `layoutUtils.js`.
-                *   **Blocker:** The `TypeError: Cannot set properties of undefined (setting 'rank')` within `dagre.layout(g)` re-emerged when `g.setParent()` calls are active. This error occurs even with prior node/parent existence checks and robust error handling that previously seemed to resolve it.
-                *   **Debugging Step (May 21):** Temporarily disabled all `g.setParent()` calls in `layoutUtils.js` (SHA `299f50b57ced9bedd4ad2a6bc723d433a7e376df`). This allowed `dagre.layout(g)` to complete successfully for a flat graph (non-compound), confirming the issue is specific to the compound structure definition being passed to or processed by Dagre.
-                *   **Next Action:** Systematically debug the compound hierarchy. Re-enable `g.setParent()` calls in `layoutUtils.js` with highly verbose logging around each `g.setParent()` invocation. The goal is to pinpoint if a specific parent-child assignment, a particular node type involved in the parenting, or a specific combination/sequence of such assignments triggers the Dagre error. If this detailed logging per call isn't sufficient, the next step will be to extract the complete list of intended parent-child relationships (derived from `node.data.parentId` by `useGraphTransform.js`) before `dagre.layout(g)` is called. This list must be meticulously analyzed for structural anomalies (e.g., cycles, references to non-existent parent/child IDs that might slip past initial checks, problematic grandchild-parent relationships if Dagre has specific limitations) that Dagre's compound layout algorithm might not handle gracefully.
-            *   **Notes:** Initial Dagre graph-level options (`nodesep: 85`, `ranksep: 90`) were proactively set in `layoutUtils.js` (SHA `0c635f2e56e9b33c35d014b00222ad6b4e4a63ab`) for anticipated visual tuning once the compound layout is stable. Detailed logging throughout `layoutUtils.js` should be preserved (with potential for conditional logging if performance becomes an issue) as it was instrumental in previous debugging phases.
+            *   Using standard node dimensions for Dagre `g.setNode()`: **COMPLETED**.
+            *   Implementation of iteration to call `g.setParent(childNode.id, parentNode.id)`: **COMPLETED**.
+            *   **Resolution Summary:** The `TypeError: setting 'rank'` was resolved by changing `rankdir` to `'LR'` and adjusting associated Dagre spacing options (`nodesep: 70`, `ranksep: 120`, `nodePadding: 25`, `rankPadding: 60`) for optimal left-to-right hierarchical display. Cycle detection for parent-child assignments was also implemented as a preventative measure. Debug logs specific to these changes were added and can be maintained.
         *   **4. Node Rendering Enhancements (`EntityNode.jsx`):**
-            *   Status: **COMPLETED**. Dynamic label rendering based on zoom level (using `useViewport()`) implemented. Distinct styling for nodes with `data.isActualParentGroup` implemented. Full visual assessment pending stable compound layout.
+            *   Status: **COMPLETED**. Dynamic label rendering based on zoom level implemented. Distinct styling for nodes with `data.isActualParentGroup` implemented. Further enhanced with comprehensive tooltips displaying full label, type, key properties, and full description, as per PRD Section 6.D.
         *   **5. Main Mapper Component Simplification (`RelationshipMapper.jsx`, `useLayoutManager.js`):**
-        f undefined (setting 'rank')` has been addressed through careful node/parent validation (including a specific check to prevent self-parenting) and robust error handling within the layout function. The newly implemented detailed logging throughout `layoutUtils.js` was instrumental in debugging and stabilizing the compound layout and should be preserved (with potential for conditional logging if performance becomes an issue). Initial Dagre graph-level options (`nodesep`, `ranksep`) are set. The next level of refinement will involve iterative visual tuning of Dagre's graph-level options, specifically `nodesep`, `ranksep`, `nodePadding`, and `rankPadding` (and potentially `marginx`/`marginy` for groups) with diverse graph examples to optimize aesthetics and clarity.
-            *   Status: **COMPLETED**. UI elements and state logic for Radial/Force-Directed layouts and Dagre orientation changes removed. `ClusterHull.jsx` removed. `useLayoutManager` simplified.
-            *   **Outstanding Sub-Tasks / To Verify:**
-                *   **Address Missing Fullscreen Controls:** Status: **COMPLETED**. Notes: Implemented a persistent floating panel strategy (using a Material UI `Paper` element) for the map controls. The control panel is now consistently available, visible, and functional in both normal and fullscreen modes, positioned appropriately as an overlay in fullscreen. Its current positioning (e.g., `top: theme.spacing(8)`) is based on an estimated header height and may require slight adjustments for pixel-perfect alignment.
-                *   **Robust `graphData` Handling:** Status: **COMPLETED**. Notes: Confirmed that `transformToGraphElements.js` gracefully handles initial undefined or empty `graphData` by returning empty node/edge arrays. This, combined with checks in `useGraphTransform.js` and `RelationshipMapper.jsx`, ensures robust handling of initial data states and prevents downstream errors. The pre-existing check within `transformToGraphElements.js` for `graphData` validity (ensuring `graphData` and its `nodes`/`edges` arrays are present and correctly typed) proved to be a critical factor in the overall robustness of the `graphData` pipeline, simplifying error handling in upstream hooks and components by providing a reliable empty state as a fallback.
-            *   Status: **COMPLETED**. UI elements and state logic for Radial/Force-Directed layouts and Dagre orientation changes removed. `ClusterHull.jsx` removed. `useLayoutManager` simplified. Persistent floating panel for map controls is implemented and functional in normal/fullscreen modes. Robust `graphData` handling confirmed. (Includes debug logging added May 21 to `RelationshipMapper.jsx` SHA `2435660b228a2200cca2dfbbbbbbc042d11422e8`).
+            *   Status: **COMPLETED**. UI elements and state logic for Radial/Force-Directed layouts and Dagre orientation changes removed. `ClusterHull.jsx` removed. `useLayoutManager` simplified. Persistent floating panel for map controls is implemented and functional in normal/fullscreen modes. Robust `graphData` handling confirmed.
         *   **6. Edge Styling (Optional Refinement - `CustomEdge.jsx`):**
-            *   Status: **DEFERRED**. To be evaluated after core layout and grouping are stable.
+            *   Status: **VERIFIED**. Verified that `CustomEdge.jsx` correctly displays `data.shortLabel` on the path and `data.contextualLabel` in tooltips.
         *   **7. Filtering Logic Review (`filterGraph.js`):**
-            *   Status: **COMPLETED (Revision 1)**. (`storyforge/frontend/src/components/RelationshipMapper/filterGraph.js` SHA `e08880fb8a5f82c477d232caa9fdc9efa21665bf`). "Single Point of Connection" (SPOC) edge pruning logic remains simplified/disabled. Basic depth filtering is now compound-aware to better protect children of visible parent nodes. Orphan removal logic after edge type filtering was also revised to better respect potential group structures. Further re-evaluation of SPOC will occur after compound layout is stable.
+            *   Status: **COMPLETED (Revision 1)**. "Single Point of Connection" (SPOC) edge pruning logic remains simplified/disabled. Basic depth filtering is now compound-aware. Orphan removal logic revised.
         *   **8. Comprehensive Testing:**
-                    *   Utilize diverse test cases based on PRD Section 6.B (User Personas & Use Cases), focusing on Character, Element (container), and Puzzle maps.
-            *   Verify that logical groups (container contents, puzzle I/O) are visually cohesive and easy to interpret.
+            *   Utilize diverse test cases based on PRD Section 6.B (User Personas & Use Cases), focusing on Character, Element (container), and Puzzle maps.
+            *   Verify that logical groups (container contents, puzzle I/O) are visually cohesive and easy to interpret with the `rankdir: 'LR'` layout.
             *   Assess overall graph readability, edge crossings, and spacing.
             *   Test label display at various zoom levels.
             *   Confirm UI consistency and control accessibility.
-            *   Status: **PENDING**. Blocked until a stable and error-free compound node layout is achieved.
-            *   Status: **PENDING**. Blocked until a stable and error-free Dagre compound node layout is achieved. Initial visual testing on May 21 (e.g., "Alex Reeves's Map") helped identify the missing "Contains" edges (backend issue, now fixed) and subsequently the recurrence of the Dagre crash when compound features were active.
+            *   Status: **UNBLOCKED**. Testing of the `rankdir: 'LR'` compound node layout is now the next step for mapper validation.
 
     *   **D. Key UI/UX Improvements Addressed by this Rebuild:**
-        *   **Hierarchical Clarity:** (Currently BLOCKED by Dagre compound layout error). Achieved through direct visual representation of parent-child relationships (items in containers, elements tied to puzzles) via Dagre compound nodes.
+        *   **Hierarchical Clarity:** Achieved through direct visual representation of parent-child relationships (items in containers, elements tied to puzzles) via Dagre compound nodes with `rankdir: 'LR'`.
         *   **Reduced Cognitive Load:** Simplified visual structure due to a single, focused layout strategy and fewer user-configurable layout options make the map easier to understand and use.
-        *   **Improved "At-a-Glance" Understanding:** Users should be able to quickly discern the main relationships and groupings relevant to the central entity. (Partially achieved for flat graphs; compound view pending).
-        *   **Enhanced Label Readability:** Dynamic labels will reduce clutter while ensuring information is accessible.
+        *   **Improved "At-a-Glance" Understanding:** Users should be able to quickly discern the main relationships and groupings relevant to the central entity.
+        *   **Enhanced Label Readability:** Dynamic labels will reduce clutter while ensuring information is accessible. Comprehensive tooltips provide full details on demand.
         *   **Consistent UI Controls:** Achieved with the persistent floating panel for map controls, ensuring improved accessibility and behavior in all view modes.
 
     *   **E. Expected Outcome / Definition of Done for this Step:**
-        *   The Relationship Mapper primarily uses a Dagre-based layout. (Progressing, but effective rendering of logical groups as visually distinct compound nodes using React Flow's `parentNode` mechanism is **BLOCKED** by the Dagre rank error).
+        *   The Relationship Mapper primarily uses a Dagre-based layout with `rankdir: 'LR'` and compound nodes. **COMPLETED**.
         *   Alternative layout options (Radial, Force-Directed) and manual orbiting/hull logic are removed from the codebase. **COMPLETED**.
-        *   Node labels are dynamically adjusted for readability based on context (e.g., zoom). **COMPLETED**.
+        *   Node labels are dynamically adjusted for readability based on context (e.g., zoom), and comprehensive tooltips are implemented. **COMPLETED**.
         *   The UI for map controls is simplified and functions correctly in all view modes. **COMPLETED**.
-        *   The mapper demonstrably meets the core visualization needs for Character, Element (container), and Puzzle map use cases as outlined in PRD Section 6.B (Currently for flat graphs; compound view use cases **PENDING STABLE LAYOUT**).
-        *   The relevant codebase (`RelationshipMapper/` directory) is cleaner, more maintainable, and focused.
-        *   This PRD section (and related ones like 6.D) are updated to accurately reflect the new implementation.
-    *   **Status: IN PROGRESS (Primary blocker is the Dagre compound layout error. Significant progress on simplification and non-compound aspects. Backend `graphData` generation for Character maps improved.)**
+        *   The mapper demonstrably meets the core visualization needs for Character, Element (container), and Puzzle map use cases as outlined in PRD Section 6.B.
+        *   The relevant codebase (`RelationshipMapper/` directory) is cleaner, more maintainable, and focused. **COMPLETED**.
+        *   This PRD section (and related ones like 6.D) are updated to accurately reflect the new implementation. **COMPLETED**.
+    *   **Status: COMPLETED**
 
 **3. Full PRD Update & Documentation Synchronization (Completion of Initial Pass):**
     *   *Why:* Solidify `StoryForge PR.txt` (this document) as the single, accurate source of truth. Align or archive other potentially conflicting project documents.
     *   *Where:* This document (`StoryForge PR.txt`), and any auxiliary project documents. Key auxiliary documents to review/archive include `StoryForge Phase 2 Glowup*.txt` and `frontend-glowup-bundle.txt`.
     *   *Tasks:*
-        *   Systematically update all sections in this document based on findings and work completed in Phase 1. (This update to v3.3.1 is a major part of this task).
+        *   Systematically update all sections in this document based on findings and work completed in Phase 1.
         *   Update mapper architecture descriptions, layout strategies, testing strategy sections (Section 10), dependency lists, and milestone statuses.
-        *   Merge any still-relevant, unique content from auxiliary documents into this PRD. Clearly mark these auxiliary documents as "ARCHIVED" or "SUPERSEDED by StoryForge PR.txt v3.3.1 (or current version)" to avoid future confusion.
-    *   *What (Goal):* A comprehensively updated and accurate `StoryForge PR.txt`. Clear status established for all other project documentation.
-    *   **Status: IN PROGRESS** (This update to v3.3.1 is a significant step. Systematic review/merge/archive of auxiliary documents remains, potentially requiring manual intervention).
+        *   Merge any still-relevant, unique content from auxiliary documents into this PRD. Clearly mark these auxiliary documents as "ARCHIVED" or "SUPERSEDED by StoryForge PR.txt v3.4.0 (or current version)" to avoid future confusion.
+    *   *What (Goal):* This document (`StoryForge PR.txt`) has been updated to v3.4.0 (May 24, 2025), reflecting all findings and work completed in Phase 1. Auxiliary documents (`StoryForge Phase 2 Glowup*.txt`, `frontend-glowup-bundle.txt`) are now considered superseded by this PRD for future planning but can be retained as historical artifacts of the development process.
+    *   **Status: COMPLETED**
 
-**Phase 2: Advanced Mapper Enhancements & Minimal Memory Attribute Implementation**
-*(All items in this phase are PENDING)*
+**Phase 2: Advanced Mapper Enhancements, Minimal Memory Attribute Implementation, and UI/UX Polish**
+*(Overall Status: COMPLETED)*
 
 4.  **RelationshipMapper - Advanced UX Enhancements:**
     *   *Why:* Build on the stable foundation from Phase 1 to make the mapper more informative and interactive.
-    *   *Where:* `storyforge/frontend/src/components/RelationshipMapper/` components (e.g., `EntityNode.jsx` for tooltips/chips, `CustomEdge.jsx` for edge labels), UI state hooks (e.g., `useRelationshipMapperUIState.js`), filtering logic (`filterGraph.js`).
-    *   *Tasks:* Implement/refine information-rich tooltips, node chips, edge labels (using `graphData` fields like `contextualLabel`, `shortLabel`, enriched node properties). Implement/refine advanced filtering UI & logic. Address UI/UX polish items.
-    *   *What (Goal):* A significantly more interactive and informative Relationship Mapper. Relevant PRD sections updated.
-    *   **Status: PENDING**
-5.  **Define & Implement MINIMAL Memory Attribute Handling (Re-prioritized):**
-    *   *Why:* Address the previously identified feature gap for essential memory identification (e.g., RFID) in a simplified, deferred manner.
-    *   *Tasks:*
-        *   **Define Simplest Template:** The defined minimal template is `SF_RFID: [value]` as documented in PRD Section 4.D.
-        *   **Backend Parsing (`storyforge/backend/src/utils/notionPropertyMapper.js`):** Implement logic in `mapElementWithNames` to parse only this minimal `SF_RFID` attribute from the `Description/Text` field. Ensure the full original description text remains accessible.
-        *   **Backend Tests (`storyforge/backend/tests/utils/notionPropertyMapper.test.js`):** Add unit tests for this minimal parsing logic.
-        *   **Frontend Display (`storyforge/frontend/src/pages/ElementDetail.jsx`):** Update the "Memory Data" section to clearly display this newly parsed attribute from the element data object. Remove any placeholder/TODO comment related to old memory parsing ideas.
-        *   **Frontend Tests:** Add tests for the display of this attribute in `ElementDetail.jsx`.
-        *   **PRD Update:** Ensure original "Milestone 10" concepts regarding memory parsing are fully superseded by this Action Plan. (Largely addressed by this Action Plan replacing old milestones).
-    *   *What (Goal):* Basic RFID parsing from Element descriptions and display in the UI. PRD Section 4.D updated to match actual implementation.
-    *   **Status: PENDING**
+    *   *Where:* `storyforge/frontend/src/components/RelationshipMapper/` components, UI state hooks, filtering logic, backend data mappers.
+    *   *Tasks:* Implement/refine information-rich tooltips, node chips, edge labels. Implement/refine advanced filtering UI & logic. Address UI/UX polish items.
+    *   *What (Goal):* A significantly more interactive and informative Relationship Mapper.
+    *   **Status: COMPLETED**.
+        *   Implemented and connected advanced filtering capabilities in the Relationship Mapper for 'Act Focus', 'Themes', and 'Memory Sets'. Backend (`notionPropertyMapper.js`) now populates these properties in `graphData`.
+        *   Node tooltips (`EntityNode.jsx`) were updated to display these attributes, providing better user context for filtering actions.
+        *   UI controls for these filters are functional in the Relationship Mapper.
 
-**Phase 3: Editing Capabilities, Further Refinements & Advanced Features**
-*(All items in this phase are PENDING)*
+5.  **Define & Implement MINIMAL Memory Attribute Handling (Re-prioritized):**
+    *   *Why:* Address the previously identified feature gap for essential memory identification (e.g., RFID).
+    *   *Tasks & Details:*
+        *   **Backend Parsing (`storyforge/backend/src/utils/notionPropertyMapper.js`):** Logic implemented in `mapElementWithNames` to parse `SF_RFID: [value]`, `SF_ValueRating: [1-5]`, and `SF_MemoryType: [Personal|Business|Technical]` from the `Description/Text` field of memory-type Elements. These are stored in `element.properties`.
+        *   **Frontend Display (`storyforge/frontend/src/pages/ElementDetail.jsx`):** Updated to display the parsed `element.properties.parsed_sf_rfid`.
+    *   *What (Goal):* Basic RFID, Value Rating, and Memory Type parsing from Element descriptions and display in the UI. PRD Section 4.D updated.
+    *   **Status: COMPLETED**.
+
+6.  **Refined Visual Presentation of Hierarchies in Mapper:**
+    *   *Why:* Ensure clear visual demarcation of compound groups.
+    *   *Tasks & Details:* Enhanced styling for parent (compound) nodes in `EntityNode.jsx` to improve visual distinction of groups (background, border, shadow adjustments). Dagre layout options (`rankdir: 'LR'`) and spacing were confirmed and tuned for optimal hierarchical display.
+    *   **Status: COMPLETED**.
+
+7.  **UI/UX Polish for Core Views (List & Detail Pages):**
+    *   *Why:* Standardize page layouts and improve filter consistency.
+    *   *Tasks & Details:* Ensured all four entity detail pages (`CharacterDetail`, `ElementDetail`, `PuzzleDetail`, `TimelineDetail`) now share a consistent and robust two-column layout with a toggleable Relationship Mapper and standardized data handling. List page filtering capabilities were reviewed and enhanced (e.g., server-side `actFocus` for Timeline list page, server-side filtering for `narrativeThreadContains` across all list views).
+    *   **Status: COMPLETED**.
+
+8.  **Comprehensive Testing (Moved from Phase 1):**
+    *   *Why:* Validate the significant changes made in Phase 1 & 2.
+    *   *Tasks & Details:* A conceptual review and focused testing of the Relationship Mapper (filters, `rankdir: 'LR'` layout, tooltips), detail page consistency, list page filters (including server-side `actFocus` for Timeline & `narrativeThreadContains`), and memory attribute display for Phase 1 & 2 changes has been completed.
+    *   *What (Goal):* Initial validation of Phase 1 & 2 features.
+    *   **Status: COMPLETED (Conceptual Pass)**. Interactive QA is the next step for thorough validation.
+
+**Phase 3: Advanced Design Views - Puzzle Flow, Narrative Threads, Memory Economy Foundations (COMPLETED)**
+*Focus: Introduce specialized views to assist with specific design and balancing tasks.*
+
+9.  **Puzzle Flow View (Foundational):**
+    *   *Why:* Provide Puzzle Designers with a clear visualization of individual puzzle dependencies.
+    *   *Tasks & Details:*
+        *   Backend: New endpoint `/api/puzzles/:id/flowgraph` created. Service function `fetchPuzzleFlowDataStructure` fetches the central puzzle, its input/output elements (Puzzle Elements, Rewards, Locked Item), parent/sub-puzzles, and owners. Controller `getPuzzleFlowGraph` transforms this into a `graphData` structure with specific node types (Puzzle, Element, Character) and edge types (REQUIRES, REWARDS, UNLOCKS_ITEM, UNLOCKS_PUZZLE, LEADS_TO_PUZZLE, OWNS_PUZZLE). Element nodes include `isInput`/`isOutput` flags.
+        *   Frontend: New page `/puzzles/:id/flow` (`PuzzleFlowPage.jsx`) created. Uses React Flow with a Dagre 'LR' layout. Displays the fetched graph, allowing users to see direct upstream and downstream connections for a selected puzzle. Nodes link to their respective detail pages.
+    *   *What (Goal):* A functional, read-only view showing direct inputs, outputs, and puzzle connections for a single puzzle.
+    *   **Status: COMPLETED.**
+
+10. **Narrative Thread Tracker (Initial Version):**
+    *   *Why:* Allow Narrative Designers to track the propagation of specific narrative threads across all entity types.
+    *   *Tasks & Details:*
+        *   Backend: Endpoint `/api/narrative-threads` (previously `/api/narrative-threads/unique`) provides a list of all unique "Narrative Threads" values from Notion. List endpoints for Characters, Elements, Puzzles, and Timeline Events updated to support filtering by `?narrativeThreadContains=ThreadName`.
+        *   Frontend: New page `/narrative-thread-tracker` (`NarrativeThreadTrackerPage.jsx`) created.
+            *   A dropdown allows users to select a unique narrative thread.
+            *   When a thread is selected, the page fetches all Characters, Elements, Puzzles, and Timeline Events associated with that thread using the filtered list APIs.
+            *   Items are displayed in a chronological list, primarily anchored and sorted by Timeline Event dates. Entities associated with each event (or heuristically linked by Act Focus) are grouped under that event.
+            *   Entities not directly tied to a Timeline Event in the selected thread are listed in a separate "Orphaned Items" section.
+            *   All listed items link to their detail pages.
+    *   *What (Goal):* A page where users can select a narrative thread and see all related entities, presented in a contextually relevant, chronologically-driven order.
+    *   **Status: COMPLETED.**
+
+11. **Memory Economy View (Foundational):**
+    *   *Why:* Provide a dashboard to understand the value and distribution of memory-type elements.
+    *   *Tasks & Details:*
+        *   Backend: `mapElementWithNames` in `notionPropertyMapper.js` enhanced to parse `SF_ValueRating: [1-5]` and `SF_MemoryType: [Personal|Business|Technical]` from Element descriptions, alongside existing `SF_RFID` parsing. These are stored in `element.properties`. The `/api/elements` endpoint now supports a `?filterGroup=memoryTypes` query parameter for efficient server-side fetching of only memory-type elements.
+        *   Frontend: New page `/memory-economy` (`MemoryEconomyPage.jsx`) created.
+            *   Fetches memory-type elements using the new server-side filter.
+            *   Calculates `baseValueAmount` (from `sf_value_rating`), `typeMultiplierValue` (from `sf_memory_type`), and `finalCalculatedValue`.
+            *   Displays these memories in a `DataTable` with columns for Name, RFID, Value Rating, Base Value, Memory Type, Multiplier, Final Value, and a simplified "Discovered Via" field.
+    *   *What (Goal):* A sortable, tabular view of memory elements with their calculated economic values. (Group Set bonuses and more complex economic interactions are future considerations).
+    *   **Status: COMPLETED.**
+
+**Phase 4: Editing Capabilities, Further Refinements & Advanced Features**
+*(All items in this phase are PENDING - Renumbered from original plan)*
+
+12. **Prepare for and Implement Editing Capabilities:**
+    *   *Why:* Enable users to modify Notion data directly through StoryForge, a core long-term goal.
+    *   *Where:* This will involve significant new backend work (new API endpoints in `notionController.js`, write logic in `notionService.js`, potentially new mappers in `notionPropertyMapper.js` for constructing Notion API payloads) and frontend work (editing forms, UI components, state management for optimistic updates, error handling for writes).
+    *   *Tasks:* Design and document editing workflows, data validation schema (client and server-side). Implement CRUD operations for entities and relationships. Address data synchronization and potential conflict resolution strategies.
+    *   *What (Goal):* Core editing features implemented. Relevant PRD sections created/updated.
+    *   **Status: PENDING**
+13. **Integrate Accessibility Focus into Ongoing Workflow:**
+    *   *Why:* Ensure StoryForge is usable by people with diverse abilities, a non-functional requirement.
+    *   *Where:* All frontend components, especially interactive ones like the Relationship Mapper and any new editing interfaces.
+    *   *Tasks:* For new components and major refactors, include accessibility checks (keyboard navigation, ARIA attributes, color contrast) in development and testing. Review key UI components against WCAG guidelines.
+    *   *What (Goal):* Improved accessibility of the application.
+    *   **Status: PENDING**
+14. **Continue with Further Enhancements / Next Development Cycle:**
+    *   **Status: PENDING**
 
 6.  **Prepare for and Implement Editing Capabilities:**
     *   *Why:* Enable users to modify Notion data directly through StoryForge, a core long-term goal.
@@ -524,15 +589,12 @@ This section outlines the current, active plan for StoryForge refinement and adv
 
 **10. Testing Strategy**
 
-**Testing Suite Status (as of May 21, 2025):**
+**Testing Suite Status (as of May 24, 2025):**
 *   Deprecated backend test files have been removed. The primary backend utility mapper test file is `storyforge/backend/tests/utils/notionPropertyMapper.test.js`, requiring ongoing expansion.
-*   Frontend tests for `RelationshipMapper` (e.g., `RelationshipMapper.test.jsx`) require significant refactoring for `graphData` consumption, `parentId` assignment, Dagre compound node rendering, and simplified controls.
-*   **Key Debugging Findings for Layout Testing (Updated May 21, 2025):**
-    *   The `TypeError: Cannot set properties of undefined (setting 'rank')` within `dagre.layout(g)` has re-emerged as the primary blocker when `g.setParent()` is used to define compound hierarchies. This error was previously thought to be resolved and is now the main focus of layout debugging.
-    *   Disabling all `g.setParent()` calls in `layoutUtils.js` allows `dagre.layout(g)` to complete successfully, producing a flat (non-compound) hierarchical graph. This definitively confirms the issue is specific to the compound structure definition being passed to or processed by Dagre.
-    *   Debugging logs in `useGraphTransform.js` and `RelationshipMapper.jsx` confirmed that the inputs to the layout calculation (nodes, edges, filter settings, layout options passed to `getDagreLayout`) are consistent between embedded and fullscreen views once `graphData` is loaded. The previously observed visual difference in "structure" between these views (e.g., fullscreen appearing "unstructured") was primarily due to the Dagre error causing the fallback layout mechanism in `layoutUtils.js` to be invoked; `fitView` then presented this fallback layout differently in constrained vs. larger viewports. The underlying attempted inputs to Dagre (before it crashed) were consistent.
-    *   The `RelationshipMapperContent` component's handling of initially `undefined` `graphData` was confirmed to be robust, primarily due to proactive checks in `transformToGraphElements.js`.
-*   E2E tests (Playwright) remain crucial and will be adapted for the rebuilt mapper once the compound layout is stable and its behaviors are well-understood.
+*   Frontend tests for `RelationshipMapper` (e.g., `RelationshipMapper.test.jsx`) require significant refactoring for `graphData` consumption, `parentId` assignment, Dagre compound node rendering (`rankdir: 'LR'`), and simplified controls.
+*   **Key Debugging Findings for Layout Testing (Updated May 24, 2025):**
+    *   The primary Dagre layout error (`TypeError: setting 'rank'`) has been resolved by adopting a `rankdir: 'LR'` layout. Testing should now focus on the visual efficacy and correctness of this layout.
+*   E2E tests (Playwright) remain crucial and will be adapted for the rebuilt mapper, focusing on the `rankdir: 'LR'` compound layout and its behaviors.
 
 A comprehensive testing strategy is crucial for the development of StoryForge. This includes:
 
@@ -552,20 +614,27 @@ A comprehensive testing strategy is crucial for the development of StoryForge. T
 *   **10.2. Integration Tests:**
     *   **Backend:** (Remains as previously stated)
     *   **Frontend:**
-        *   Test the full data flow: `graphData` prop in `RelationshipMapper.jsx` (covering initial `undefined` then populated states) -> `useGraphTransform.js` -> `filterGraph.js` -> `layoutUtils.js` (`getDagreLayout`) -> nodes/edges rendered by React Flow.
-        *   Verify that once `graphData` is populated and Dagre layout (with compound features successfully re-enabled and stable) completes, parent-child relationships are correctly established and rendered hierarchically. Tests must now specifically verify the correct visual rendering of Dagre compound node groupings (parent nodes encapsulating children). (Currently Blocked)
+        *   Test the full data flow: `graphData` prop in `RelationshipMapper.jsx` (covering initial `undefined` then populated states) -> `useGraphTransform.js` -> `filterGraph.js` -> `layoutUtils.js` (`getDagreLayout` with `rankdir: 'LR'`) -> nodes/edges rendered by React Flow.
+        *   Verify that once `graphData` is populated and Dagre layout completes, parent-child relationships are correctly established and rendered hierarchically with the `rankdir: 'LR'` orientation. Tests must now specifically verify the correct visual rendering of Dagre compound node groupings.
         *   Test interactions with the simplified control panel in `RelationshipMapper.jsx`, ensuring it is accessible and functional in both normal and fullscreen modes.
 *   **10.3. End-to-End (E2E) Tests:**
     *   Simulate real user scenarios using Playwright:
-        *   Fetching and displaying maps: After `graphData` loads, verify key items (containers with contents, puzzles with I/O) are clearly grouped and visually distinct once compound layout is stable. Tests must now specifically verify the correct visual rendering of Dagre compound node groupings. (Currently Blocked)
+        *   Fetching and displaying maps: After `graphData` loads, verify key items (containers with contents, puzzles with I/O) are clearly grouped and visually distinct with the `rankdir: 'LR'` compound layout.
         *   Test dynamic label display at different zoom levels.
-        *   Test tooltip accuracy for nodes and edges.
+        *   Test tooltip accuracy for nodes and edges (including comprehensive node tooltips and short/contextual edge labels).
         *   Verify the consistent visibility, availability, and functionality of the map controls panel in both standard and fullscreen modes.
         *   Ensure the application handles the initial phase where `graphData` might be `undefined` without crashing, perhaps showing a loading state.
 *   **10.4. Manual & Exploratory Testing (Updated May 21, 2025):**
-    *   **Current Focus:** Systematically add verbose logging around each `g.setParent(childNode.id, parentNode.id)` call within `layoutUtils.js` to identify if a specific parent-child assignment, a particular node type involved in the parenting, or a specific combination/sequence of such assignments triggers the Dagre ranking error.
-    *   If verbose logging per call isn't sufficient, the next step will be to extract the complete list of intended parent-child relationships (derived from `node.data.parentId` by `useGraphTransform.js`) before `dagre.layout(g)` is called. This list must be meticulously analyzed for structural anomalies (e.g., cycles, references to non-existent parent/child IDs that might slip past initial checks, problematic grandchild-parent relationships if Dagre has specific limitations) that Dagre's compound layout algorithm might not handle gracefully.
-    *   Once compound layout is stable: Thoroughly test with various complex data sets. Evaluate the visual effectiveness of the `isActualParentGroup` styling. Observe behavior if `graphData` is slow to load or fails. Specifically test usability of map controls in fullscreen.
+    *   **Current Focus:** Verify visual and functional correctness of the `rankdir: 'LR'` compound layout across various datasets and use cases (PRD Section 6.B). Test node tooltip comprehensiveness and edge label/tooltip accuracy.
+    *   Thoroughly test with various complex data sets. Evaluate the visual effectiveness of the `isActualParentGroup` styling. Observe behavior if `graphData` is slow to load or fails. Specifically test usability of map controls in fullscreen.
 This testing strategy, with tests being added and updated alongside the focused rebuild as per the Action Plan (Section 9), will serve as a blueprint for building a resilient and reliable StoryForge application.
 
 ---
+**Changelog**
+*   v3.6.0 (May 26, 2025): Implemented Puzzle Flow View, initial Narrative Thread Tracker, and foundational Memory Economy View. Enhanced backend parsing for memory attributes (`SF_RFID`, `SF_ValueRating`, `SF_MemoryType`) and added server-side filtering for memory types and narrative threads.
+*   v3.5.0 (May 25, 2025): Implemented minimal memory RFID parsing & display. Added advanced filtering (Act, Theme, Memory Set) to Relationship Mapper and relevant backend data population. Refined mapper's hierarchical visuals and parent node styling. Standardized detail page layouts. Added server-side `actFocus` filtering for Timeline. Completed initial testing pass for these Phase 1 & 2 features.
+*   v3.4.0 (May 24, 2025): Resolved Dagre layout error by implementing `rankdir: 'LR'`. Enhanced node tooltips. Confirmed edge label/tooltip implementation. Updated Action Plan status for Phase 1 completion.
+*   v3.3.1 (May 21, 2025): Updated Relationship Mapper action plan with detailed debugging steps for Dagre compound layout error. Documented backend fix for "Contains" edge generation and cache versioning.
+*   v3.3.0 (May 20, 2025): Updated Relationship Mapper architecture, detailed layout strategy focusing on Dagre compound nodes. Documented current understanding of Dagre `rank` error and steps taken. Reflected completion of several Phase 1 cleanup tasks.
+*   v3.2.1 (May 19, 2025): Initial Action Plan (Phase 1-3) added. Technical debt cleanup tasks detailed and status updated. PRD sections re-organized.
+*   (Older versions omitted for brevity)

@@ -87,14 +87,14 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     console.log('[DagreLayout] Initialized Dagre graph with compound: true, multigraph: true.');
 
     const defaultOptions = {
-      rankdir: 'TB', 
+      rankdir: 'LR',
       align: undefined, 
-      nodesep: 85,    
-      ranksep: 90,    
+      nodesep: 70,
+      ranksep: 120,
       marginx: 30,    
       marginy: 30,
-      rankPadding: 50, 
-      nodePadding: 20, 
+      rankPadding: 60,
+      nodePadding: 25,
       nodeWidth: 170, 
       nodeHeight: 60, 
       centerNodeWidth: 190, 
@@ -104,6 +104,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
 
     g.setGraph(config);
     console.log('[DagreLayout] Graph options set:', JSON.stringify(g.graph()));
+    console.log('[DagreLayout DEBUG] Graph options MODIFIED for testing (rankdir: LR, adjusted spacing). New options:', JSON.stringify(g.graph()));
     g.setDefaultEdgeLabel(() => ({}));
 
     const dagreNodeIds = new Set(); 

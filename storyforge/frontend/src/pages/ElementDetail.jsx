@@ -153,8 +153,9 @@ function ElementDetail() {
   }
 
   // Helper to check if this is a memory-type element
-  const isMemoryType = element.basicType?.includes('Memory') || 
-                       element.basicType?.includes('Corrupted');
+  const isMemoryType = element.basicType?.toLowerCase().includes('memory') ||
+                       element.basicType?.toLowerCase().includes('corrupted') ||
+                       element.basicType?.toLowerCase().includes('rfid');
   
   return (
     <Box>
@@ -257,12 +258,25 @@ function ElementDetail() {
                     </Typography>
                     <Box sx={{ mb: 2, mt: 1 }}>
                       {/* This would be enhanced in future to parse and display specific memory attributes */}
-                      <Typography variant="body2">
-                        This is a memory-type element. Additional memory-specific data 
-                        can be found in the description.
+                      <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
+                        Further memory-specific details might be in the description.
                       </Typography>
                     </Box>
                   </>
+                )}
+
+                {isMemoryType && element.properties?.parsed_sf_rfid && (
+                  <Grid item xs={12}> {/* Placed within the second column of the main details grid */}
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                      Parsed RFID
+                    </Typography>
+                    <Chip
+                      label={element.properties.parsed_sf_rfid}
+                      color="info"
+                      variant="outlined"
+                      sx={{ mt: 0.5 }}
+                    />
+                  </Grid>
                 )}
               </Grid>
             </Grid>
