@@ -387,20 +387,6 @@ const getPuzzleById = catchAsync(async (req, res) => {
     console.log(`[CACHE SET] ${cacheKey} (mapped puzzle)`);
   }
   setCacheHeaders(res);
-  res.json(mappedPuzzle);
-});
-
-const getElements = catchAsync(async (req, res) => {
-  const propertyMap = { type: 'Basic Type', status: 'Status', firstAvailable: 'First Available', narrativeThreadContains: 'Narrative Threads' };
-  const filter = buildNotionFilter(req.query, propertyMap);
-  const notionElements = await notionService.getElements(filter);
-  const elements = await Promise.all(
-    notionElements.map(element => propertyMapper.mapElementWithNames(element, notionService))
-  );
-  setCacheHeaders(res);
-  res.json(elements);
-});
-
 // Define Memory Basic Types at a scope accessible by getElements
 const MEMORY_BASIC_TYPES = [
   "Memory Token Video",
