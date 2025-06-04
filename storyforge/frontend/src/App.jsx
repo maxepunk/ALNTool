@@ -12,7 +12,11 @@ import Puzzles from './pages/Puzzles';
 import PuzzleDetail from './pages/PuzzleDetail';
 import Elements from './pages/Elements';
 import ElementDetail from './pages/ElementDetail';
-import MemoryEconomyPage from './pages/MemoryEconomyPage'; // Import MemoryEconomyPage
+import MemoryEconomyPage from './pages/MemoryEconomyPage';
+import PuzzleFlowPage from './pages/PuzzleFlowPage';
+import ElementPuzzleEconomyPage from './pages/ElementPuzzleEconomyPage';
+import CharacterSociogramPage from './pages/CharacterSociogramPage';
+import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage'; // Import NarrativeThreadTrackerPage
 import NotFound from './pages/NotFound';
 import { api } from './services/api';
 
@@ -93,6 +97,7 @@ function App() {
         {/* Puzzles routes */}
         <Route path="/puzzles" element={<Puzzles />} />
         <Route path="/puzzles/:id" element={<PuzzleDetail />} />
+        <Route path="/puzzles/:id/flow" element={<PuzzleFlowPage />} /> {/* New Route for Puzzle Flow */}
         
         {/* Elements routes */}
         <Route path="/elements" element={<Elements />} />
@@ -100,6 +105,9 @@ function App() {
 
         {/* Memory Economy Page Route */}
         <Route path="/memory-economy" element={<MemoryEconomyPage />} />
+        <Route path="/element-puzzle-economy" element={<ElementPuzzleEconomyPage />} />
+        <Route path="/character-sociogram" element={<CharacterSociogramPage />} />
+        <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} /> {/* New Route */}
         
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />

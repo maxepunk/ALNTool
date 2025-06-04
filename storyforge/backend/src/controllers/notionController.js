@@ -26,18 +26,28 @@ const catchAsync = fn => {
 };
 
 function buildNotionFilter(query, propertyMap) {
-  const filters = Object.entries(query)
-    .filter(([key, value]) => propertyMap[key] && value)
-    .map(([key, value]) => ({
-      property: propertyMap[key],
-      select: { equals: value },
-    }));
-  if (filters.length === 0) return undefined;
-  return filters.length === 1 ? filters[0] : { and: filters };
+  const filterConditions = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (propertyMap[key] && value) {
+      if (key === 'narrativeThreadContains') { // Special handling for multi-select contains
+        filterConditions.push({
+          property: propertyMap[key],
+          multi_select: { contains: value },
+        });
+      } else { // Default to select equals
+        filterConditions.push({
+          property: propertyMap[key],
+          select: { equals: value },
+        });
+      }
+    }
+  }
+  if (filterConditions.length === 0) return undefined;
+  return filterConditions.length === 1 ? filterConditions[0] : { and: filterConditions };
 }
 
 const getCharacters = catchAsync(async (req, res) => {
-  const propertyMap = { type: 'Type', tier: 'Tier' };
+  const propertyMap = { type: 'Type', tier: 'Tier', narrativeThreadContains: 'Narrative Threads' };
   const filter = buildNotionFilter(req.query, propertyMap);
   const notionCharacters = await notionService.getCharacters(filter);
   const characters = await Promise.all(
@@ -49,7 +59,7 @@ const getCharacters = catchAsync(async (req, res) => {
 
 const getCharacterById = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const cacheKey = makeCacheKey('mapped-character', { id });
+  const cacheKey = makeCacheKey('mapped-character-v1.1-sociogram', { id }); // Updated cache key
   const cachedMappedCharacter = notionCache.get(cacheKey);
   if (cachedMappedCharacter) {
     console.log(`[CACHE HIT] ${cacheKey} (mapped character)`);
@@ -306,7 +316,7 @@ const getCharacterGraph = catchAsync(async (req, res) => {
 });
 
 const getTimelineEvents = catchAsync(async (req, res) => {
-  const propertyMap = { memType: 'mem type', date: 'Date' };
+  const propertyMap = { memType: 'mem type', date: 'Date', narrativeThreadContains: 'Narrative Threads' };
   const filter = buildNotionFilter(req.query, propertyMap);
   const notionEvents = await notionService.getTimelineEvents(filter);
   const events = await Promise.all(
@@ -340,7 +350,7 @@ const getTimelineEventById = catchAsync(async (req, res) => {
 });
 
 const getPuzzles = catchAsync(async (req, res) => {
-  const propertyMap = { timing: 'Timing' };
+  const propertyMap = { timing: 'Timing', narrativeThreadContains: 'Narrative Threads' };
   const filter = buildNotionFilter(req.query, propertyMap);
   const notionPuzzles = await notionService.getPuzzles(filter);
   const puzzles = await Promise.all(
@@ -352,7 +362,7 @@ const getPuzzles = catchAsync(async (req, res) => {
 
 const getPuzzleById = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const cacheKey = makeCacheKey('mapped-puzzle', { id });
+  const cacheKey = makeCacheKey('mapped-puzzle-v1.1-narrative', { id }); // Updated cache key
   const cachedMappedPuzzle = notionCache.get(cacheKey);
   if (cachedMappedPuzzle) {
     console.log(`[CACHE HIT] ${cacheKey} (mapped puzzle)`);
@@ -374,7 +384,7 @@ const getPuzzleById = catchAsync(async (req, res) => {
 });
 
 const getElements = catchAsync(async (req, res) => {
-  const propertyMap = { type: 'Basic Type', status: 'Status', firstAvailable: 'First Available' };
+  const propertyMap = { type: 'Basic Type', status: 'Status', firstAvailable: 'First Available', narrativeThreadContains: 'Narrative Threads' };
   const filter = buildNotionFilter(req.query, propertyMap);
   const notionElements = await notionService.getElements(filter);
   const elements = await Promise.all(
@@ -1101,4 +1111,367 @@ module.exports = {
   getElementGraph,
   getPuzzleGraph,
   getTimelineGraph,
-}; 
+};
+
+// --- New Endpoints for Dashboard "Needs Attention" ---
+
+const getPuzzlesWithWarnings = catchAsync(async (req, res) => {
+  const cacheKey = makeCacheKey('puzzles-with-warnings-v2'); // Cache key updated
+  const cachedData = notionCache.get(cacheKey);
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey}`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey}`);
+
+  const notionPuzzles = await notionService.getPuzzles(); // Get all puzzles
+  const mappedPuzzles = await Promise.all(
+    notionPuzzles.map(puzzle => propertyMapper.mapPuzzleWithNames(puzzle, notionService))
+  );
+
+  const puzzlesWithWarnings = [];
+  for (const puzzle of mappedPuzzles) {
+    if (puzzle.error) continue; // Skip if there was an error mapping this puzzle
+
+    const warnings = [];
+    if (!puzzle.rewards || puzzle.rewards.length === 0) {
+      warnings.push({ warningType: 'NoRewards', message: 'Puzzle has no rewards defined.' });
+    }
+    if (!puzzle.puzzleElements || puzzle.puzzleElements.length === 0) {
+      warnings.push({ warningType: 'NoInputs', message: 'Puzzle has no input elements defined (puzzleElements).' });
+    }
+    if (!puzzle.resolutionPaths || puzzle.resolutionPaths.length === 0) {
+      warnings.push({ warningType: 'NoResolutionPath', message: 'Puzzle does not contribute to any resolution path.' });
+    }
+    // Add more checks here if needed, e.g., missing owner, etc.
+
+    if (warnings.length > 0) {
+      puzzlesWithWarnings.push({
+        id: puzzle.id,
+        name: puzzle.puzzle, // Name of the puzzle
+        type: 'Puzzle', // To help frontend identify item type
+        warnings,
+        // Optionally include a few key properties for quick display, like owner or timing
+        owner: puzzle.owner,
+        timing: puzzle.timing || puzzle.actFocus,
+      });
+    }
+  }
+
+  notionCache.set(cacheKey, puzzlesWithWarnings);
+  console.log(`[CACHE SET] ${cacheKey} - Found ${puzzlesWithWarnings.length} puzzles with warnings.`);
+  setCacheHeaders(res);
+  res.json(puzzlesWithWarnings);
+});
+
+const getElementsWithWarnings = catchAsync(async (req, res) => {
+  const cacheKey = makeCacheKey('elements-with-warnings-v2'); // Cache key updated
+  const cachedData = notionCache.get(cacheKey);
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey}`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey}`);
+
+  const notionElements = await notionService.getElements(); // Get all elements
+  const mappedElements = await Promise.all(
+    notionElements.map(element => propertyMapper.mapElementWithNames(element, notionService))
+  );
+
+  const EXCLUDED_BASIC_TYPES = ['Character Sheet', 'Set Dressing', 'Core Narrative']; // Add other non-puzzle interactive types
+
+  const elementsWithWarnings = [];
+  for (const element of mappedElements) {
+    if (element.error) continue;
+
+    if (EXCLUDED_BASIC_TYPES.includes(element.basicType)) {
+      continue;
+    }
+
+    const warnings = [];
+    const isRequired = element.requiredForPuzzle && element.requiredForPuzzle.length > 0;
+    const isReward = element.rewardedByPuzzle && element.rewardedByPuzzle.length > 0;
+
+    if (!isRequired && !isReward) {
+      warnings.push({
+        warningType: 'NotUsedInOrRewardingPuzzles',
+        message: 'Element is not used as an input for any puzzle and is not a reward from any puzzle.'
+      });
+    }
+
+    const isMemoryToken = element.basicType?.toLowerCase().includes('memory') || element.basicType?.toLowerCase().includes('token');
+    if (isMemoryToken && (!element.memorySets || element.memorySets.length === 0)) {
+      warnings.push({
+        warningType: 'NoMemorySet',
+        message: 'Memory Token is not part of any Memory Set.'
+      });
+    }
+
+    if (warnings.length > 0) {
+      elementsWithWarnings.push({
+        id: element.id,
+        name: element.name,
+        type: 'Element', // To help frontend identify item type
+        basicType: element.basicType,
+        status: element.status,
+        owner: element.owner,
+        warnings,
+      });
+    }
+  }
+
+  notionCache.set(cacheKey, elementsWithWarnings);
+  console.log(`[CACHE SET] ${cacheKey} - Found ${elementsWithWarnings.length} elements with warnings.`);
+  setCacheHeaders(res);
+  res.json(elementsWithWarnings);
+});
+
+
+module.exports = {
+  getCharacters,
+  getCharacterById,
+  getTimelineEvents,
+  getTimelineEventById,
+  getPuzzles,
+  getPuzzleById,
+  getElements,
+  getElementById,
+  getDatabasesMetadata,
+  globalSearch,
+  clearCache,
+  getCharacterGraph,
+  getElementGraph,
+  getPuzzleGraph,
+  getTimelineGraph,
+  // Add new exports
+  getPuzzlesWithWarnings,
+  getElementsWithWarnings,
+};
+
+const getPuzzleFlow = catchAsync(async (req, res) => {
+  const { id: puzzleId } = req.params;
+  const cacheKey = makeCacheKey('puzzle-flow-v1', { id: puzzleId });
+  const cachedData = notionCache.get(cacheKey);
+
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow)`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow)`);
+
+  const puzzlePage = await notionService.getPage(puzzleId);
+  if (!puzzlePage) {
+    return res.status(404).json({ error: 'Puzzle not found' });
+  }
+
+  const centralPuzzle = await propertyMapper.mapPuzzleWithNames(puzzlePage, notionService);
+  if (centralPuzzle.error) {
+    return res.status(500).json({ error: `Failed to map central puzzle data: ${centralPuzzle.error}` });
+  }
+
+  const relatedEntityIds = new Set();
+  (centralPuzzle.puzzleElements || []).forEach(el => relatedEntityIds.add(el.id));
+  (centralPuzzle.rewards || []).forEach(el => relatedEntityIds.add(el.id));
+  (centralPuzzle.subPuzzles || []).forEach(p => relatedEntityIds.add(p.id));
+  (centralPuzzle.parentItem || []).forEach(p => relatedEntityIds.add(p.id));
+  // Add IDs from lockedItem if it's considered an output or distinct part of the flow
+  (centralPuzzle.lockedItem || []).forEach(el => relatedEntityIds.add(el.id));
+
+
+  const relatedPages = await notionService.getPagesByIds(Array.from(relatedEntityIds));
+  const mappedRelatedEntities = new Map();
+
+  for (const page of relatedPages) {
+    if (!page || !page.id) continue;
+    // Determine type based on which list it came from or by querying DB type if necessary (more complex)
+    // For now, assume we can infer or just map generally. The mapXWithNames includes type.
+    let mappedEntity;
+    // A more robust way would be to query the DB type or check properties if type isn't on the stub
+    // For now, we rely on the stubs from centralPuzzle having enough info or mapElement/mapPuzzle to fill it.
+    if (page.properties.Puzzle) { // Heuristic: if it has a 'Puzzle' title property, it's a puzzle
+        mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionService);
+    } else if (page.properties.Name) { // Heuristic: if it has 'Name', it's likely an Element
+        mappedEntity = await propertyMapper.mapElementWithNames(page, notionService);
+    } else { // Fallback or if more types are possible
+        console.warn(`[getPuzzleFlow] Could not determine type for related page ${page.id}`);
+        continue;
+    }
+
+    if (mappedEntity && !mappedEntity.error) {
+      mappedRelatedEntities.set(page.id, mappedEntity);
+    }
+  }
+
+  const formatElement = (elStub) => {
+    const fullEl = mappedRelatedEntities.get(elStub.id);
+    return {
+      id: elStub.id,
+      name: fullEl?.name || elStub.name || 'Unknown Element', // Use full name if available
+      type: 'Element', // Explicitly set type
+      basicType: fullEl?.basicType || 'Unknown',
+      // Future: Add sourcePuzzleName if element is a reward from another puzzle
+    };
+  };
+
+  const formatPuzzle = (pzStub) => {
+    const fullPz = mappedRelatedEntities.get(pzStub.id);
+    return {
+      id: pzStub.id,
+      name: fullPz?.puzzle || pzStub.name || 'Unknown Puzzle', // Use full name if available
+      type: 'Puzzle',
+    };
+  };
+
+  const inputElements = (centralPuzzle.puzzleElements || []).map(formatElement);
+  const outputElements = (centralPuzzle.rewards || []).map(formatElement);
+   // lockedItem can also be considered an output/unlock if it's an Element
+  (centralPuzzle.lockedItem || []).forEach(itemStub => {
+    const fullItem = mappedRelatedEntities.get(itemStub.id);
+    if (fullItem && fullItem.basicType) { // Check if it's an element
+        const formattedItem = formatElement(itemStub);
+        // Avoid duplicates if already in rewards
+        if(!outputElements.find(o => o.id === formattedItem.id)) {
+            outputElements.push(formattedItem);
+        }
+    }
+  });
+
+
+  const unlocksPuzzles = (centralPuzzle.subPuzzles || []).map(formatPuzzle);
+  const prerequisitePuzzles = (centralPuzzle.parentItem || []).map(formatPuzzle);
+
+  const flowData = {
+    centralPuzzle: {
+        id: centralPuzzle.id,
+        name: centralPuzzle.puzzle,
+        type: 'Puzzle',
+        properties: centralPuzzle // Send all mapped properties for the central puzzle
+    },
+    inputElements,
+    outputElements,
+    unlocksPuzzles,
+    prerequisitePuzzles,
+  };
+
+  notionCache.set(cacheKey, flowData);
+  console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow for ${centralPuzzle.puzzle})`);
+  setCacheHeaders(res);
+  res.json(flowData);
+});
+
+
+module.exports = {
+  getCharacters,
+  getCharacterById,
+  getTimelineEvents,
+  getTimelineEventById,
+  getPuzzles,
+  getPuzzleById,
+  getElements,
+  getElementById,
+  getDatabasesMetadata,
+  globalSearch,
+  clearCache,
+  getCharacterGraph,
+  getElementGraph,
+  getPuzzleGraph,
+  getTimelineGraph,
+  getPuzzlesWithWarnings,
+  getElementsWithWarnings,
+  getPuzzleFlow,
+  getAllCharactersWithSociogramData,
+  getCharactersWithWarnings,
+  // Add new export for unique narrative threads
+  getAllUniqueNarrativeThreads,
+};
+
+const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
+  const cacheKey = makeCacheKey('unique-narrative-threads-v1');
+  const cachedData = notionCache.get(cacheKey);
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey}`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey}`);
+
+  const allThreads = new Set();
+
+  // Fetch from all four entity types
+  const characterPages = await notionService.getCharacters();
+  const elementPages = await notionService.getElements();
+  const puzzlePages = await notionService.getPuzzles();
+  const timelineEventPages = await notionService.getTimelineEvents();
+
+  const allItems = [
+    ...characterPages,
+    ...elementPages,
+    ...puzzlePages,
+    ...timelineEventPages,
+  ];
+
+  // Map and extract narrative threads - using simple mappers here as we only need the threads array
+  // and don't want to trigger all the related name fetches of WithNames mappers.
+  // This assumes simple mappers also correctly map 'Narrative Threads' property.
+  // If not, this part needs adjustment or use WithNames mappers carefully.
+  // For now, assuming simple mappers are sufficient or that `narrativeThreads` is directly on properties.
+
+  // Re-checking propertyMapper.js, the simple mappers DO map 'Narrative Threads' for puzzles and elements.
+  // For Characters and TimelineEvents, `narrativeThreads` was added to `WithNames` mappers.
+  // To be safe and ensure all data is processed consistently with how it's added elsewhere,
+  // it's better to use the WithNames mappers here, even if it's slightly less performant.
+  // The alternative would be to ensure simple mappers also map narrativeThreads for all types.
+
+  const mappedChars = await Promise.all(characterPages.map(c => propertyMapper.mapCharacterWithNames(c, notionService)));
+  const mappedElems = await Promise.all(elementPages.map(e => propertyMapper.mapElementWithNames(e, notionService)));
+  const mappedPuzzles = await Promise.all(puzzlePages.map(p => propertyMapper.mapPuzzleWithNames(p, notionService)));
+  const mappedEvents = await Promise.all(timelineEventPages.map(t => propertyMapper.mapTimelineEventWithNames(t, notionService)));
+
+  const allMappedItems = [
+      ...mappedChars,
+      ...mappedElems,
+      ...mappedPuzzles,
+      ...mappedEvents,
+  ];
+
+  allMappedItems.forEach(item => {
+    if (item && item.narrativeThreads && Array.isArray(item.narrativeThreads)) {
+      item.narrativeThreads.forEach(thread => allThreads.add(thread));
+    }
+  });
+
+  const sortedThreads = Array.from(allThreads).sort();
+
+  notionCache.set(cacheKey, sortedThreads);
+  console.log(`[CACHE SET] ${cacheKey} - Found ${sortedThreads.length} unique narrative threads.`);
+  setCacheHeaders(res);
+  res.json(sortedThreads);
+});
+
+
+module.exports = {
+  getCharacters,
+  getCharacterById,
+  getTimelineEvents,
+  getTimelineEventById,
+  getPuzzles,
+  getPuzzleById,
+  getElements,
+  getElementById,
+  getDatabasesMetadata,
+  globalSearch,
+  clearCache,
+  getCharacterGraph,
+  getElementGraph,
+  getPuzzleGraph,
+  getTimelineGraph,
+  getPuzzlesWithWarnings,
+  getElementsWithWarnings,
+  getPuzzleFlow,
+  getAllCharactersWithSociogramData,
+  getCharactersWithWarnings,
+  getAllUniqueNarrativeThreads, // Ensure this is in the final export
+};

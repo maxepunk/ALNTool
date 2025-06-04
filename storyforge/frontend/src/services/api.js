@@ -91,6 +91,42 @@ export const api = {
     const response = await apiClient.get(`/timeline/${id}/graph`, { params: { depth } });
     return response.data;
   },
+
+  // New endpoints for "Needs Attention" data
+  getPuzzlesWithWarnings: async () => {
+    const response = await apiClient.get('/puzzles/with-warnings');
+    return response.data;
+  },
+
+  getElementsWithWarnings: async () => {
+    const response = await apiClient.get('/elements/with-warnings');
+    return response.data;
+  },
+
+  // Endpoint for Puzzle Flow data
+  getPuzzleFlow: async (puzzleId) => {
+    if (!puzzleId) throw new Error("Puzzle ID is required for getPuzzleFlow");
+    const response = await apiClient.get(`/puzzles/${puzzleId}/flow`);
+    return response.data;
+  },
+
+  // Endpoint for Character Sociogram data
+  getAllCharactersWithSociogramData: async () => {
+    const response = await apiClient.get('/characters/with-sociogram-data');
+    return response.data;
+  },
+
+  // Endpoint for unique Narrative Threads
+  getAllUniqueNarrativeThreads: async () => {
+    const response = await apiClient.get('/narrative-threads/unique');
+    return response.data;
+  },
+
+  // Endpoint for Characters with Warnings
+  getCharactersWithWarnings: async () => {
+    const response = await apiClient.get('/characters/with-warnings');
+    return response.data;
+  },
 };
 
 // Error interceptor for logging and potentially transforming errors

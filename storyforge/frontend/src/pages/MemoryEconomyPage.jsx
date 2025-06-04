@@ -3,10 +3,11 @@ import { useQuery } from 'react-query';
 import {
   Box, Typography, CircularProgress, Alert, Paper,
   TableContainer, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel,
-  FormControl, InputLabel, Select, MenuItem
+  FormControl, InputLabel, Select, MenuItem, Link as MuiLink, Chip // Added MuiLink and Chip
 } from '@mui/material';
 import PageHeader from '../components/PageHeader'; // Corrected Path
 import api from '../services/api';
+import { Link as RouterLink } from 'react-router-dom'; // Added RouterLink
 
 // Constants from Game Design Document
 const VALUE_MAPPING = { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 };
@@ -77,7 +78,13 @@ const MemoryEconomyPage = () => {
         baseValueAmount,
         typeMultiplierValue,
         finalValue,
-        memorySets: el.properties?.memorySets || [], // Store memory sets
+        memorySets: el.properties?.memorySets || [],
+        sourcePuzzles: [
+          ...(el.properties?.rewardedByPuzzle || []),
+          ...(el.properties?.containerPuzzle || [])
+        ]
+        // Basic de-duplication if a puzzle is in both (though unlikely for these distinct relations)
+        .filter((puzzle, index, self) => puzzle.id && self.findIndex(p => p.id === puzzle.id) === index),
       };
     });
   }, [elements]);
@@ -126,6 +133,27 @@ const MemoryEconomyPage = () => {
 
   const columns = [
     { id: 'name', label: 'Name', minWidth: 170 },
+    {
+      id: 'sourcePuzzles',
+      label: 'Source Puzzle(s)',
+      minWidth: 200,
+      format: (puzzlesArray) => {
+        if (!puzzlesArray || puzzlesArray.length === 0) {
+          return <Typography variant="caption" color="textSecondary">N/A</Typography>;
+        }
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {puzzlesArray.map(puzzle => (
+              puzzle.id && puzzle.name ? (
+                <MuiLink component={RouterLink} to={`/puzzles/${puzzle.id}`} key={puzzle.id} sx={{ textDecoration: 'none', '&:hover': {textDecoration: 'underline'} }}>
+                  <Chip label={puzzle.name} size="small" clickable variant="outlined" />
+                </MuiLink>
+              ) : null
+            ))}
+          </Box>
+        );
+      }
+    },
     { id: 'inferredCategory', label: 'Category', minWidth: 100 },
     { id: 'memorySets', label: 'Memory Sets', minWidth: 150, format: (setsArray) => Array.isArray(setsArray) && setsArray.length > 0 ? setsArray.join(', ') : 'N/A' },
     { id: 'baseValueLevel', label: 'Level', minWidth: 80, align: 'right', format: (value) => value },

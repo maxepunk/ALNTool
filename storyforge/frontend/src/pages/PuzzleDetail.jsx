@@ -25,6 +25,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import AccountTreeIcon from '@mui/icons-material/AccountTree'; // Icon for Puzzle Flow
 import PageHeader from '../components/PageHeader';
 import RelationshipMapper from '../components/RelationshipMapper';
 import { api } from '../services/api';
@@ -136,6 +137,17 @@ function PuzzleDetail() {
       <Tooltip title="Edit puzzle (Phase 3)">
         <Button variant="contained" startIcon={<EditIcon />} onClick={handleEdit} size="medium">
           Edit Puzzle
+        </Button>
+      </Tooltip>
+      <Tooltip title="View Puzzle Flow">
+        <Button
+          variant="outlined"
+          startIcon={<AccountTreeIcon />}
+          onClick={() => navigate(`/puzzles/${id}/flow`)}
+          size="medium"
+          sx={{ml: 1}} // Add some margin if needed
+        >
+          View Flow
         </Button>
       </Tooltip>
     </Box>
@@ -276,6 +288,65 @@ function PuzzleDetail() {
                   {puzzle.description}
                 </Typography>
               </>
+            )}
+          </Paper>
+
+          {/* Narrative Impact Section */}
+          <Paper sx={{ p: 2, mt: 3 }} elevation={1}>
+            <Typography variant="h6" gutterBottom>Narrative Impact & Cohesion</Typography>
+            <Divider sx={{ mb: 2 }} />
+
+            {puzzle.storyReveals && (
+              <>
+                <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Key Story Reveals</Typography>
+                <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'pre-wrap', fontStyle: 'italic', color: 'text.secondary' }}>
+                  {puzzle.storyReveals}
+                </Typography>
+                <Divider sx={{ my: 2 }} />
+              </>
+            )}
+
+            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Impacted Characters</Typography>
+            {puzzle.impactedCharacters && puzzle.impactedCharacters.length > 0 ? (
+              <List dense disablePadding>
+                {puzzle.impactedCharacters.map(char => (
+                  <ListItem key={char.id} disablePadding>
+                    <ListItemButton component={RouterLink} to={`/characters/${char.id}`} sx={{borderRadius:1}}>
+                      <ListItemText primary={char.name} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{mb:2}}>None specified.</Typography>
+            )}
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Related Timeline Events</Typography>
+            {puzzle.relatedTimelineEvents && puzzle.relatedTimelineEvents.length > 0 ? (
+              <List dense disablePadding>
+                {puzzle.relatedTimelineEvents.map(event => (
+                  <ListItem key={event.id} disablePadding>
+                    <ListItemButton component={RouterLink} to={`/timelines/${event.id}`} sx={{borderRadius:1}}>
+                      <ListItemText primary={event.name} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{mb:2}}>None specified.</Typography>
+            )}
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Resolution Path Contributions</Typography>
+            {puzzle.resolutionPaths && puzzle.resolutionPaths.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {puzzle.resolutionPaths.map((path, index) => (
+                  <Chip key={index} label={path} color="secondary" variant="outlined" />
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">None specified.</Typography>
             )}
           </Paper>
         

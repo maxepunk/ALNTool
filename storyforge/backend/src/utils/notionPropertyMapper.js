@@ -296,12 +296,20 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
     const puzzleIds = extractRelationByName(properties, 'Character Puzzles');
     const ownedElementIds = extractRelationByName(properties, 'Owned Elements');
     const associatedElementIds = extractRelationByName(properties, 'Associated Elements');
+    const linkedCharacterIds = extractRelationByName(properties, 'Linked Characters'); // New for sociogram
 
-    const [events, puzzles, ownedElements, associatedElements] = await Promise.all([
+    const [
+      events,
+      puzzles,
+      ownedElements,
+      associatedElements,
+      linkedCharactersPages // New
+    ] = await Promise.all([
       notionService.getPagesByIds(eventIds),
       notionService.getPagesByIds(puzzleIds),
       notionService.getPagesByIds(ownedElementIds),
       notionService.getPagesByIds(associatedElementIds),
+      notionService.getPagesByIds(linkedCharacterIds), // New
     ]);
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Puzzle'] || page.properties['Description'] || { title: [] }) });
@@ -321,10 +329,15 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
       associatedElements: associatedElements.map(page => toIdName(page, 'Name')),
       connections: extractNumber(properties.Connections),
       lastEdited: notionCharacter.last_edited_time,
-      // New properties
+      // Existing new properties
       actFocus: extractSelectByName(properties, 'Act Focus'),
       themes: extractMultiSelectByName(properties, 'Themes'),
-      memorySets: extractMultiSelectByName(properties, 'Memory Sets'), // Characters might have associated memory sets
+      memorySets: extractMultiSelectByName(properties, 'Memory Sets'),
+      // New properties for sociogram
+      linkedCharacters: linkedCharactersPages.map(page => toIdName(page, 'Name')),
+      resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
+      // Ensure Narrative Threads is present
+      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
     };
   } catch (error) {
     console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);
@@ -372,6 +385,8 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
       actFocus: extractSelectByName(properties, 'Act Focus'),
       themes: extractMultiSelectByName(properties, 'Themes'),
       // memorySets might not be directly on Timeline events, but associated via Elements
+      // Ensure Narrative Threads is present
+      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
     };
   } catch (error) {
     console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);
@@ -402,15 +417,30 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
     const rewardIds = extractRelationByName(properties, 'Rewards');
     const parentItemIds = extractRelationByName(properties, 'Parent item');
     const subPuzzleIds = extractRelationByName(properties, 'Sub-Puzzles');
+    // New relations for narrative cohesion
+    const impactedCharacterIds = extractRelationByName(properties, 'Impacted Characters');
+    const relatedTimelineEventIds = extractRelationByName(properties, 'Related Timeline Events');
+
 
     // Fetch related entities in parallel
-    const [owners, lockedItems, puzzleElements, rewards, parentItems, subPuzzles] = await Promise.all([
+    const [
+      owners,
+      lockedItems,
+      puzzleElements,
+      rewards,
+      parentItems,
+      subPuzzles,
+      impactedCharactersPages, // New
+      relatedTimelineEventPages // New
+    ] = await Promise.all([
       notionService.getPagesByIds(ownerIds),
       notionService.getPagesByIds(lockedItemIds),
       notionService.getPagesByIds(puzzleElementIds),
       notionService.getPagesByIds(rewardIds),
       notionService.getPagesByIds(parentItemIds),
       notionService.getPagesByIds(subPuzzleIds),
+      notionService.getPagesByIds(impactedCharacterIds), // New
+      notionService.getPagesByIds(relatedTimelineEventIds), // New
     ]);
 
     // Helper to map to {id, name}
@@ -431,11 +461,14 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
       description: extractRichTextByName(properties, 'Description/Solution'),
       narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
       lastEdited: notionPuzzle.last_edited_time,
-      // New properties
+      // Existing new properties
       actFocus: extractSelectByName(properties, 'Act Focus'),
       themes: extractMultiSelectByName(properties, 'Themes'),
-      // memorySets might be relevant if a puzzle directly involves a set
       memorySets: extractMultiSelectByName(properties, 'Memory Sets'),
+      // Properties for narrative cohesion
+      impactedCharacters: impactedCharactersPages.map(page => toIdName(page, 'Name')),
+      relatedTimelineEvents: relatedTimelineEventPages.map(page => toIdName(page, 'Description')),
+      resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
     };
   } catch (error) {
     console.error(`Error mapping puzzle with ID ${notionPuzzle?.id || 'unknown'}:`, error);
@@ -501,10 +534,15 @@ async function mapElementWithNames(notionElement, notionService) {
       contentLink: extractUrlByName(properties, 'Content Link'),
       productionNotes: extractRichTextByName(properties, 'Production/Puzzle Notes'),
       lastEdited: notionElement.last_edited_time,
-      // New properties
+      // Existing new properties
       actFocus: extractSelectByName(properties, 'Act Focus'),
       themes: extractMultiSelectByName(properties, 'Themes'),
-      memorySets: extractMultiSelectByName(properties, 'Memory Set'), // Primarily for Elements
+      memorySets: extractMultiSelectByName(properties, 'Memory Set'), // Corrected to "Memory Set"
+      // Ensure Narrative Threads is present (it was already correctly here)
+      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
+      // Ensure no sociogram properties are here
+      // linkedCharacters: undefined,
+      // resolutionPaths: undefined,
     };
   } catch (error) {
     console.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);
