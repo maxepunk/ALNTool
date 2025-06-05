@@ -1,3 +1,4 @@
+const fs = require('fs');
 // This file will export a function to get the database instance and an initialization function.
 // The initialization function will:
 // - Create a new SQLite database file (e.g., production.db in a data/ directory at the backend root, or use the DATABASE_PATH environment variable).
