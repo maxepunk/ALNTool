@@ -182,11 +182,53 @@ class JourneyEngine {
    * @returns {Promise<Array<object>>} - Placeholder for suggested solutions.
    */
   async suggestGapSolutions(gap, allElements, allPuzzles) {
-    // TODO: Implement logic to suggest elements or puzzles to fill the gap.
-    // This could involve checking element/puzzle properties (type, timing, difficulty)
-    // and matching them to the gap's context (duration, surrounding activities).
-    console.log('suggestGapSolutions is a stub and needs implementation.', gap, allElements, allPuzzles);
-    return []; // Placeholder
+    const suggestions = [];
+    const gapDuration = gap.end_minute - gap.start_minute;
+
+    if (gap.severity === 'low' || gapDuration <= 5) {
+      suggestions.push({
+        id: 'suggestion_low_1',
+        type: 'discovery',
+        description: 'Consider adding a small discovery or observation.',
+        details: { estimated_time: 5, related_elements: [] }
+      });
+      suggestions.push({
+        id: 'suggestion_low_2',
+        type: 'interaction',
+        description: 'Consider a brief interaction with another character or an element.',
+        details: { estimated_time: 5, related_characters: [], related_elements: [] }
+      });
+    } else if (gap.severity === 'medium' || (gapDuration > 5 && gapDuration <= 10)) {
+      suggestions.push({
+        id: 'suggestion_medium_1',
+        type: 'element',
+        description: 'Consider introducing a minor puzzle or a significant element.',
+        details: { estimated_time: 10, related_elements: [] }
+      });
+      suggestions.push({
+        id: 'suggestion_medium_2',
+        type: 'puzzle',
+        description: 'A simple puzzle could fit here.',
+        details: { estimated_time: 10, difficulty: 'easy' }
+      });
+    } else if (gap.severity === 'high' || gapDuration > 10) {
+      suggestions.push({
+        id: 'suggestion_high_1',
+        type: 'activity',
+        description: 'Consider a more complex activity or a multi-step element interaction.',
+        details: { estimated_time: 15, steps: 3 }
+      });
+      suggestions.push({
+        id: 'suggestion_high_2',
+        type: 'element_interaction',
+        description: 'A multi-step interaction with a key element could be engaging.',
+        details: { estimated_time: 15, related_elements: [], required_items: [] }
+      });
+    }
+
+    // console.log('Suggesting solutions for gap:', gap, 'Generated suggestions:', suggestions);
+    // Parameters allElements and allPuzzles are kept for future, more advanced implementations.
+    return suggestions;
   }
 
   /**

@@ -120,8 +120,18 @@ function App() {
           element={
             <DualLensLayout
               journeySpaceContent={<TimelineView />}
-              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px'}}>System Space Placeholder in App.jsx</p>}
-              contextWorkspaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px', color: 'black'}}>Context Workspace Placeholder in App.jsx</p>}
+              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px'}}>System Space Placeholder in App.jsx (Player Journey)</p>}
+            />
+          }
+        />
+
+        {/* Test route for DualLensLayout */}
+        <Route
+          path="/dual-view-test"
+          element={
+            <DualLensLayout
+              journeySpaceContent={<p style={{padding: '10px', backgroundColor: '#eee', border: '1px solid #ddd', borderRadius: '4px'}}>Journey Space Placeholder (Test Route)</p>}
+              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#e0e0e0', border: '1px solid #d0d0d0', borderRadius: '4px'}}>System Space Placeholder (Test Route)</p>}
             />
           }
         />

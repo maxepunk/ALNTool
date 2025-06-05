@@ -81,6 +81,25 @@ function initializeDatabase() {
       description TEXT,
       date TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS interactions (
+      id TEXT PRIMARY KEY,
+      character_a_id TEXT,
+      character_b_id TEXT,
+      minute INTEGER,
+      type TEXT,
+      element_id TEXT,
+      FOREIGN KEY (character_a_id) REFERENCES characters(id),
+      FOREIGN KEY (character_b_id) REFERENCES characters(id),
+      FOREIGN KEY (element_id) REFERENCES elements(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS path_metrics (
+      timestamp INTEGER PRIMARY KEY,
+      black_market_value INTEGER,
+      detective_progress INTEGER,
+      third_path_engagement INTEGER
+    );
   `);
 
   console.log('Database initialized successfully.');
