@@ -6,6 +6,7 @@ const {
   getCharacterGaps,
   getAllGaps,
   getSyncStatus,
+  getGapSuggestions,
 } = require('../controllers/journeyController');
 
 // Journey and Gap related routes
@@ -14,6 +15,7 @@ const {
 
 router.get('/journeys/:characterId', getCharacterJourney);
 router.get('/journeys/:characterId/gaps', getCharacterGaps);
+router.get('/journeys/:characterId/gaps/:gapId/suggestions', getGapSuggestions);
 router.get('/gaps/all', getAllGaps); // Consider if this path should be /journeys/gaps/all for consistency
 router.get('/sync/status', getSyncStatus); // Path /api/sync/status
 

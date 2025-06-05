@@ -1,17 +1,10 @@
 const JourneyEngine = require('../services/journeyEngine');
-const NotionService = require('../services/notionService'); // Assuming this path and service structure
-const { getDB } = require('../db/database'); // For JourneyEngine if it needs direct DB access later
+// const NotionService = require('../services/notionService'); // NotionService is not directly used here anymore for fetching journey engine data
+const dbQueries = require('../db/queries');
+// const { getDB } = require('../db/database'); // getDB is used by queries.js, not directly here.
 
 // Instantiate services
-// For NotionService, it might be a class or a set of exported functions.
-// If it's a class: const notionService = new NotionService();
-// If it's functions, we'll call them directly: NotionService.someFunction();
-// For this subtask, we'll assume NotionService provides static methods or direct function exports.
-
-const db = getDB(); // Get database instance
-const journeyEngine = new JourneyEngine(db); // Pass db if JourneyEngine constructor uses it
-
-// Mock data has been removed. Live data will be fetched from NotionService.
+const journeyEngine = new JourneyEngine(); // JourneyEngine now fetches its own data
 
 /**
  * Get character journey details.
@@ -19,23 +12,42 @@ const journeyEngine = new JourneyEngine(db); // Pass db if JourneyEngine constru
 async function getCharacterJourney(req, res) {
   const { characterId } = req.params;
   try {
-    const characterDetails = await NotionService.getCharacterDetails(characterId);
-
-    if (!characterDetails || !characterDetails.character) {
-      return res.status(404).json({ error: 'Character not found or failed to load details.' });
+    const journey = await journeyEngine.buildCharacterJourney(characterId);
+    if (!journey) {
+      return res.status(404).json({ error: 'Character not found or journey could not be built.' });
     }
-
-    const journey = await journeyEngine.buildCharacterJourney(
-      characterDetails.character.id, // Pass the character ID
-      characterDetails.character,    // Pass the full mapped character object
-      characterDetails.events,
-      characterDetails.puzzles,
-      characterDetails.elements
-    );
     res.json(journey);
   } catch (error) {
     console.error(`Error fetching journey for character ${characterId}:`, error);
     res.status(500).json({ error: 'Failed to compute character journey.' });
+  }
+}
+
+/**
+ * Get suggestions for a specific gap for a specific character.
+ */
+async function getGapSuggestions(req, res) {
+  const { characterId, gapId } = req.params;
+  try {
+    const journey = await journeyEngine.buildCharacterJourney(characterId);
+    if (!journey) {
+      return res.status(404).json({ error: 'Character not found or journey could not be built for gap suggestions.' });
+    }
+
+    const foundGap = journey.gaps.find(g => g.id === gapId);
+    if (!foundGap) {
+      return res.status(404).json({ error: `Gap with id ${gapId} not found for character ${characterId}.` });
+    }
+
+    const allElements = await dbQueries.getAllElements();
+    const allPuzzles = await dbQueries.getAllPuzzles();
+
+    const suggestions = await journeyEngine.suggestGapSolutions(foundGap, allElements, allPuzzles);
+    res.json(suggestions);
+
+  } catch (error) {
+    console.error(`Error fetching suggestions for gap ${gapId} of character ${characterId}:`, error);
+    res.status(500).json({ error: 'Failed to compute gap suggestions.' });
   }
 }
 
@@ -45,19 +57,10 @@ async function getCharacterJourney(req, res) {
 async function getCharacterGaps(req, res) {
   const { characterId } = req.params;
   try {
-    const characterDetails = await NotionService.getCharacterDetails(characterId);
-
-    if (!characterDetails || !characterDetails.character) {
-      return res.status(404).json({ error: 'Character not found or failed to load details.' });
+    const journey = await journeyEngine.buildCharacterJourney(characterId);
+    if (!journey) {
+      return res.status(404).json({ error: 'Character not found or journey could not be built for gap extraction.' });
     }
-
-    const journey = await journeyEngine.buildCharacterJourney(
-      characterDetails.character.id,
-      characterDetails.character,
-      characterDetails.events,
-      characterDetails.puzzles,
-      characterDetails.elements
-    );
     res.json(journey.gaps || []);
   } catch (error) {
     console.error(`Error fetching gaps for character ${characterId}:`, error);
@@ -67,36 +70,23 @@ async function getCharacterGaps(req, res) {
 
 /**
  * Get all gaps for all (or a subset of) characters.
- * Note: This can be slow as it fetches details for each character sequentially.
- * Future optimizations: parallel fetching, caching, background processing.
  */
 async function getAllGaps(req, res) {
   try {
     const allGapsCollected = [];
-    const characterOverviews = await NotionService.getAllCharacterOverviews();
+    const characters = await dbQueries.getAllCharacterIdsAndNames(); // Fetch from local DB
 
-    if (!characterOverviews || characterOverviews.length === 0) {
-      console.log('No characters found to process for getAllGaps.');
+    if (!characters || characters.length === 0) {
+      console.log('No characters found in local DB to process for getAllGaps.');
       return res.json([]);
     }
 
-    for (const charOverview of characterOverviews) {
-      const characterDetails = await NotionService.getCharacterDetails(charOverview.id);
-      if (characterDetails && characterDetails.character) {
-        const journey = await journeyEngine.buildCharacterJourney(
-          characterDetails.character.id,
-          characterDetails.character,
-          characterDetails.events,
-          characterDetails.puzzles,
-          characterDetails.elements
-        );
-        if (journey.gaps && journey.gaps.length > 0) {
-          // Add character info to each gap for context if needed, or ensure gap objects are self-contained.
-          // For now, just collecting them.
-          allGapsCollected.push(...journey.gaps.map(gap => ({...gap, characterId: charOverview.id, characterName: charOverview.name })));
-        }
-      } else {
-        console.warn(`Could not retrieve details for character ID ${charOverview.id} in getAllGaps.`);
+    for (const charInfo of characters) { // charInfo will have id and name
+      const journey = await journeyEngine.buildCharacterJourney(charInfo.id);
+      if (journey && journey.gaps && journey.gaps.length > 0) {
+        allGapsCollected.push(...journey.gaps.map(gap => ({...gap, characterId: charInfo.id, characterName: charInfo.name })));
+      } else if (!journey) {
+        console.warn(`Could not build journey for character ID ${charInfo.id} in getAllGaps.`);
       }
     }
     res.json(allGapsCollected);
@@ -130,4 +120,5 @@ module.exports = {
   getCharacterGaps,
   getAllGaps,
   getSyncStatus,
+  getGapSuggestions,
 };

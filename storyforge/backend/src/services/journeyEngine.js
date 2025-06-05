@@ -1,12 +1,13 @@
 // This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
+const { getDB } = require('../db/database'); // Adjust path as needed
+const dbQueries = require('../db/queries'); // Adjust path
 
 class JourneyEngine {
   /**
    * Constructor for JourneyEngine.
-   * @param {object} db - Optional database instance for helper methods.
    */
-  constructor(db = null) {
-    this.db = db; // Store db instance if needed for internal helpers
+  constructor() {
+    // this.db = db; // Remove if getDB is used directly
     this.GAME_DURATION_MINUTES = 90;
     this.INTERVAL_MINUTES = 5;
   }
@@ -14,12 +15,12 @@ class JourneyEngine {
   /**
    * Computes journey segments for a character based on events, puzzles, and elements.
    * @param {object} character - The character object.
-   * @param {Array<object>} events - Array of event objects.
-   * @param {Array<object>} puzzles - Array of puzzle objects.
-   * @param {Array<object>} elements - Array of element objects.
+   * @param {Array<object>} eventsData - Array of event objects.
+   * @param {Array<object>} puzzlesData - Array of puzzle objects.
+   * @param {Array<object>} elementsData - Array of element objects.
    * @returns {Promise<Array<object>>} - An array of journey segment objects.
    */
-  async computeJourneySegments(character, events = [], puzzles = [], elements = []) {
+  async computeJourneySegments(character, eventsData = [], puzzlesData = [], elementsData = []) {
     const segments = [];
     // For phase 1, we assume events might have a 'minute' or 'date' (parsable to minute) property.
     // Puzzles might have a 'timing' string (e.g., "Early Game", "Mid Game", "Late Game", or specific minutes).
@@ -40,7 +41,18 @@ class JourneyEngine {
       // This will need refinement based on actual data structures from Notion/DB.
 
       // Example: Check events that fall into this time segment
-      events.forEach(event => {
+      // Filter events for the current character
+      const characterEvents = eventsData.filter(event => {
+        try {
+          const charIds = JSON.parse(event.character_ids || '[]');
+          return charIds.includes(character.id);
+        } catch (e) {
+          // console.warn(`Could not parse character_ids for event ${event.id}: ${event.character_ids}`);
+          return false;
+        }
+      });
+
+      characterEvents.forEach(event => {
         // Assuming event.minute is the specific minute it occurs
         // Or event.date could be a timestamp or a string like "0-15 minutes"
         let eventMinute = -1;
@@ -69,7 +81,10 @@ class JourneyEngine {
       });
 
       // Example: Check puzzles active in this segment
-      puzzles.forEach(puzzle => {
+      // Filter puzzles for the current character
+      const characterPuzzles = puzzlesData.filter(p => p.owner_id === character.id);
+
+      characterPuzzles.forEach(puzzle => {
         let puzzleStart = -1, puzzleEnd = -1;
         if (typeof puzzle.timing === 'string') {
             const rangeMatch = puzzle.timing.match(/^(\d+)\s*-\s*(\d+)$/);
@@ -101,15 +116,52 @@ class JourneyEngine {
 
       // Example: Check elements discovered (highly dependent on how elements are linked to events/puzzles)
       // For now, let's assume an element might be linked to an event that happens in this segment.
-      elements.forEach(element => {
-          // This is very simplified. In reality, element discovery would be tied to
-          // completing a puzzle, a specific outcome of an event, or a character interaction.
-          // We might need to check if an event/puzzle in *this segment* leads to discovering this element.
-          if(segment.activities.length > 0 && Math.random() < 0.1) { // Randomly discover an element if active
-            segment.discoveries.push(`Discovered element: ${element.name || element.id}`);
-          }
-      });
+      // elements.forEach(element => { // Old logic
+      //     // This is very simplified. In reality, element discovery would be tied to
+      //     // completing a puzzle, a specific outcome of an event, or a character interaction.
+      //     // We might need to check if an event/puzzle in *this segment* leads to discovering this element.
+      //     if(segment.activities.length > 0 && Math.random() < 0.1) { // Randomly discover an element if active
+      //       segment.discoveries.push(`Discovered element: ${element.name || element.id}`);
+      //     }
+      // });
 
+      // Improved Element Discovery Logic
+      characterPuzzles.forEach(puzzle => {
+        // Re-evaluate puzzle timing for this specific check, or ensure it's already calculated
+        let puzzleStart = -1, puzzleEnd = -1;
+        if (typeof puzzle.timing === 'string') {
+            const rangeMatch = puzzle.timing.match(/^(\d+)\s*-\s*(\d+)$/);
+            const minuteMatch = puzzle.timing.match(/^minute\s+(\d+)$/i);
+            if (rangeMatch) {
+                [puzzleStart, puzzleEnd] = [parseInt(rangeMatch[1], 10), parseInt(rangeMatch[2], 10)];
+            } else if (minuteMatch) {
+                puzzleStart = parseInt(minuteMatch[1], 10);
+                puzzleEnd = puzzleStart + this.INTERVAL_MINUTES;
+            } else if (puzzle.timing.toLowerCase() === 'early game') {
+                [puzzleStart, puzzleEnd] = [0, 30];
+            } else if (puzzle.timing.toLowerCase() === 'mid game') {
+                [puzzleStart, puzzleEnd] = [30, 60];
+            } else if (puzzle.timing.toLowerCase() === 'late game') {
+                [puzzleStart, puzzleEnd] = [60, 90];
+            }
+        }
+        // Check if puzzle ends in this segment
+        if (puzzleStart !== -1 && puzzleEnd !== -1 &&
+            segment.start_minute < puzzleEnd && segment.end_minute >= puzzleEnd) {
+
+            if (puzzle.reward_ids) {
+                try {
+                    const rewardIds = JSON.parse(puzzle.reward_ids);
+                    rewardIds.forEach(elementId => {
+                        const element = elementsData.find(el => el.id === elementId);
+                        segment.discoveries.push(`Discovered element via puzzle ${puzzle.name || puzzle.id}: ${element ? element.name : elementId}`);
+                    });
+                } catch (e) {
+                    console.warn(`Could not parse reward_ids for puzzle ${puzzle.id}: ${puzzle.reward_ids}`);
+                }
+            }
+        }
+      });
 
       segments.push(segment);
     }
@@ -164,27 +216,27 @@ class JourneyEngine {
   /**
    * Builds the complete journey for a character, including segments and gaps.
    * @param {string} characterId - The ID of the character.
-   * @param {object} characterData - The comprehensive data for the character.
-   * @param {Array<object>} eventsData - Array of all event objects.
-   * @param {Array<object>} puzzlesData - Array of all puzzle objects.
-   * @param {Array<object>} elementsData - Array of all element objects.
-   * @returns {Promise<object>} - The character's journey object.
+   * @returns {Promise<object|null>} - The character's journey object, or null if character not found.
    */
-  async buildCharacterJourney(characterId, characterData, eventsData, puzzlesData, elementsData) {
-    // Filter events, puzzles, elements relevant to this character if necessary.
-    // For phase 1, we assume the input data might already be character-specific or easily filterable.
-    // This is a placeholder for more complex filtering logic if events/puzzles/elements are not directly tied to characters in the input.
-    const relevantEvents = eventsData; // .filter(e => e.related_character_ids.includes(characterId));
-    const relevantPuzzles = puzzlesData; // .filter(p => p.related_character_ids.includes(characterId));
-    const relevantElements = elementsData; // .filter(el => el.related_character_ids.includes(characterId));
+  async buildCharacterJourney(characterId) {
+    const characterData = await dbQueries.getCharacterById(characterId);
+    if (!characterData) {
+      console.error(`Character with ID ${characterId} not found.`);
+      return null; // Or throw error
+    }
 
+    // Fetch all data and filter in computeJourneySegments or here if preferred
+    const eventsData = await dbQueries.getAllEvents();
+    const puzzlesData = await dbQueries.getAllPuzzles();
+    const elementsData = await dbQueries.getAllElements();
 
-    const segments = await this.computeJourneySegments(characterData, relevantEvents, relevantPuzzles, relevantElements);
+    // Pass all data to computeJourneySegments, it will filter internally or use character-specific data
+    const segments = await this.computeJourneySegments(characterData, eventsData, puzzlesData, elementsData);
     const gaps = await this.detectGaps(segments, characterId);
 
     return {
       character_id: characterId,
-      character_info: characterData,
+      character_info: characterData, // This is the full character object from DB
       segments: segments,
       gaps: gaps,
     };

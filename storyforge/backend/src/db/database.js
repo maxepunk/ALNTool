@@ -70,16 +70,24 @@ function initializeDatabase() {
       description TEXT
     );
 
-    CREATE TABLE IF NOT IF EXISTS puzzles (
+    CREATE TABLE IF NOT EXISTS puzzles (
       id TEXT PRIMARY KEY,
       name TEXT,
-      timing TEXT
+      timing TEXT,
+      owner_id TEXT,
+      locked_item_id TEXT,
+      reward_ids TEXT,
+      puzzle_element_ids TEXT,
+      FOREIGN KEY (owner_id) REFERENCES characters(id),
+      FOREIGN KEY (locked_item_id) REFERENCES elements(id)
     );
 
     CREATE TABLE IF NOT EXISTS timeline_events (
       id TEXT PRIMARY KEY,
       description TEXT,
-      date TEXT
+      date TEXT,
+      character_ids TEXT,
+      element_ids TEXT
     );
 
     CREATE TABLE IF NOT EXISTS interactions (
