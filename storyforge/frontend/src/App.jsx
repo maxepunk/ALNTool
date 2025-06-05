@@ -20,6 +20,8 @@ import CharacterSociogramPage from './pages/CharacterSociogramPage';
 import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
 import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // Import ResolutionPathAnalyzerPage
 import NotFound from './pages/NotFound';
+import TimelineView from './components/PlayerJourney/TimelineView'; // Import TimelineView
+import DualLensLayout from './components/Layout/DualLensLayout'; // Import DualLensLayout
 import { api } from './services/api';
 
 function App() {
@@ -112,6 +114,18 @@ function App() {
         <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
         <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
         
+        {/* Route using DualLensLayout */}
+        <Route
+          path="/player-journey"
+          element={
+            <DualLensLayout
+              journeySpaceContent={<TimelineView />}
+              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px'}}>System Space Placeholder in App.jsx</p>}
+              contextWorkspaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px', color: 'black'}}>Context Workspace Placeholder in App.jsx</p>}
+            />
+          }
+        />
+
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
