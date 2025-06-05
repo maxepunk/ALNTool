@@ -127,9 +127,17 @@ const TimelineView = () => {
                       : <Typography variant="caption" color="textSecondary">-</Typography> // Interval outside selection
                   )}
                   {segmentsInInterval.map(segment => (
-                    segment.activities?.map((activity, actIndex) => (
-                      <ActivityBlock key={`act-${segment.id}-${actIndex}`} activity={activity} />
-                    ))
+                    <React.Fragment key={`segment-${segment.id}`}>
+                      {segment.activities?.map((activity, actIndex) => (
+                        <ActivityBlock key={`act-${segment.id}-${actIndex}`} activity={activity} type="activity" />
+                      ))}
+                      {segment.interactions?.map((interaction, intIndex) => (
+                        <ActivityBlock key={`int-${segment.id}-${intIndex}`} activity={interaction} type="interaction" />
+                      ))}
+                      {segment.discoveries?.map((discovery, discIndex) => (
+                        <ActivityBlock key={`disc-${segment.id}-${discIndex}`} activity={discovery} type="discovery" />
+                      ))}
+                    </React.Fragment>
                   ))}
                   {gapsInInterval.map(gap => (
                     <GapIndicator key={`gap-${gap.id}`} gap={gap} />
