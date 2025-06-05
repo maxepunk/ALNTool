@@ -28,6 +28,16 @@ export const api = {
     return response.data;
   },
 
+  getJourneyByCharacterId: async (characterId) => {
+    if (!characterId) {
+      // Optionally, throw an error or return a specific response if characterId is missing
+      // For now, let the backend handle missing/invalid ID, or rely on caller validation
+      console.warn('getJourneyByCharacterId called without a characterId');
+    }
+    const response = await apiClient.get(`/journeys/${characterId}`);
+    return response.data;
+  },
+
   getCharacterGraph: async (id, depth = 2) => {
     const response = await apiClient.get(`/characters/${id}/graph`, { params: { depth } });
     return response.data;

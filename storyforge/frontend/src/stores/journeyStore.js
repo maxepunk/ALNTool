@@ -25,7 +25,7 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
     if (!characterId) return;
     set({ loadingJourneyCharacterId: characterId, error: null });
     try {
-      const response = await api.get(`/journeys/${characterId}`);
+      const response = await api.getJourneyByCharacterId(characterId);
       const data = response.data; // Assuming response structure { character_id, character_info, segments, gaps }
 
       set(state => ({

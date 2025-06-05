@@ -24,11 +24,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import TimelineIcon from '@mui/icons-material/Timeline'; // Added
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PageHeader from '../components/PageHeader';
 import RelationshipMapper from '../components/RelationshipMapper';
 import { api } from '../services/api';
+import useJourneyStore from '../../stores/journeyStore'; // Added
 import { Link as RouterLink } from 'react-router-dom';
 
 const DetailItem = ({ label, value, chipColor, chipIcon, fullWidth = false, children }) => (
@@ -101,6 +103,7 @@ function CharacterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const setActiveCharacterId = useJourneyStore(state => state.setActiveCharacterId); // Added
   const [activeTab, setActiveTab] = useState(0);
   const [showMapper, setShowMapper] = useState(true);
   
@@ -123,6 +126,11 @@ function CharacterDetail() {
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
   const handleBack = () => navigate('/characters');
   const handleEdit = () => alert('Character editing will be available in Phase 3.');
+
+  const handleViewPlayerJourney = () => { // Added
+    setActiveCharacterId(id);
+    navigate('/player-journey');
+  };
   
   const handleRefresh = () => {
     queryClient.invalidateQueries(queryKey);
@@ -176,6 +184,17 @@ function CharacterDetail() {
           {showMapper ? <VisibilityOffIcon /> : <VisibilityIcon />}
         </IconButton>
       </Tooltip>
+      {/* New Button for Player Journey */}
+      <Button
+        variant="outlined"
+        startIcon={<TimelineIcon />}
+        onClick={handleViewPlayerJourney}
+        size="medium"
+        sx={{ ml: 1 }} // Optional margin
+      >
+        Player Journey
+      </Button>
+      {/* Existing Edit Button */}
       <Tooltip title="Edit character (Phase 3)">
         <Button variant="contained" startIcon={<EditIcon />} onClick={handleEdit} size="medium">
           Edit

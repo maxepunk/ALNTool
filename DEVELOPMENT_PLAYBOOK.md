@@ -515,7 +515,7 @@ describe('Timeline Interactivity', () => {
     1. Ensure the backend server is running and serving data.
     2. Start the frontend development server (e.g., `npm run dev` or equivalent in `storyforge/frontend`).
     3. Open the application in a web browser.
-    4. Navigate to the section displaying the Player Journey Timeline. This might involve selecting a character.
+    4. Navigate to a specific character's detail page (e.g., `/characters/:id`). From there, click the 'Player Journey' button in the page actions area. This will set the active character and navigate to the Player Journey Timeline view (`/player-journey`).
 
 **Key Review Goals:**
 - **Visual Accuracy:**
@@ -531,7 +531,7 @@ describe('Timeline Interactivity', () => {
 - **Responsiveness & Errors:**
     - The timeline view loads without errors in the console.
     - Basic responsiveness is adequate (no major layout breaks).
-- **Character Switching:** Selecting different characters updates the timeline to show their respective journeys.
+- **Character Switching:** Navigating to a different character's detail page and clicking their 'Player Journey' button correctly updates the timeline to show that specific character's journey.
 
 ### P2.M2: Gap Resolution Workflow 🚧
 
