@@ -7,6 +7,10 @@ const rateLimit = require('express-rate-limit');
 
 // Import routes
 const notionRoutes = require('./routes/notion');
+const journeyRoutes = require('./routes/journeyRoutes');
+
+// Import database migration function
+const { runMigrations } = require('./db/migrations');
 
 // Create Express app
 const app = express();
@@ -28,7 +32,8 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Routes
-app.use('/api', notionRoutes);
+app.use('/api', notionRoutes); // Existing Notion routes
+app.use('/api', journeyRoutes); // New Journey Engine routes (e.g. /api/journeys/:characterId)
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -42,13 +47,26 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-// Only start listening if the script is executed directly (not imported as a module for testing)
-if (process.env.NODE_ENV !== 'test' && require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`- Health check: http://localhost:${PORT}/health`);
-    console.log(`- API endpoints: http://localhost:${PORT}/api/*`);
-  });
+async function startServer() {
+  // Initialize and migrate database
+  try {
+    runMigrations(); // This will also initialize if needed
+    console.log('Database ready.');
+
+    // Only start listening if the script is executed directly (not imported as a module for testing)
+    if (process.env.NODE_ENV !== 'test' && require.main === module) {
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`- Health check: http://localhost:${PORT}/health`);
+        console.log(`- API endpoints: http://localhost:${PORT}/api/*`);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to initialize or migrate database:', error);
+    process.exit(1); // Exit if database setup fails
+  }
 }
+
+startServer();
 
 module.exports = app; // Export the app for testing purposes 
