@@ -10,7 +10,7 @@ const notionRoutes = require('./routes/notion');
 const journeyRoutes = require('./routes/journeyRoutes');
 
 // Import database migration function
-const { runMigrations } = require('./db/migrations');
+const { initializeDatabase } = require('./db/database');
 
 // Create Express app
 const app = express();
@@ -51,7 +51,7 @@ async function startServer() {
   // Initialize and migrate database, but not in test environment
   if (process.env.NODE_ENV !== 'test') {
     try {
-      runMigrations(); // This will also initialize if needed
+      initializeDatabase(); // This will connect and then run migrations
       console.log('Database ready.');
 
       // Only start listening if the script is executed directly (not imported as a module for testing)
