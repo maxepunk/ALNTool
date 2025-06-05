@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Alert } from '@mui/material';
-import useJourneyStore from '../../../stores/journeyStore'; // Adjusted path
+import useJourneyStore from '../../stores/journeyStore'; // Adjusted path
 import ActivityBlock from './ActivityBlock';
 import GapIndicator from './GapIndicator';
 
