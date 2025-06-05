@@ -1,0 +1,708 @@
+# Development Playbook
+## Complete Implementation Guide for Production Intelligence Tool
+
+**Version**: 2.0 - Consolidated & Actionable  
+**Purpose**: Single source of truth for all implementation steps  
+**Principle**: If you're coding, this document tells you exactly what to do
+
+---
+
+## 🎯 Current Development Status
+
+**Active Phase**: Phase 2 - Core Views  
+**Current Milestone**: P2.M1 - Player Journey Timeline  
+**Current Task**: P2.M1.3 - Timeline Interactivity  
+**Branch**: `feature/production-intelligence-tool`
+
+---
+
+## Phase 1: Foundation - Journey Infrastructure ✅
+
+### Overview
+Backend can compute and serve character journeys with gap detection.
+
+### P1.M1: SQLite Database Layer ✅
+
+#### P1.M1.1: Install Dependencies & Create Database Service ✅
+**File**: `backend/src/db/database.js`
+
+```javascript
+// Implementation complete
+const Database = require('better-sqlite3');
+const path = require('path');
+
+class DatabaseService {
+  constructor() {
+    const dbPath = process.env.DATABASE_PATH || './data/production.db';
+    this.db = new Database(dbPath);
+    this.db.pragma('foreign_keys = ON');
+  }
+  
+  // Additional methods implemented...
+}
+```
+
+**Verification**: 
+- [x] `npm list better-sqlite3` shows installed
+- [x] Database file created at `./data/production.db`
+- [x] Can connect and run test query
+
+#### P1.M1.2: Schema Implementation ✅
+**File**: `backend/src/db/schema.sql`
+
+```sql
+-- Implementation complete
+CREATE TABLE journey_segments (
+  id TEXT PRIMARY KEY,
+  character_id TEXT NOT NULL,
+  start_minute INTEGER NOT NULL,
+  end_minute INTEGER NOT NULL,
+  activities TEXT,
+  interactions TEXT,
+  discoveries TEXT,
+  gap_status TEXT,
+  FOREIGN KEY (character_id) REFERENCES characters(id)
+);
+
+-- Additional tables created...
+```
+
+**Verification**:
+- [x] All tables created successfully
+- [x] Foreign key constraints working
+- [x] Test data insertable
+
+#### P1.M1.3: Migration System ✅
+**File**: `backend/src/db/migrations.js`
+
+```javascript
+// Implementation complete
+class MigrationRunner {
+  constructor(db) {
+    this.db = db;
+    this.ensureMigrationsTable();
+  }
+  
+  // Methods implemented...
+}
+```
+
+**Verification**:
+- [x] Migrations table exists
+- [x] Can run migrations up/down
+- [x] Version tracking works
+
+### P1.M2: Journey Engine ✅
+
+#### P1.M2.1: Core Engine Structure ✅
+**File**: `backend/src/services/journeyEngine.js`
+
+```javascript
+class JourneyEngine {
+  constructor(notionService, db) {
+    this.notionService = notionService;
+    this.db = db;
+  }
+
+  async buildCharacterJourney(characterId) {
+    // 1. Fetch character data
+    const character = await this.notionService.getCharacter(characterId);
+    
+    // 2. Fetch related data
+    const events = await this.notionService.getCharacterEvents(characterId);
+    const puzzles = await this.notionService.getCharacterPuzzles(characterId);
+    const elements = await this.notionService.getCharacterElements(characterId);
+    
+    // 3. Compute segments
+    const segments = this.computeJourneySegments(character, events, puzzles, elements);
+    
+    // 4. Detect gaps
+    const gaps = this.detectGaps(segments);
+    
+    // 5. Cache in database
+    this.cacheJourney(characterId, segments, gaps);
+    
+    return { character, segments, gaps };
+  }
+  
+  // Additional methods implemented...
+}
+```
+
+**Verification**:
+- [x] Can instantiate JourneyEngine
+- [x] All methods defined
+- [x] Integrates with Notion service
+
+#### P1.M2.2: Segment Computation ✅
+**Implementation**: Creates 5-minute segments for 90-minute journey
+
+```javascript
+computeJourneySegments(character, events, puzzles, elements) {
+  const segments = [];
+  
+  for (let minute = 0; minute < 90; minute += 5) {
+    const segment = {
+      id: `${character.id}-${minute}`,
+      characterId: character.id,
+      startMinute: minute,
+      endMinute: minute + 5,
+      activities: this.findActivitiesInRange(minute, minute + 5, puzzles, elements),
+      interactions: this.findInteractionsInRange(minute, minute + 5, events),
+      discoveries: this.findDiscoveriesInRange(minute, minute + 5, elements),
+      gapStatus: null // Set by gap detection
+    };
+    segments.push(segment);
+  }
+  
+  return segments;
+}
+```
+
+**Verification**:
+- [x] Generates 18 segments (90 min / 5 min)
+- [x] Each segment has correct structure
+- [x] Time ranges are continuous
+
+#### P1.M2.3: Gap Detection Algorithm ✅
+**Implementation**: Identifies empty segments and bottlenecks
+
+```javascript
+detectGaps(segments) {
+  const gaps = [];
+  
+  segments.forEach((segment, index) => {
+    const hasContent = 
+      segment.activities.length > 0 || 
+      segment.interactions.length > 0 || 
+      segment.discoveries.length > 0;
+    
+    if (!hasContent) {
+      // Check if this is part of a larger gap
+      const gapStart = this.findGapStart(segments, index);
+      const gapEnd = this.findGapEnd(segments, index);
+      
+      // Only create gap if we're at the start of a gap sequence
+      if (index === gapStart) {
+        gaps.push({
+          id: `gap-${segment.characterId}-${segment.startMinute}`,
+          characterId: segment.characterId,
+          startMinute: segments[gapStart].startMinute,
+          endMinute: segments[gapEnd].endMinute + 5,
+          severity: this.calculateSeverity(gapEnd - gapStart + 1),
+          type: 'empty',
+          suggestedSolutions: []
+        });
+      }
+    }
+  });
+  
+  return gaps;
+}
+```
+
+**Verification**:
+- [x] Identifies all empty segments
+- [x] Groups consecutive gaps
+- [x] Calculates severity correctly
+
+### P1.M3: API Endpoints ✅
+
+#### P1.M3.1: Journey Routes ✅
+**File**: `backend/src/routes/api.js`
+
+```javascript
+// GET /api/journeys/:characterId
+router.get('/journeys/:characterId', async (req, res) => {
+  try {
+    const journey = await journeyController.getJourney(req.params.characterId);
+    res.json(journey);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/journeys/:characterId/gaps
+router.get('/journeys/:characterId/gaps', async (req, res) => {
+  try {
+    const gaps = await journeyController.getGaps(req.params.characterId);
+    res.json(gaps);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+**Verification**:
+- [x] Routes registered in Express
+- [x] Return correct data structure
+- [x] Error handling works
+
+#### P1.M3.2: Gap Management Endpoints ✅
+**Implementation**: CRUD operations for gaps
+
+```javascript
+// GET /api/gaps/all
+router.get('/gaps/all', async (req, res) => {
+  try {
+    const gaps = await gapController.getAllGaps();
+    res.json(gaps);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/gaps/:gapId/resolve
+router.post('/gaps/:gapId/resolve', async (req, res) => {
+  try {
+    const result = await gapController.resolveGap(req.params.gapId, req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+**Verification**:
+- [x] Can fetch all gaps across characters
+- [x] Resolution endpoint accepts suggestions
+- [x] Updates database correctly
+
+### P1.M4: Frontend State Foundation ✅
+
+#### P1.M4.1: Journey Store Setup ✅
+**File**: `frontend/src/stores/journeyStore.js`
+
+```javascript
+import { create } from 'zustand';
+import { devtools, subscribeWithSelector } from 'zustand/middleware';
+import { api } from '../services/api';
+
+const useJourneyStore = create(
+  devtools(
+    subscribeWithSelector((set, get) => ({
+      // State
+      activeCharacterId: null,
+      journeyData: new Map(),
+      gaps: new Map(),
+      selectedTimeRange: [0, 90],
+      selectedGap: null,
+      
+      // Actions
+      setActiveCharacter: (characterId) => 
+        set({ activeCharacterId: characterId }),
+      
+      loadJourney: async (characterId) => {
+        try {
+          const data = await api.getJourney(characterId);
+          set(state => ({
+            journeyData: new Map(state.journeyData).set(characterId, data),
+            gaps: new Map(state.gaps).set(characterId, data.gaps)
+          }));
+        } catch (error) {
+          console.error('Failed to load journey:', error);
+        }
+      },
+      
+      selectGap: (gap) => set({ selectedGap: gap }),
+      
+      // Computed (via selectors)
+      selectors: {
+        getActiveJourney: () => {
+          const state = get();
+          return state.journeyData.get(state.activeCharacterId);
+        },
+        
+        getActiveGaps: () => {
+          const state = get();
+          return state.gaps.get(state.activeCharacterId) || [];
+        }
+      }
+    }))
+  )
+);
+```
+
+**Verification**:
+- [x] Store creates successfully
+- [x] Can load journey data
+- [x] Selectors return correct data
+
+---
+
+## Phase 2: Core Views - Journey & System Lenses 🚧
+
+### Overview
+Build the dual-lens interface with Player Journey Timeline as centerpiece.
+
+### P2.M1: Player Journey Timeline Component 🚧
+
+#### P2.M1.1: Basic Timeline Structure ✅
+**File**: `frontend/src/components/PlayerJourney/TimelineView.jsx`
+
+```jsx
+import React from 'react';
+import { Box, Paper } from '@mui/material';
+import { useJourneyStore } from '../../stores/journeyStore';
+
+const TimelineView = () => {
+  const journey = useJourneyStore(state => state.selectors.getActiveJourney());
+  
+  if (!journey) {
+    return <Box>Select a character to view their journey</Box>;
+  }
+  
+  return (
+    <Paper sx={{ p: 2, height: '100%', overflow: 'auto' }}>
+      <TimelineHeader character={journey.character} />
+      <TimelineRuler />
+      <TimelineSegments segments={journey.segments} />
+      <GapIndicators gaps={journey.gaps} />
+    </Paper>
+  );
+};
+```
+
+**Verification**:
+- [x] Component renders without errors
+- [x] Shows loading state
+- [x] Displays basic timeline structure
+
+#### P2.M1.2: Segment Visualization ✅
+**File**: `frontend/src/components/PlayerJourney/TimelineSegment.jsx`
+
+```jsx
+const TimelineSegment = ({ segment, index }) => {
+  const { activities, interactions, discoveries } = segment;
+  const isEmpty = !activities.length && !interactions.length && !discoveries.length;
+  
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        left: `${(segment.startMinute / 90) * 100}%`,
+        width: `${(5 / 90) * 100}%`,
+        height: '100%',
+        borderRight: '1px solid #333',
+        backgroundColor: isEmpty ? '#ff000020' : 'transparent',
+        '&:hover': { backgroundColor: '#ffffff10' }
+      }}
+    >
+      {activities.map(activity => (
+        <ActivityIcon key={activity.id} activity={activity} />
+      ))}
+      {interactions.map(interaction => (
+        <InteractionLine key={interaction.id} interaction={interaction} />
+      ))}
+      {discoveries.map(discovery => (
+        <DiscoveryMarker key={discovery.id} discovery={discovery} />
+      ))}
+    </Box>
+  );
+};
+```
+
+**Verification**:
+- [x] Segments positioned correctly
+- [x] Empty segments highlighted
+- [x] Content icons display
+
+#### P2.M1.3: Timeline Interactivity 🚧 **[CURRENT TASK]**
+**Implementation Goal**: Add zoom, pan, and click interactions
+
+```jsx
+// TO IMPLEMENT:
+const TimelineControls = () => {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState(0);
+  
+  return (
+    <Box sx={{ position: 'absolute', top: 10, right: 10 }}>
+      <IconButton onClick={() => setZoom(Math.min(zoom * 1.2, 5))}>
+        <ZoomInIcon />
+      </IconButton>
+      <IconButton onClick={() => setZoom(Math.max(zoom / 1.2, 0.5))}>
+        <ZoomOutIcon />
+      </IconButton>
+      <IconButton onClick={() => { setZoom(1); setPan(0); }}>
+        <CenterFocusIcon />
+      </IconButton>
+    </Box>
+  );
+};
+```
+
+**Acceptance Criteria**:
+- [ ] Can zoom in/out (0.5x to 5x)
+- [ ] Can pan when zoomed
+- [ ] Click segment to see details
+- [ ] Keyboard shortcuts (Ctrl+scroll for zoom)
+- [ ] Touch gestures on mobile
+
+**Test Implementation**:
+```javascript
+// frontend/src/components/PlayerJourney/__tests__/TimelineView.test.jsx
+describe('Timeline Interactivity', () => {
+  it('should zoom in when zoom in button clicked', () => {
+    const { getByLabelText } = render(<TimelineView />);
+    const zoomIn = getByLabelText('Zoom in');
+    fireEvent.click(zoomIn);
+    // Assert transform scale increased
+  });
+  
+  it('should pan when dragged while zoomed', () => {
+    // Test pan functionality
+  });
+});
+```
+
+#### P2.M1.4: Gap Highlighting & Selection ⏳
+**Waiting on**: P2.M1.3 completion
+
+**Implementation Plan**:
+1. Visual gap indicators with severity colors
+2. Click gap to select in store
+3. Hover to preview gap details
+4. Animated attention indicators
+
+### P2.M2: Gap Resolution Workflow 🚧
+
+#### P2.M2.1: Context Panel ⏳
+**Waiting on**: P2.M1.3 completion
+
+**File**: `frontend/src/components/GapResolution/ContextPanel.jsx`
+
+**Implementation Plan**:
+```jsx
+const ContextPanel = () => {
+  const selectedGap = useJourneyStore(state => state.selectedGap);
+  
+  if (!selectedGap) return null;
+  
+  return (
+    <Paper sx={{ position: 'absolute', bottom: 0, width: '100%', p: 2 }}>
+      <GapDetails gap={selectedGap} />
+      <SuggestedSolutions gap={selectedGap} />
+      <QuickActions gap={selectedGap} />
+    </Paper>
+  );
+};
+```
+
+#### P2.M2.2: Smart Suggestions ⏳
+**Waiting on**: P2.M2.1 completion
+
+**Backend Integration Required**:
+- Endpoint: `GET /api/gaps/:gapId/suggestions`
+- Returns: Ranked list of content that could fill gap
+- Considers: Time availability, character proximity, theme
+
+### P2.M3: Layout Restructuring ⏳
+
+#### P2.M3.1: Dual-Lens Layout ⏳
+**Waiting on**: Timeline component completion
+
+**File**: `frontend/src/components/Layout/DualLensLayout.jsx`
+
+**Implementation Plan**:
+1. Split screen with resizable divider
+2. Journey Space (left) - Timeline focus
+3. System Space (right) - Analytics focus
+4. Context Workspace (bottom) - Adaptive
+5. Command Bar (top) - Persistent
+
+### P2.M4: View Synchronization ⏳
+
+#### P2.M4.1: Shared State Management ⏳
+**Waiting on**: Layout implementation
+
+**Implementation**: Cross-view state coordination
+- Selected time range affects both views
+- Character selection updates analytics
+- Gap selection shows system impact
+
+---
+
+## Phase 3: System Intelligence 📅
+
+### Overview
+Add system-wide analytics and balance monitoring.
+
+### P3.M1: Balance Dashboard 📅
+
+#### P3.M1.1: Three-Path Metrics
+**File**: `frontend/src/components/SystemViews/BalanceDashboard.jsx`
+
+**Implementation Plan**:
+1. Calculate path values from journey data
+2. Visual comparison (bar charts)
+3. Trend analysis over time
+4. Imbalance warnings
+
+#### P3.M1.2: Path Simulation
+**Backend Required**: 
+- `POST /api/balance/simulate`
+- Input: Proposed changes
+- Output: Predicted impact
+
+### P3.M2: Interaction Matrix 📅
+
+#### P3.M2.1: Heat Map Visualization
+**Implementation**: D3.js or Canvas-based matrix
+- 19x19 character grid
+- Color intensity = interaction frequency
+- Time-based filtering
+
+#### P3.M2.2: Isolation Detection
+**Algorithm**: Find characters with low interaction scores
+- Warning thresholds
+- Suggested pairings
+- Time slot availability
+
+### P3.M3: Timeline Archaeology 📅
+
+#### P3.M3.1: Event Surface Map
+**Visualization**: How past events emerge in gameplay
+- Vertical timeline (19 years)
+- Discovery probability
+- Connected elements
+
+---
+
+## 🛠️ Implementation Guidelines
+
+### Code Standards
+
+#### File Naming
+```
+ComponentName.jsx       // React components
+componentName.js        // Regular JS files
+ComponentName.test.jsx  // Test files
+use-hook-name.js       // Custom hooks
+```
+
+#### Commit Messages
+```
+Complete P1.M2.3 - Gap detection algorithm
+Fix P2.M1.2 - Segment positioning issue  
+WIP P2.M1.3 - Timeline zoom controls
+```
+
+#### Testing Requirements
+- Unit tests for all utility functions
+- Integration tests for API endpoints
+- Component tests for user interactions
+- E2E tests for critical paths
+
+### Development Flow
+
+1. **Start Task**
+   - Check this playbook for current task
+   - Create feature branch: `feature/P2.M1.3-timeline-interactivity`
+   - Write tests first (TDD)
+
+2. **During Development**
+   - Implement acceptance criteria
+   - Run tests frequently
+   - Check against PRD UI specs
+   - Update progress markers
+
+3. **Complete Task**
+   - All tests passing
+   - Code reviewed (or self-reviewed)
+   - Update this playbook's verification checkboxes
+   - Merge to main branch
+
+### Common Patterns
+
+#### API Integration
+```javascript
+// Always use try-catch with loading states
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState(null);
+
+const fetchData = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const data = await api.getSomething();
+    // Process data
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+#### State Updates
+```javascript
+// Always use immutable updates
+set(state => ({
+  ...state,
+  someMap: new Map(state.someMap).set(key, value),
+  someArray: [...state.someArray, newItem]
+}));
+```
+
+---
+
+## 🚨 Current Blockers & Dependencies
+
+### Active Blockers
+- None currently
+
+### Dependency Chain
+```
+P2.M1.3 (Current) 
+  → P2.M1.4 (Gap Selection)
+    → P2.M2.1 (Context Panel)
+      → P2.M2.2 (Suggestions)
+        → P2.M3.1 (Layout)
+```
+
+### External Dependencies
+- Notion API rate limits (3 req/sec)
+- SQLite performance with large datasets
+- React Flow license for timeline?
+
+---
+
+## 📊 Progress Tracking
+
+### Phase 1: ✅ Complete (4/4 milestones)
+- P1.M1: Database Layer ✅
+- P1.M2: Journey Engine ✅  
+- P1.M3: API Endpoints ✅
+- P1.M4: State Foundation ✅
+
+### Phase 2: 🚧 In Progress (1/4 milestones)
+- P2.M1: Timeline Component 🚧 (3/4 tasks)
+- P2.M2: Gap Resolution ⏳ (0/2 tasks)
+- P2.M3: Layout ⏳ (0/1 tasks)
+- P2.M4: Sync ⏳ (0/1 tasks)
+
+### Overall: ~35% Complete
+
+---
+
+## 🔍 Quick Task Lookup
+
+**What should I work on?**
+→ Check "CURRENT TASK" at the top
+
+**Where is the code?**
+→ Each task shows exact file paths
+
+**How do I know it's done?**
+→ Check the acceptance criteria
+
+**What's next?**
+→ Follow the dependency chain
+
+**I'm stuck?**
+→ Check blockers, then TROUBLESHOOTING.md
+
+---
+
+This playbook is the single source of truth. If it's not here, ask before implementing.

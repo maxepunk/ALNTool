@@ -30,8 +30,8 @@ module.exports = {
     'node'
   ],
   
-  // Transform files - none needed for Node.js
-  transform: {},
+  // Transform files - use babel-jest for .js files
+  transform: {'^.+\\.js$': 'babel-jest'},
   
   // Test environment setup
   setupFilesAfterEnv: ['./tests/setupTests.js'],

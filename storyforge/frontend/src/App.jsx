@@ -20,6 +20,8 @@ import CharacterSociogramPage from './pages/CharacterSociogramPage';
 import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
 import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // Import ResolutionPathAnalyzerPage
 import NotFound from './pages/NotFound';
+import TimelineView from './components/PlayerJourney/TimelineView'; // Import TimelineView
+import DualLensLayout from './components/Layout/DualLensLayout'; // Import DualLensLayout
 import { api } from './services/api';
 
 function App() {
@@ -112,6 +114,28 @@ function App() {
         <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
         <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
         
+        {/* Route using DualLensLayout */}
+        <Route
+          path="/player-journey"
+          element={
+            <DualLensLayout
+              journeySpaceContent={<TimelineView />}
+              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px'}}>System Space Placeholder in App.jsx (Player Journey)</p>}
+            />
+          }
+        />
+
+        {/* Test route for DualLensLayout */}
+        <Route
+          path="/dual-view-test"
+          element={
+            <DualLensLayout
+              journeySpaceContent={<p style={{padding: '10px', backgroundColor: '#eee', border: '1px solid #ddd', borderRadius: '4px'}}>Journey Space Placeholder (Test Route)</p>}
+              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#e0e0e0', border: '1px solid #d0d0d0', borderRadius: '4px'}}>System Space Placeholder (Test Route)</p>}
+            />
+          }
+        />
+
         {/* 404 route */}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand"
+    "test": "NODE_ENV=test jest --runInBand",
+    "test:watch": "NODE_ENV=test jest --watch --runInBand"
   },
   "keywords": [
     "notion",
@@ -24,7 +24,8 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "better-sqlite3": "^9.0.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

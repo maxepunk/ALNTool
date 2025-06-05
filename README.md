@@ -4,38 +4,44 @@
 
 This repository contains the Production Intelligence Tool for "About Last Night," an immersive murder mystery game. The tool is being evolved from the existing StoryForge foundation to provide comprehensive journey management and production capabilities.
 
-## 🚀 Getting Started for Developers
+## 🚀 Quick Start for Developers
 
-### 1. Read the PRD First!
-**IMPORTANT**: Before doing anything else, read the comprehensive Product Requirements Document:
-- 📄 **[PRODUCTION_INTELLIGENCE_TOOL_PRD.md](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)**
+### The 3-Document System
 
-This PRD is your single source of truth. It contains:
-- Complete feature specifications
-- Technical architecture
-- Development phases
-- UI/UX designs
-- Implementation details
+We use a streamlined documentation approach. You only need 3 files:
 
-### 2. Project Structure
+1. **📋 [QUICK_STATUS.md](./QUICK_STATUS.md)** - START HERE EVERY DAY (30 seconds)
+   - Shows your current task
+   - Quick progress check
+   - Next steps
+
+2. **📖 [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)** - Your main guide while coding
+   - Every implementation detail
+   - Exact code to write
+   - File locations
+   - Acceptance criteria
+
+3. **📄 [PRODUCTION_INTELLIGENCE_TOOL_PRD.md](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)** - Reference when needed
+   - UI/UX specifications
+   - Architecture details
+   - Feature requirements
+
+**That's it!** See [STREAMLINED_DOCS_GUIDE.md](./STREAMLINED_DOCS_GUIDE.md) for why we simplified.
+
+### Your Daily Workflow
+
 ```
-ALNTool/
-├── PRODUCTION_INTELLIGENCE_TOOL_PRD.md  # START HERE - Living document
-├── storyforge/                          # Main application
-│   ├── backend/                         # Node.js/Express API
-│   └── frontend/                        # React application
-├── SampleNotionData/                    # Test data (if needed)
-└── test-results/                        # Test output files
+Morning:
+1. Check QUICK_STATUS.md (30 sec)
+2. Open DEVELOPMENT_PLAYBOOK.md to current task
+3. Code
+
+Evening:
+1. Update QUICK_STATUS.md if task done
+2. Commit with milestone reference (e.g., "Complete P2.M1.3")
 ```
 
-### 3. Development Workflow
-
-1. **Update the PRD Progress Tracker** at the top of the PRD as you complete tasks
-2. **Start with Phase 1** - Journey Infrastructure (see PRD Section 9)
-3. **Commit regularly** with clear messages referencing PRD phases
-4. **Test thoroughly** before moving to next phase
-
-### 4. Quick Start Commands
+### Project Setup
 
 ```bash
 # Backend setup
@@ -44,33 +50,62 @@ npm install
 cp .env.example .env  # Add your Notion API key
 npm run dev
 
-# Frontend setup (in new terminal)
+# Frontend setup (new terminal)
 cd storyforge/frontend
 npm install
 npm run dev
 
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:3001
+# Access application
+Frontend: http://localhost:3000
+Backend API: http://localhost:3001
 ```
 
-## 📝 Important Notes
+## 📁 Project Structure
 
-- **Branch**: You're on `feature/production-intelligence-tool`
-- **Main Documentation**: PRODUCTION_INTELLIGENCE_TOOL_PRD.md (keep it updated!)
-- **Notion Integration**: Requires API key in backend `.env` file
+```
+ALNTool/
+├── 📚 Core Documentation (Just 3 files!)
+│   ├── QUICK_STATUS.md              # Current task tracker
+│   ├── DEVELOPMENT_PLAYBOOK.md      # Implementation guide  
+│   └── PRODUCTION_INTELLIGENCE_TOOL_PRD.md  # Specifications
+│
+├── 💻 Application Code
+│   └── storyforge/
+│       ├── backend/                 # Node.js/Express API
+│       └── frontend/                # React application
+│
+└── 📁 Supporting Files
+    ├── SampleNotionData/            # Test data
+    └── TROUBLESHOOTING.md           # Only if stuck
+```
 
 ## 🎯 Current Status
 
-See the Development Progress Tracker at the top of [PRODUCTION_INTELLIGENCE_TOOL_PRD.md](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)
+**Active Task**: P2.M1.3 - Timeline Interactivity  
+**Progress**: Phase 1 ✅ | Phase 2 🚧 (25%) | Overall ~35%
 
-## 🤝 For Questions
+See [QUICK_STATUS.md](./QUICK_STATUS.md) for details.
 
-If you need clarification on any aspect of the project:
-1. First check the PRD - it's comprehensive
-2. Review existing code in `/storyforge`
-3. The PRD contains all necessary context and specifications
+## 📝 Key Development Info
+
+- **Branch**: `feature/production-intelligence-tool`
+- **Node Version**: 16+
+- **Key Tech**: React, Node.js, SQLite, Zustand
+- **Notion Integration**: Requires API key in `.env`
+
+## 🆘 Getting Help
+
+1. **First**: Check current task in DEVELOPMENT_PLAYBOOK.md
+2. **If Stuck**: See TROUBLESHOOTING.md
+3. **Still Stuck**: Document the issue for others
+
+## 🎉 Why This Works
+
+- **No Documentation Sprawl**: Just 3 focused files
+- **Always Know Where You Are**: QUICK_STATUS.md
+- **Always Know What To Do**: DEVELOPMENT_PLAYBOOK.md  
+- **Never Lost**: Clear task progression
 
 ---
 
-Remember: The PRD is a living document. Update it as you make progress!
+**Remember**: If you're confused, you're in the wrong document. There are only 3!
