@@ -48,22 +48,28 @@ app.use((err, req, res, next) => {
 
 // Start server
 async function startServer() {
-  // Initialize and migrate database
-  try {
-    runMigrations(); // This will also initialize if needed
-    console.log('Database ready.');
+  // Initialize and migrate database, but not in test environment
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      runMigrations(); // This will also initialize if needed
+      console.log('Database ready.');
 
-    // Only start listening if the script is executed directly (not imported as a module for testing)
-    if (process.env.NODE_ENV !== 'test' && require.main === module) {
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        console.log(`- Health check: http://localhost:${PORT}/health`);
-        console.log(`- API endpoints: http://localhost:${PORT}/api/*`);
-      });
+      // Only start listening if the script is executed directly (not imported as a module for testing)
+      if (require.main === module) { // No need to check NODE_ENV again here
+        app.listen(PORT, () => {
+          console.log(`Server running on port ${PORT}`);
+          console.log(`- Health check: http://localhost:${PORT}/health`);
+          console.log(`- API endpoints: http://localhost:${PORT}/api/*`);
+        });
+      }
+    } catch (error) {
+      console.error('Failed to initialize or migrate database:', error);
+      process.exit(1); // Exit if database setup fails
     }
-  } catch (error) {
-    console.error('Failed to initialize or migrate database:', error);
-    process.exit(1); // Exit if database setup fails
+  } else {
+    // In test environment, we might not want to auto-start the server or connect DB here.
+    // Tests will typically manage their own server instance and DB connection (e.g., in-memory).
+    console.log('Running in TEST environment. Database initialization and server auto-start skipped in index.js.');
   }
 }
 

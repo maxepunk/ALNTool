@@ -121,4 +121,25 @@ module.exports = {
   getAllGaps,
   getSyncStatus,
   getGapSuggestions,
+  resolveGap,
 };
+
+async function resolveGap(req, res) {
+  const { gapId } = req.params;
+  const { status, comment } = req.body; // Assuming status and comment are passed in the body
+
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required to resolve a gap.' });
+  }
+
+  try {
+    const updatedGap = await dbQueries.updateGapResolution(gapId, status, comment);
+    if (!updatedGap) {
+      return res.status(404).json({ error: 'Gap not found or not updated.' });
+    }
+    res.json({ message: 'Gap resolved successfully', gap: updatedGap });
+  } catch (error) {
+    console.error('Error resolving gap:', error);
+    res.status(500).json({ error: 'Failed to resolve gap' });
+  }
+}

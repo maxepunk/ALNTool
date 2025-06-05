@@ -9,10 +9,10 @@
 
 ## 🎯 Current Development Status
 
-**Active Phase**: Phase 1 - Foundation - Journey Infrastructure
-**Active Phase**: Phase 1 - Foundation - Journey Infrastructure
-**Current Milestone**: P1.M3 - API Endpoints
-**Current Task**: P1.M3.2: Implement `POST /api/gaps/:gapId/resolve` Endpoint
+**Active Phase**: Phase 2 - Core Views - Journey & System Lenses
+**Active Phase**: Phase 2 - Core Views - Journey & System Lenses
+**Current Milestone**: P2.M1 - Player Journey Timeline Component
+**Current Task**: P2.M1.4: Gap Highlighting & Selection
 **Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
 
 ---
@@ -245,7 +245,7 @@ router.get('/journeys/:characterId/gaps', async (req, res) => {
 - [x] Return correct data structure
 - [x] Error handling works
 
-#### P1.M3.2: Gap Management Endpoints ⏳
+#### P1.M3.2: Gap Management Endpoints ✅
 **Implementation**: CRUD operations for gaps
 
 ```javascript
@@ -259,7 +259,7 @@ router.get('/gaps/all', async (req, res) => {
   }
 });
 
-**Task: Implement `POST /api/gaps/:gapId/resolve` Endpoint** ⏳
+**Task: Implement `POST /api/gaps/:gapId/resolve` Endpoint** ✅
 
 **File(s) likely affected**:
 - `backend/src/routes/journeyRoutes.js` (add route)
@@ -272,16 +272,16 @@ router.get('/gaps/all', async (req, res) => {
 3. Implement DB query in `queries.js` to update the gap record.
 
 **Acceptance Criteria (for the POST endpoint)**:
-- [ ] `POST /api/gaps/:gapId/resolve` endpoint is implemented and functional.
-- [ ] Endpoint accepts a payload to update the gap (e.g., new status, resolution notes).
-- [ ] The corresponding gap record in the database is updated correctly.
-- [ ] Appropriate success or error responses are returned.
+- [x] `POST /api/gaps/:gapId/resolve` endpoint is implemented and functional.
+- [x] Endpoint accepts a payload to update the gap (e.g., new status, resolution notes).
+- [x] The corresponding gap record in the database is updated correctly.
+- [x] Appropriate success or error responses are returned.
 ```
 
 **Verification**:
 - [x] Can fetch all gaps across characters
-- [ ] Resolution endpoint accepts suggestions // Not Implemented until task above is done
-- [ ] Updates database correctly // Not Implemented until task above is done
+- [x] Resolution endpoint (`POST /api/gaps/:gapId/resolve`) accepts payload (status, comment) and updates database correctly.
+- [x] Appropriate success/error responses are returned by the endpoint.
 
 ### P1.M4: Frontend State Foundation ✅
 
@@ -738,10 +738,10 @@ P2.M1.3 (Current)
 
 ## 📊 Progress Tracking
 
-### Phase 1: 🚧 In Progress (P1.M1, P1.M2, P1.M4 complete. P1.M3 partially complete.)
+### Phase 1: ✅ Complete (All Phase 1 Milestones: P1.M1, P1.M2, P1.M3, P1.M4 are complete.)
 - P1.M1: Database Layer ✅
 - P1.M2: Journey Engine ✅
-- P1.M3: API Endpoints 🚧 (P1.M3.1 ✅, P1.M3.2 ⏳)
+- P1.M3: API Endpoints ✅ (P1.M3.1 ✅, P1.M3.2 ✅)
 - P1.M4: State Foundation ✅
 
 ### Phase 2: 🚧 In Progress (0/4 milestones fully complete)
@@ -750,7 +750,7 @@ P2.M1.3 (Current)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-Overall: ~27% Complete (P1.M1, P1.M2, P1.M4 are fully complete milestones from P1. Total milestones for P1, P2 & P3 = 11.)
+Overall: ~36% Complete (P1.M1, P1.M2, P1.M3, P1.M4 are fully complete milestones from P1. Total milestones for P1, P2 & P3 = 11.)
 
 ---
 

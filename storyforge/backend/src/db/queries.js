@@ -75,6 +75,7 @@ module.exports = {
   getCachedJourney,
   saveCachedJourney,
   isValidJourneyCache,
+  updateGapResolution,
 };
 
 // Cached Journeys
@@ -169,4 +170,26 @@ function isValidJourneyCache(cachedJourney) {
   const cacheTime = new Date(cachedJourney.cached_at).getTime();
   const now = new Date().getTime();
   return (now - cacheTime) < CACHE_TTL_MS;
+}
+
+async function updateGapResolution(gapId, status, comment = '') {
+  const db = getDB();
+  // Assuming 'gaps' table with columns 'id', 'status', 'resolution_comment'
+  // RETURNING * is specific to PostgreSQL and SQLite 3.35.0+
+  // For older SQLite, you might need to do a SELECT after UPDATE.
+  // However, better-sqlite3 supports RETURNING * for versions that have it.
+  const stmt = db.prepare(`
+    UPDATE gaps
+    SET status = ?, resolution_comment = ?
+    WHERE id = ?
+    RETURNING *
+  `);
+  try {
+    // Ensure comment is not undefined, default to empty string if so.
+    const result = stmt.get(status, comment || '', gapId);
+    return result; // Returns the updated row or undefined if no row was updated
+  } catch (error) {
+    console.error('Error updating gap resolution in DB:', error);
+    throw error; // Re-throw to be caught by controller
+  }
 }
