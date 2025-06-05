@@ -16,7 +16,7 @@
 
 ---
 
-## Phase 1: Foundation - Journey Infrastructure ✅
+## Phase 1: Foundation - Journey Infrastructure 🚧
 
 ### Overview
 Backend can compute and serve character journeys with gap detection.
@@ -48,24 +48,7 @@ class DatabaseService {
 - [x] Can connect and run test query
 
 #### P1.M1.2: Schema Implementation ✅
-**File**: `backend/src/db/schema.sql`
-
-```sql
--- Implementation complete
-CREATE TABLE journey_segments (
-  id TEXT PRIMARY KEY,
-  character_id TEXT NOT NULL,
-  start_minute INTEGER NOT NULL,
-  end_minute INTEGER NOT NULL,
-  activities TEXT,
-  interactions TEXT,
-  discoveries TEXT,
-  gap_status TEXT,
-  FOREIGN KEY (character_id) REFERENCES characters(id)
-);
-
--- Additional tables created...
-```
+**Note**: Schema definitions (`CREATE TABLE IF NOT EXISTS`) are located within `backend/src/db/database.js` in the `initializeDatabase` function.
 
 **Verification**:
 - [x] All tables created successfully
@@ -76,21 +59,20 @@ CREATE TABLE journey_segments (
 **File**: `backend/src/db/migrations.js`
 
 ```javascript
-// Implementation complete
-class MigrationRunner {
-  constructor(db) {
-    this.db = db;
-    this.ensureMigrationsTable();
-  }
-  
-  // Methods implemented...
-}
+// Implementation complete // Note: Actual implementation uses a function like:
+// function runMigrations(db) {
+//   db.exec("CREATE TABLE IF NOT EXISTS characters (...)");
+//   // ... other table creations ...
+//   // This is called by initializeDatabase if tables don't exist.
+// }
+// Summary: Checks if tables exist and calls initializeDatabase if not.
 ```
+**Note**: The current migration system is basic and ensures initial schema setup. It does not currently include a version tracking table or support for incremental up/down migrations.
 
 **Verification**:
-- [x] Migrations table exists
-- [x] Can run migrations up/down
-- [x] Version tracking works
+- [ ] Migrations table exists // Not Implemented
+- [ ] Can run migrations up/down // Not Implemented
+- [ ] Version tracking works // Not Implemented
 
 ### P1.M2: Journey Engine ✅
 
@@ -99,19 +81,20 @@ class MigrationRunner {
 
 ```javascript
 class JourneyEngine {
-  constructor(notionService, db) {
-    this.notionService = notionService;
-    this.db = db;
+  constructor() { // constructor(notionService, db)
+    // this.notionService = notionService; // Note: Data sourced via dbQueries
+    // this.db = db; // Note: db connection likely handled internally or passed differently
   }
+**Note**: Data for journey building is primarily sourced via `dbQueries.js` (local database) rather than direct `notionService` calls within `buildCharacterJourney`.
 
   async buildCharacterJourney(characterId) {
-    // 1. Fetch character data
-    const character = await this.notionService.getCharacter(characterId);
+    // 1. Fetch character data (from local DB via dbQueries)
+    const character = await this.notionService.getCharacter(characterId); // Placeholder, actual is via dbQueries
     
-    // 2. Fetch related data
-    const events = await this.notionService.getCharacterEvents(characterId);
-    const puzzles = await this.notionService.getCharacterPuzzles(characterId);
-    const elements = await this.notionService.getCharacterElements(characterId);
+    // 2. Fetch related data (events, puzzles, elements from local DB via dbQueries)
+    const events = await this.notionService.getCharacterEvents(characterId); // Placeholder
+    const puzzles = await this.notionService.getCharacterPuzzles(characterId); // Placeholder
+    const elements = await this.notionService.getCharacterElements(characterId); // Placeholder
     
     // 3. Compute segments
     const segments = this.computeJourneySegments(character, events, puzzles, elements);
@@ -119,7 +102,7 @@ class JourneyEngine {
     // 4. Detect gaps
     const gaps = this.detectGaps(segments);
     
-    // 5. Cache in database
+    // 5. Cache in database // TODO: This step appears to be missing in the current implementation.
     this.cacheJourney(characterId, segments, gaps);
     
     return { character, segments, gaps };
@@ -132,7 +115,7 @@ class JourneyEngine {
 **Verification**:
 - [x] Can instantiate JourneyEngine
 - [x] All methods defined
-- [x] Integrates with Notion service
+- [ ] Integrates with Notion service // Not directly for journey building; data is from local DB.
 
 #### P1.M2.2: Segment Computation ✅
 **Implementation**: Creates 5-minute segments for 90-minute journey
@@ -191,7 +174,7 @@ detectGaps(segments) {
           endMinute: segments[gapEnd].endMinute + 5,
           severity: this.calculateSeverity(gapEnd - gapStart + 1),
           type: 'empty',
-          suggestedSolutions: []
+          suggestedSolutions: [] // Note: Actual gap objects do not include a 'type' field.
         });
       }
     }
@@ -206,10 +189,10 @@ detectGaps(segments) {
 - [x] Groups consecutive gaps
 - [x] Calculates severity correctly
 
-### P1.M3: API Endpoints ✅
+### P1.M3: API Endpoints 🚧
 
 #### P1.M3.1: Journey Routes ✅
-**File**: `backend/src/routes/api.js`
+**Files**: Route definitions are primarily in `backend/src/routes/journeyRoutes.js` (mounted at `/api`). See also `backend/src/index.js` for how routes are mounted.
 
 ```javascript
 // GET /api/journeys/:characterId
@@ -238,7 +221,7 @@ router.get('/journeys/:characterId/gaps', async (req, res) => {
 - [x] Return correct data structure
 - [x] Error handling works
 
-#### P1.M3.2: Gap Management Endpoints ✅
+#### P1.M3.2: Gap Management Endpoints ⏳
 **Implementation**: CRUD operations for gaps
 
 ```javascript
@@ -252,21 +235,22 @@ router.get('/gaps/all', async (req, res) => {
   }
 });
 
+**NOTE: The following POST endpoint is NOT YET IMPLEMENTED.**
 // POST /api/gaps/:gapId/resolve
-router.post('/gaps/:gapId/resolve', async (req, res) => {
-  try {
-    const result = await gapController.resolveGap(req.params.gapId, req.body);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// router.post('/gaps/:gapId/resolve', async (req, res) => {
+//   try {
+//     const result = await gapController.resolveGap(req.params.gapId, req.body);
+//     res.json(result);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 ```
 
 **Verification**:
 - [x] Can fetch all gaps across characters
-- [x] Resolution endpoint accepts suggestions
-- [x] Updates database correctly
+- [ ] Resolution endpoint accepts suggestions // Not Implemented
+- [ ] Updates database correctly // Not Implemented
 
 ### P1.M4: Frontend State Foundation ✅
 
@@ -375,10 +359,10 @@ const TimelineView = () => {
   
   return (
     <Paper sx={{ p: 2, height: '100%', overflow: 'auto' }}>
-      <TimelineHeader character={journey.character} />
-      <TimelineRuler />
-      <TimelineSegments segments={journey.segments} />
-      <GapIndicators gaps={journey.gaps} />
+      // <TimelineHeader character={journey.character} /> // Note: Header functionality (character name display) is integrated directly into TimelineView.
+      // <TimelineRuler /> // Note: Ruler functionality (time interval display) is integrated directly.
+      // <TimelineSegments segments={journey.segments} /> // Note: Segment rendering is integrated, utilizing ActivityBlock.jsx for items.
+      // <GapIndicators gaps={journey.gaps} /> // Note: Uses singular GapIndicator.jsx component in a loop for each gap.
     </Paper>
   );
 };
@@ -390,49 +374,49 @@ const TimelineView = () => {
 - [x] Displays basic timeline structure
 
 #### P2.M1.2: Segment Visualization ✅
-**File**: `frontend/src/components/PlayerJourney/TimelineSegment.jsx`
+**Note**: The functionality for segment visualization is primarily handled within `frontend/src/components/PlayerJourney/TimelineView.jsx`, utilizing the `ActivityBlock.jsx` component for displaying individual activities, interactions, and discoveries. There is no separate `TimelineSegment.jsx` file.
 
 ```jsx
-const TimelineSegment = ({ segment, index }) => {
-  const { activities, interactions, discoveries } = segment;
-  const isEmpty = !activities.length && !interactions.length && !discoveries.length;
+// const TimelineSegment = ({ segment, index }) => {
+//   const { activities, interactions, discoveries } = segment;
+//   const isEmpty = !activities.length && !interactions.length && !discoveries.length;
   
-  return (
-    <Box
-      sx={{
-        position: 'absolute',
-        left: `${(segment.startMinute / 90) * 100}%`,
-        width: `${(5 / 90) * 100}%`,
-        height: '100%',
-        borderRight: '1px solid #333',
-        backgroundColor: isEmpty ? '#ff000020' : 'transparent',
-        '&:hover': { backgroundColor: '#ffffff10' }
-      }}
-    >
-      {activities.map(activity => (
-        <ActivityIcon key={activity.id} activity={activity} />
-      ))}
-      {interactions.map(interaction => (
-        <InteractionLine key={interaction.id} interaction={interaction} />
-      ))}
-      {discoveries.map(discovery => (
-        <DiscoveryMarker key={discovery.id} discovery={discovery} />
-      ))}
-    </Box>
-  );
-};
+//   return (
+//     <Box
+//       sx={{
+//         position: 'absolute',
+//         left: `${(segment.startMinute / 90) * 100}%`,
+//         width: `${(5 / 90) * 100}%`,
+//         height: '100%',
+//         borderRight: '1px solid #333',
+//         backgroundColor: isEmpty ? '#ff000020' : 'transparent',
+//         '&:hover': { backgroundColor: '#ffffff10' }
+//       }}
+//     >
+//       {/* {activities.map(activity => (
+//         <ActivityIcon key={activity.id} activity={activity} /> // Note: Items rendered via ActivityBlock.jsx
+//       ))} */}
+//       {/* {interactions.map(interaction => (
+//         <InteractionLine key={interaction.id} interaction={interaction} /> // Note: Items rendered via ActivityBlock.jsx
+//       ))} */}
+//       {/* {discoveries.map(discovery => (
+//         <DiscoveryMarker key={discovery.id} discovery={discovery} /> // Note: Items rendered via ActivityBlock.jsx
+//       ))} */}
+//     </Box>
+//   );
+// };
+// The snippet below illustrated the intended logic for displaying segment items. This is now primarily handled by ActivityBlock.jsx within TimelineView.jsx.
 ```
 
 **Verification**:
 - [x] Segments positioned correctly
-- [x] Empty segments highlighted
-- [x] Content icons display
+- [ ] Empty segments highlighted // Implemented differently: shows message for empty 5-min intervals in selected range.
+- [ ] Content icons display // Uses ActivityBlock with text Chips, not specific icons.
 
 #### P2.M1.3: Timeline Interactivity ✅
 **Implementation Goal**: Add zoom, pan, and click interactions
 
 ```jsx
-// TO IMPLEMENT:
 const TimelineControls = () => {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState(0);
@@ -477,14 +461,14 @@ describe('Timeline Interactivity', () => {
 });
 ```
 
-#### P2.M1.4: Gap Highlighting & Selection ⏳
+#### P2.M1.4: Gap Highlighting & Selection 🚧 (Partially Implemented)
 **Waiting on**: P2.M1.3 completion
 
 **Implementation Plan**:
-1. Visual gap indicators with severity colors
-2. Click gap to select in store
-3. Hover to preview gap details
-4. Animated attention indicators
+1. Visual gap indicators with severity colors ✅ (Implemented in GapIndicator.jsx)
+2. Click gap to select in store ✅ (Implemented in GapIndicator.jsx)
+3. Hover to preview gap details 🚧 (Basic hover styling exists; detailed preview pop-up not implemented)
+4. Animated attention indicators ⏳ (Not implemented)
 
 ### P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
 *(Note: This review point assumes completion of P2.M1.1 through P2.M1.4)*
@@ -723,19 +707,19 @@ P2.M1.3 (Current)
 
 ## 📊 Progress Tracking
 
-### Phase 1: ✅ Complete (4/4 milestones)
+### Phase 1: 🚧 In Progress (3/4 milestones fully complete)
 - P1.M1: Database Layer ✅
 - P1.M2: Journey Engine ✅  
-- P1.M3: API Endpoints ✅
+- P1.M3: API Endpoints 🚧 // Due to missing POST /resolve endpoint
 - P1.M4: State Foundation ✅
 
-### Phase 2: 🚧 In Progress (1/4 milestones)
-- P2.M1: Timeline Component ✅ (4/4 tasks)
+### Phase 2: 🚧 In Progress (0/4 milestones fully complete, P2.M1 partially complete)
+- P2.M1: Timeline Component 🚧 (Tasks partially complete, e.g. P2.M1.4)
 - P2.M2: Gap Resolution ⏳ (0/2 tasks)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-### Overall: ~45% Complete (5/11 milestones)
+### Overall: ~36% Complete (4/11 milestones fully complete)
 
 ---
 
