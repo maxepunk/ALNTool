@@ -548,23 +548,22 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
         {(showLabel || zoom >= ICON_ONLY_ZOOM_THRESHOLD ) && nodeChips.length > 0 && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center', mt: 0.5, maxWidth: '95%', mx: 'auto', opacity: zoom < SHORT_LABEL_ZOOM_THRESHOLD ? 0.7 : 1, transition: 'opacity 0.2s' }}>
             {nodeChips.map((chipInfo, index) => (
-              // Removed individual tooltips from chips as info is now in the main tooltip
-                <Chip 
-                  key={index}
-                  label={chipInfo.displayLabel}
-                  size="small" 
-                  title={chipInfo.originalTitle} // Keep title for native browser tooltip on truncated chips, just in case
-                  sx={{ 
-                    bgcolor: `${entityColor}33`, 
-                    color: entityColor, 
-                    fontSize: '0.65rem', fontWeight: 500,
-                    height: 18, 
-                    maxWidth: '100%',
-                    overflow: 'hidden',
-                    '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-                  }}
-                />
-              </Tooltip>
+              <Chip 
+                key={index}
+                label={chipInfo.displayLabel}
+                size="small" 
+                title={chipInfo.originalTitle}
+                sx={{ 
+                  bgcolor: `${entityColor}33`, 
+                  color: entityColor, 
+                  fontSize: '0.65rem', 
+                  fontWeight: 500,
+                  height: 18, 
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+                }}
+              />
             ))}
           </Box>
         )}

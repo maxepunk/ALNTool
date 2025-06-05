@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from 'react-query';
 import {
   Box,
@@ -16,62 +16,15 @@ import {
   ListItemText,
   Divider,
   Alert,
-  Chip
+  Chip,
+  Card,
+  CardContent,
+  CardHeader
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
-
-function NarrativeThreadTrackerPage() {
-  const [selectedThread, setSelectedThread] = useState('');
-  const [uniqueThreads, setUniqueThreads] = useState([]);
-
-  // Fetch unique narrative threads for the dropdown
-  const { data: threadsData, isLoading: isLoadingThreads, error: threadsError } = useQuery(
-    'uniqueNarrativeThreads',
-    api.getUniqueNarrativeThreads,
-    {
-      onSuccess: (data) => {
-        setUniqueThreads(data || []);
-      },
-    }
-  );
-
-  // Fetch Characters for selected thread
-  const { data: charactersData, isLoading: isLoadingCharacters, error: charactersError } = useQuery(
-    ['charactersByThread', selectedThread],
-    () => api.getCharacters({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
-
-  // Fetch Elements for selected thread
-  const { data: elementsData, isLoading: isLoadingElements, error: elementsError } = useQuery(
-    ['elementsByThread', selectedThread],
-    () => api.getElements({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
-
-  // Fetch Puzzles for selected thread
-  const { data: puzzlesData, isLoading: isLoadingPuzzles, error: puzzlesError } = useQuery(
-    ['puzzlesByThread', selectedThread],
-    () => api.getPuzzles({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
-
-  // Fetch Timeline Events for selected thread
-  const { data: timelineEventsData, isLoading: isLoadingTimelineEvents, error: timelineEventsError } = useQuery(
-    ['timelineEventsByThread', selectedThread],
-    () => api.getTimelineEvents({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
-
-  const handleThreadChange = (event) => {
-    setSelectedThread(event.target.value);
-  };
-
-import { useMemo } from 'react'; // Import useMemo
-import { Card, CardContent, CardHeader } from '@mui/material'; // Import Card components
 
 function NarrativeThreadTrackerPage() {
   const [selectedThread, setSelectedThread] = useState('');
@@ -184,7 +137,6 @@ function NarrativeThreadTrackerPage() {
     return { chronologicalEntries, orphanedItems };
 
   }, [selectedThread, timelineEventsData, charactersData, elementsData, puzzlesData]);
-
 
   const renderAssociatedItem = (item, type) => (
     <ListItem key={item.id} dense component={RouterLink} to={`/${type.toLowerCase()}/${item.id}`} sx={{py:0.25, '&:hover': {bgcolor: 'action.hover', borderRadius:1}}}>
@@ -301,23 +253,6 @@ function NarrativeThreadTrackerPage() {
                 </Box>
               )}
             </Box>
-          )}
-        </Box>
-      )}
-      {!selectedThread && !isLoadingThreads && (
-        <Paper sx={{p:3, mt:3, textAlign: 'center'}}>
-            <Typography variant="h6" color="text.secondary" sx={{mb:1}}>Welcome to the Narrative Thread Tracker!</Typography>
-            <Typography color="text.secondary">
-                Please select a narrative thread from the dropdown above to view all associated game entities.
-            </Typography>
-            {threadsError && <Alert severity="warning" sx={{mt:2}}>Could not load narrative threads. Please try refreshing the application.</Alert>}
-        </Paper>
-      )}
-    </Container>
-  );
-}
-              </Grid>
-            </Grid>
           )}
         </Box>
       )}

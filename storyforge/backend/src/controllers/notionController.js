@@ -387,6 +387,9 @@ const getPuzzleById = catchAsync(async (req, res) => {
     console.log(`[CACHE SET] ${cacheKey} (mapped puzzle)`);
   }
   setCacheHeaders(res);
+  res.json(mappedPuzzle);
+});
+
 // Define Memory Basic Types at a scope accessible by getElements
 const MEMORY_BASIC_TYPES = [
   "Memory Token Video",
@@ -759,7 +762,7 @@ const getPuzzleGraph = catchAsync(async (req, res) => {
   });
   (puzzleData.rewards || []).forEach(elStub => {
     const fullData = mappedFirstDegreeEntities.get(elStub.id);
-    if(fullData) { const nodeData = _createGraphNodeInternal(fullData, 'Element', nodes, addedNodeIds, processedFullEntities); if(nodeData && centerNodeData) _createGraphEdgeInternal(pzNodeData, nodeData, 'Rewards (Element)', edges); }
+    if(fullData) { const nodeData = _createGraphNodeInternal(fullData, 'Element', nodes, addedNodeIds, processedFullEntities); if(nodeData && centerNodeData) _createGraphEdgeInternal(centerNodeData, nodeData, 'Rewards (Element)', edges); }
   });
   (puzzleData.parentItem || []).forEach(parentStub => {
     const fullData = mappedFirstDegreeEntities.get(parentStub.id);
@@ -1663,4 +1666,105 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
       res.status(500).json({ error: error.message || 'Failed to generate puzzle flow graph' });
     }
   }
+<<<<<<< Updated upstream
 });
+=======
+});
+
+const getCharactersWithWarnings = catchAsync(async (req, res) => {
+  const cacheKey = makeCacheKey('characters-with-warnings-v2');
+  const cachedData = notionCache.get(cacheKey);
+  if (cachedData) {
+    console.log(`[CACHE HIT] ${cacheKey}`);
+    setCacheHeaders(res);
+    return res.json(cachedData);
+  }
+  console.log(`[CACHE MISS] ${cacheKey}`);
+
+  const notionCharacters = await notionService.getCharacters(); // Get all characters
+  const mappedCharacters = await Promise.all(
+    notionCharacters.map(character => propertyMapper.mapCharacterWithNames(character, notionService))
+  );
+
+  const charactersWithWarnings = [];
+  for (const character of mappedCharacters) {
+    if (character.error) continue; // Skip if there was an error mapping this character
+
+    const warnings = [];
+    
+    // Check if character has no elements (empty inventory/relationships)
+    if (!character.elements || character.elements.length === 0) {
+      warnings.push({ 
+        warningType: 'NoElements', 
+        message: 'Character has no associated elements or inventory items.' 
+      });
+    }
+
+    // Check if character owns no puzzles
+    if (!character.ownedPuzzles || character.ownedPuzzles.length === 0) {
+      warnings.push({ 
+        warningType: 'NoOwnedPuzzles', 
+        message: 'Character does not own any puzzles.' 
+      });
+    }
+
+    // Check if character has no narrative threads
+    if (!character.narrativeThreads || character.narrativeThreads.length === 0) {
+      warnings.push({ 
+        warningType: 'NoNarrativeThreads', 
+        message: 'Character is not part of any narrative threads.' 
+      });
+    }
+
+    // Check if character has no description
+    if (!character.description || character.description.trim() === '') {
+      warnings.push({ 
+        warningType: 'NoDescription', 
+        message: 'Character has no description.' 
+      });
+    }
+
+    if (warnings.length > 0) {
+      charactersWithWarnings.push({
+        id: character.id,
+        name: character.name,
+        type: 'Character',
+        warnings,
+        // Include key properties for display
+        description: character.description,
+        location: character.location,
+        status: character.status,
+      });
+    }
+  }
+
+  notionCache.set(cacheKey, charactersWithWarnings);
+  console.log(`[CACHE SET] ${cacheKey} - Found ${charactersWithWarnings.length} characters with warnings.`);
+  setCacheHeaders(res);
+  res.json(charactersWithWarnings);
+});
+
+module.exports = {
+  getCharacters,
+  getCharacterById,
+  getCharacterGraph,
+  getTimelineEvents,
+  getTimelineEventById,
+  getTimelineGraph,
+  getPuzzles,
+  getPuzzleById,
+  getPuzzleGraph,
+  getPuzzleFlow,
+  getPuzzleFlowGraph,
+  getElements,
+  getElementById,
+  getElementGraph,
+  getDatabasesMetadata,
+  globalSearch,
+  clearCache,
+  getPuzzlesWithWarnings,
+  getElementsWithWarnings,
+  getCharactersWithWarnings,
+  getAllUniqueNarrativeThreads
+};
+>>>>>>> Stashed changes

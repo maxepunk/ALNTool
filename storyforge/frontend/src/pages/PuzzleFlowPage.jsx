@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from 'react-query';
 import { Box, Paper, CircularProgress, Alert, Typography, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
+import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
 
 import PageHeader from '../components/PageHeader';
 // import RelationshipMapper from '../components/RelationshipMapper'; // Not directly using RelationshipMapper component
