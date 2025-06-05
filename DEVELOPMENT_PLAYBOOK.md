@@ -119,7 +119,7 @@ class JourneyEngine {
 **Verification**:
 - [x] Can instantiate JourneyEngine
 - [x] All methods defined
-- [ ] Integrates with Notion service // Not directly for journey building; data is from local DB.
+- [x] Data Sourcing: Confirmed that JourneyEngine sources data for journey construction via the local database (dbQueries.js), per architectural design (Notion sync is handled separately).
 
 #### P1.M2.2: Segment Computation ✅
 **Implementation**: Creates 5-minute segments for 90-minute journey
