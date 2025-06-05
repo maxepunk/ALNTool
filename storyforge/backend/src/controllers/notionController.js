@@ -1142,24 +1142,6 @@ function _createGraphEdgeInternal(sourceNodeData, targetNodeData, label, edgesAr
   }
 }
 
-module.exports = {
-  getCharacters,
-  getCharacterById,
-  getTimelineEvents,
-  getTimelineEventById,
-  getPuzzles,
-  getPuzzleById,
-  getElements,
-  getElementById,
-  getDatabasesMetadata,
-  globalSearch,
-  clearCache,
-  getCharacterGraph,
-  getElementGraph,
-  getPuzzleGraph,
-  getTimelineGraph,
-};
-
 // --- New Endpoints for Dashboard "Needs Attention" ---
 
 const getPuzzlesWithWarnings = catchAsync(async (req, res) => {
@@ -1275,28 +1257,6 @@ const getElementsWithWarnings = catchAsync(async (req, res) => {
   res.json(elementsWithWarnings);
 });
 
-
-module.exports = {
-  getCharacters,
-  getCharacterById,
-  getTimelineEvents,
-  getTimelineEventById,
-  getPuzzles,
-  getPuzzleById,
-  getElements,
-  getElementById,
-  getDatabasesMetadata,
-  globalSearch,
-  clearCache,
-  getCharacterGraph,
-  getElementGraph,
-  getPuzzleGraph,
-  getTimelineGraph,
-  // Add new exports
-  getPuzzlesWithWarnings,
-  getElementsWithWarnings,
-};
-
 const getPuzzleFlow = catchAsync(async (req, res) => {
   const { id: puzzleId } = req.params;
   const cacheKey = makeCacheKey('puzzle-flow-v1', { id: puzzleId });
@@ -1409,32 +1369,6 @@ const getPuzzleFlow = catchAsync(async (req, res) => {
   res.json(flowData);
 });
 
-
-module.exports = {
-  getCharacters,
-  getCharacterById,
-  getTimelineEvents,
-  getTimelineEventById,
-  getPuzzles,
-  getPuzzleById,
-  getElements,
-  getElementById,
-  getDatabasesMetadata,
-  globalSearch,
-  clearCache,
-  getCharacterGraph,
-  getElementGraph,
-  getPuzzleGraph,
-  getTimelineGraph,
-  getPuzzlesWithWarnings,
-  getElementsWithWarnings,
-  getPuzzleFlow,
-  getAllCharactersWithSociogramData,
-  getCharactersWithWarnings,
-  // Add new export for unique narrative threads
-  getAllUniqueNarrativeThreads,
-};
-
 const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('unique-narrative-threads-v1');
   const cachedData = notionCache.get(cacheKey);
@@ -1497,32 +1431,6 @@ const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
   setCacheHeaders(res);
   res.json(sortedThreads);
 });
-
-
-module.exports = {
-  getCharacters,
-  getCharacterById,
-  getTimelineEvents,
-  getTimelineEventById,
-  getPuzzles,
-  getPuzzleById,
-  getElements,
-  getElementById,
-  getDatabasesMetadata,
-  globalSearch,
-  clearCache,
-  getCharacterGraph,
-  getElementGraph,
-  getPuzzleGraph,
-  getTimelineGraph,
-  getPuzzlesWithWarnings,
-  getElementsWithWarnings,
-  getPuzzleFlow,
-  getAllCharactersWithSociogramData,
-  getCharactersWithWarnings,
-  getAllUniqueNarrativeThreads, // Ensure this is in the final export
-  getPuzzleFlowGraph, // Added new controller
-};
 
 const getPuzzleFlowGraph = catchAsync(async (req, res) => {
   const { id: puzzleId } = req.params;
@@ -1664,3 +1572,26 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
     }
   }
 });
+
+module.exports = {
+  getCharacters,
+  getCharacterById,
+  getCharacterGraph,
+  getTimelineEvents,
+  getTimelineEventById,
+  getTimelineGraph,
+  getPuzzles,
+  getPuzzleById,
+  getPuzzleGraph,
+  getPuzzleFlow,
+  getPuzzleFlowGraph,
+  getElements,
+  getElementById,
+  getElementGraph,
+  getDatabasesMetadata,
+  globalSearch,
+  clearCache,
+  getPuzzlesWithWarnings,
+  getElementsWithWarnings,
+  getAllUniqueNarrativeThreads
+};
