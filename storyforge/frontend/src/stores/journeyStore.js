@@ -15,9 +15,10 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
   gapSuggestions: [],
   loadingSuggestions: false,
   suggestionError: null, // Optional: dedicated error state for suggestions
+  selectedActivityDetail: null, // For showing details of a clicked activity/interaction/discovery
 
   // Actions
-  setActiveCharacterId: (characterId) => set({ activeCharacterId: characterId, error: null, selectedGap: null, gapSuggestions: [] }), // Also clear gap selection
+  setActiveCharacterId: (characterId) => set({ activeCharacterId: characterId, error: null, selectedGap: null, gapSuggestions: [], selectedActivityDetail: null }), // Also clear gap and activity selection
   setSelectedTimeRange: (timeRange) => set({ selectedTimeRange: timeRange }),
 
   loadJourney: async (characterId) => {
@@ -121,17 +122,49 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
     const currentSelectedGap = get().selectedGap;
     if (currentSelectedGap && gap && currentSelectedGap.id === gap.id) {
       // If clicking the same gap, deselect it
-      set({ selectedGap: null, gapSuggestions: [], loadingSuggestions: false, suggestionError: null });
+      set({ selectedGap: null, gapSuggestions: [], loadingSuggestions: false, suggestionError: null, selectedActivityDetail: null });
     } else if (gap) {
-      set({ selectedGap: gap, suggestionError: null });
+      set({ selectedGap: gap, suggestionError: null, selectedActivityDetail: null }); // Clear activity detail when gap is selected
       get().loadGapSuggestions(gap);
     } else {
-      set({ selectedGap: null, gapSuggestions: [], loadingSuggestions: false, suggestionError: null });
+      // Deselecting gap
+      set({ selectedGap: null, gapSuggestions: [], loadingSuggestions: false, suggestionError: null, selectedActivityDetail: null });
+    }
+  },
+
+  setSelectedActivityDetail: (activityDetail) => {
+    const currentSelectedActivity = get().selectedActivityDetail;
+    // Assuming activityDetail has a unique identifier, e.g., an 'id' property, or is a unique string.
+    // If activityDetail is an object, direct comparison (===) works if it's the exact same object instance.
+    // If it's a new object each time (e.g., from a map function), compare by a unique ID.
+    // For this example, let's assume activityDetail itself can be compared or has an id.
+    // If activityDetail is a string (as it seems from ActivityBlock), direct comparison is fine.
+    let isSame = false;
+    if (currentSelectedActivity && activityDetail) {
+        // Simple check for string or if object has id
+        if (typeof activityDetail === 'string') {
+            isSame = currentSelectedActivity === activityDetail;
+        } else if (activityDetail.id && currentSelectedActivity.id) {
+            isSame = currentSelectedActivity.id === activityDetail.id;
+        } else {
+            // Fallback for objects without id, might not be reliable for 'toggle'
+            isSame = JSON.stringify(currentSelectedActivity) === JSON.stringify(activityDetail);
+        }
+    }
+
+
+    if (isSame) {
+      // If clicking the same activity, deselect it
+      set({ selectedActivityDetail: null });
+    } else {
+      // Select the new activity and deselect any selected gap
+      set({ selectedActivityDetail: activityDetail, selectedGap: null, gapSuggestions: [], loadingSuggestions: false, suggestionError: null });
     }
   },
 
   // New getters
   selectedGapDetails: () => get().selectedGap,
+  selectedActivityDetails: () => get().selectedActivityDetail, // Getter for the selected activity
   currentGapSuggestions: () => get().gapSuggestions,
 
 })));

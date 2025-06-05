@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Alert } from '@mui/material';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Alert, IconButton } from '@mui/material';
+import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, CenterFocusStrong as CenterFocusIcon } from '@mui/icons-material';
 import useJourneyStore from '../../stores/journeyStore'; // Adjusted path
 import ActivityBlock from './ActivityBlock';
 import GapIndicator from './GapIndicator';
@@ -7,7 +8,31 @@ import GapIndicator from './GapIndicator';
 const GAME_DURATION_MINUTES = 90;
 const INTERVAL_MINUTES = 5;
 
+// TimelineControls Component
+const TimelineControls = ({ setZoom, setPan }) => {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+      <IconButton onClick={() => setZoom(prevZoom => Math.min(prevZoom * 1.2, 5))} aria-label="zoom in">
+        <ZoomInIcon />
+      </IconButton>
+      <IconButton onClick={() => setZoom(prevZoom => Math.max(prevZoom / 1.2, 0.5))} aria-label="zoom out">
+        <ZoomOutIcon />
+      </IconButton>
+      <IconButton onClick={() => { setZoom(1); setPan(0); }} aria-label="reset view">
+        <CenterFocusIcon />
+      </IconButton>
+    </Box>
+  );
+};
+
 const TimelineView = () => {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState(0); // Horizontal offset
+  const paperRef = useRef(null); // Ref for the Paper component
+  const zoomableBoxRef = useRef(null); // Ref for the zoomable content Box
+  const [isPanning, setIsPanning] = useState(false);
+  const lastPanX = useRef(0);
+
   const activeCharacterId = useJourneyStore(state => state.activeCharacterId);
   const journeyData = useJourneyStore(state => state.journeyData);
   const gapsData = useJourneyStore(state => state.gaps);
@@ -18,6 +43,80 @@ const TimelineView = () => {
 
   const activeJourney = activeCharacterId ? journeyData.get(activeCharacterId) : null;
   const activeGaps = activeCharacterId ? gapsData.get(activeCharacterId) || [] : [];
+
+  useEffect(() => {
+    if (activeCharacterId && !activeJourney && loadingJourneyCharacterId !== activeCharacterId) {
+      loadJourney(activeCharacterId);
+    }
+  }, [activeCharacterId, activeJourney, loadingJourneyCharacterId, loadJourney]);
+
+  // Effect for Ctrl+Scroll zoom
+  useEffect(() => {
+    const timelinePaper = paperRef.current;
+    if (!timelinePaper) return;
+
+    const handleWheel = (event) => {
+      if (event.ctrlKey) {
+        event.preventDefault();
+        const zoomFactor = 1.1;
+        if (event.deltaY < 0) { // Zoom in
+          setZoom(prevZoom => Math.min(prevZoom * zoomFactor, 5));
+        } else { // Zoom out
+          setZoom(prevZoom => Math.max(prevZoom / zoomFactor, 0.5));
+        }
+      }
+    };
+
+    timelinePaper.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      timelinePaper.removeEventListener('wheel', handleWheel);
+    };
+  }, [setZoom]);
+
+  // Effect for handling panning mouse events globally
+  useEffect(() => {
+    const zoomableElement = zoomableBoxRef.current;
+
+    const handleMouseMoveGlobal = (event) => {
+      if (!isPanning) return;
+      const deltaX = event.clientX - lastPanX.current;
+      setPan(prevPan => prevPan + deltaX);
+      lastPanX.current = event.clientX;
+    };
+
+    const handleMouseUpGlobal = () => {
+      if (!isPanning) return;
+      setIsPanning(false);
+      if (zoomableElement) {
+        zoomableElement.style.cursor = 'grab';
+      }
+      document.body.style.userSelect = ''; // Re-enable text selection
+    };
+
+    if (isPanning) {
+      document.addEventListener('mousemove', handleMouseMoveGlobal);
+      document.addEventListener('mouseup', handleMouseUpGlobal);
+      document.body.style.userSelect = 'none'; // Disable text selection during pan
+      if (zoomableElement) {
+        zoomableElement.style.cursor = 'grabbing';
+      }
+    } else {
+      if (zoomableElement) {
+        zoomableElement.style.cursor = 'grab';
+      }
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMoveGlobal);
+      document.removeEventListener('mouseup', handleMouseUpGlobal);
+      document.body.style.userSelect = ''; // Ensure userSelect is reset
+      if (zoomableElement) {
+        zoomableElement.style.cursor = 'grab'; // Reset cursor on cleanup
+      }
+    };
+  }, [isPanning, setPan]);
+
 
   useEffect(() => {
     // For testing purposes, let's set an active character if none is set.
@@ -72,13 +171,40 @@ const TimelineView = () => {
   }
 
   return (
-    <Paper elevation={2} sx={{ p: 2 }}>
+    <Paper ref={paperRef} elevation={2} sx={{ p: 2, overflow: 'hidden' /* Prevent Paper itself from scrolling due to zoom */ }}>
+      <TimelineControls setZoom={setZoom} setPan={setPan} />
       <Typography variant="h5" gutterBottom>
         Timeline for {activeJourney.character_info?.name || activeCharacterId}
       </Typography>
-      <List dense>
-        {timeIntervals.map((interval, index) => {
-          // Initial filtering by the 5-minute interval block
+      <Box sx={{ overflowX: 'auto' /* Enable horizontal scrolling for the content */ }}>
+        <Box
+          ref={zoomableBoxRef}
+          onMouseDown={(event) => {
+            // Only pan with left click; and not if clicking on a button or interactive element within
+            if (event.button !== 0) return;
+            // Example: prevent starting pan if clicking on an interactive child (e.g. an action button on an activity)
+            // if (event.target.closest('button')) return;
+
+            setIsPanning(true);
+            lastPanX.current = event.clientX;
+            // Cursor style is handled by the useEffect watching isPanning
+          }}
+          sx={{
+            transform: `translateX(${pan}px) scaleX(${zoom})`,
+            transformOrigin: 'left top',
+            width: '100%',
+            cursor: 'grab', // Initial cursor
+            // transition: 'transform 0.05s ease-out', // Can make pan feel laggy, use with caution
+          }}
+        >
+          <List dense sx={{
+            // If content inside ListItem needs to maintain aspect ratio,
+            // you might apply inverse scale to children, but for text/blocks, stretching is often fine.
+            // display: 'table', // May help with width calculations if using percentage widths inside
+            // tableLayout: 'fixed', // If using table display
+          }}>
+            {timeIntervals.map((interval, index) => {
+              // Initial filtering by the 5-minute interval block
           let segmentsInInterval = activeJourney.segments?.filter(
             segment => segment.start_minute >= interval.start && segment.start_minute < interval.end
           ) || [];
@@ -148,7 +274,9 @@ const TimelineView = () => {
             </React.Fragment>
           );
         })}
-      </List>
+          </List>
+        </Box>
+      </Box>
     </Paper>
   );
 };
