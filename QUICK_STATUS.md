@@ -1,9 +1,9 @@
 # Quick Status Check
 ## Where Are You Right Now?
 
-**Last Updated**: 2024-07-26
-**Current Task**: P1.M2.4: Implement Journey Caching in Database
-**File You Should Be In**: `storyforge/backend/src/services/journeyEngine.js` (and `storyforge/backend/src/db/queries.js`)
+**Last Updated**: 2025-06-05
+**Current Task**: P1.M3.2: Implement `POST /api/gaps/:gapId/resolve` Endpoint
+**File You Should Be In**: `storyforge/backend/src/routes/journeyRoutes.js` (and `storyforge/backend/src/controllers/journeyController.js`, `storyforge/backend/src/db/queries.js`)
 **Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
 
 ---
@@ -11,28 +11,37 @@
 ## 🎯 Your Current Focus
 
 ### What You're Building
-Implement a caching mechanism for computed character journeys. `buildCharacterJourney` should first attempt to retrieve a journey from the database. If a valid cached journey exists, return it. Otherwise, compute the journey and then save the results (segments and gaps) to the database.
+Implement the `POST /api/gaps/:gapId/resolve` endpoint. This involves:
+- Defining the route in `journeyRoutes.js`.
+- Creating a `resolveGap` controller function in `journeyController.js` to handle the request. This function will take parameters from the request body (e.g., new status, resolution notes/comments) and call a database query.
+- Implementing a new database query function in `queries.js` to update the specified gap record in the database.
+- Ensuring the endpoint returns appropriate success or error responses.
 
-### Acceptance Criteria Checklist (from DEVELOPMENT_PLAYBOOK.md for P1.M2.4)
-- [ ] `buildCharacterJourney` first attempts to retrieve a computed journey from the database.
-- [ ] If cached journey is found and valid, it's returned without re-computation.
-- [ ] If no valid cached journey, it's computed and then the results are stored in the database.
+### Acceptance Criteria Checklist (from DEVELOPMENT_PLAYBOOK.md for P1.M3.2)
+- [ ] `POST /api/gaps/:gapId/resolve` endpoint is implemented and functional.
+- [ ] Endpoint accepts a payload to update the gap (e.g., new status, resolution notes).
+- [ ] The corresponding gap record in the database is updated correctly.
+- [ ] Appropriate success or error responses are returned.
 
 ### Code You Need
 ```javascript
-// In storyforge/backend/src/services/journeyEngine.js (Conceptual)
-// async buildCharacterJourney(characterId) {
-//   const cached = await dbQueries.getCachedJourney(characterId);
-//   if (cached && isValid(cached)) return cached;
-//
-//   const journey = await this.computeNewJourney(characterId);
-//   await dbQueries.saveCachedJourney(characterId, journey);
-//   return journey;
+// In storyforge/backend/src/routes/journeyRoutes.js (Conceptual)
+// router.post('/gaps/:gapId/resolve', journeyController.resolveGap);
+
+// In storyforge/backend/src/controllers/journeyController.js (Conceptual)
+// async function resolveGap(req, res) {
+//   const { gapId } = req.params;
+//   const { status, comment } = req.body;
+//   try {
+//     await dbQueries.updateGapResolution(gapId, status, comment);
+//     res.json({ message: 'Gap resolved successfully' });
+//   } catch (error) {
+//     res.status(500).json({ error: 'Failed to resolve gap' });
+//   }
 // }
 
 // In storyforge/backend/src/db/queries.js (Conceptual)
-// async function getCachedJourney(characterId) { /* ... */ }
-// async function saveCachedJourney(characterId, journeyData) { /* ... */ }
+// async function updateGapResolution(gapId, status, comment) { /* ... */ }
 ```
 
 ---
@@ -42,8 +51,8 @@ Implement a caching mechanism for computed character journeys. `buildCharacterJo
 ### Phase 1: Foundation 🚧 (In Progress - Current Active Phase)
 - ✅ P1.M4: Frontend State Foundation
 - ✅ P1.M1: SQLite Database Layer (P1.M1.1 Dependencies ✅, P1.M1.2 Schema ✅, P1.M1.3 Robust Migrations ✅)
-- 🚧 P1.M2: Journey Engine (Current Milestone: P1.M2.4 Caching ⏳)
-- 🚧 P1.M3: API Endpoints (P1.M3.2 POST /resolve ⏳)
+- ✅ P1.M2: Journey Engine (P1.M2.1 Core Structure ✅, P1.M2.2 Segment Computation ✅, P1.M2.3 Gap Detection ✅, P1.M2.4 Caching ✅)
+- 🚧 P1.M3: API Endpoints (P1.M3.1 Journey Routes ✅, P1.M3.2 POST /resolve ⏳)
 *(Note: Initial setups for DB, Journey Engine, Gaps, APIs were done, but key foundational tasks are now active.)*
 
 ### Phase 2: Core Views 🚧 (Partially Started)
@@ -57,9 +66,9 @@ Implement a caching mechanism for computed character journeys. `buildCharacterJo
 
 ## 📍 Navigation
 
-**Detailed Implementation** → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#p1m24-implement-journey-caching-in-database-%E2%8F%B3)
+**Detailed Implementation** → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#p1m32-gap-management-endpoints-%E2%8F%B3)
 **Stuck?** → [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)  
-**UI Specs** → [PRD Section relevant to Caching if any, else general Backend sections](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)
+**UI Specs** → [PRD Section relevant to Gap Resolution API if any, else general Backend sections](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)
 
 ---
 
@@ -94,7 +103,7 @@ git commit -m "Begin P1.M2.4 - Journey Caching: Setup and initial logic"
 ---
 
 ## 📊 Progress Bar
-Phase 1: 🚧 In Progress (P1.M4, P1.M1 complete. ~50% of Phase 1 milestones)
+Phase 1: 🚧 In Progress (P1.M1, P1.M2, P1.M4 complete. P1.M3 partially complete. ~75% of Phase 1 milestones if each M is a milestone)
 Phase 2: 🚧 In Progress (P2.M1 tasks P2.M1.1, P2.M1.2, P2.M1.3 are ✅; P2.M1 overall is 🚧. P2.M2-M4 pending)
 Phase 3: 📅 Planned (0% complete)
-Overall: ~18% (2/11 total P1-P3 milestones fully complete: P1.M4, P1.M1)
+Overall: ~27% (3/11 total P1-P3 milestones fully complete: P1.M1, P1.M2, P1.M4)

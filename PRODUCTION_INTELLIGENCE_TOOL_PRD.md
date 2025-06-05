@@ -12,9 +12,9 @@
 ## Development Progress Tracker
 
 ### Current Phase: Phase 1 Delivery - Journey Infrastructure
-### Last Updated: YYYY-MM-DD (Jules Update)
+### Last Updated: 2025-06-05 (Jules Update)
 ### Phase Completion Status:
-- [ ] Phase 1: Foundation - Journey Infrastructure (Core Backend Logic and API Complete)
+- [~] Phase 1: Foundation - Journey Infrastructure (Core Backend Logic and API partially complete, Journey Engine core complete, caching implemented)
 - [ ] Phase 2: Core Views - Journey & System Lenses (Player Journey Timeline basics implemented, Gap Resolution workflow initiated)
 - [ ] Phase 3: System Intelligence
 - [ ] Phase 4: Content Creation Tools
@@ -561,7 +561,7 @@ Marcus: Name → Dead → Timeline → Motive → (memories only)
    ```javascript
    // New service: backend/src/services/journeyEngine.js
    class JourneyEngine {
-     buildCharacterJourney(characterId)
+     buildCharacterJourney(characterId) // Includes caching
      computeJourneySegments(character, events, puzzles, elements)
      detectGaps(segments)
      suggestGapSolutions(gap, allElements, allPuzzles)
@@ -573,6 +573,7 @@ Marcus: Name → Dead → Timeline → Motive → (memories only)
    - `/api/journeys/:characterId` - Get complete journey with gaps
    - `/api/journeys/:characterId/gaps` - Get just gaps
    - `/api/gaps/all` - All gaps across all characters
+   - `/api/gaps/:gapId/resolve` - POST to update gap status (pending)
    - `/api/sync/status` - Sync queue status
    - Modify existing endpoints to include journey context
 
@@ -583,10 +584,11 @@ Marcus: Name → Dead → Timeline → Motive → (memories only)
    - Add offline detection and handling
 
 #### Key Deliverables
-- [X] Working local database with journey data (schema created, basic tables present)
-- [X] API endpoints serving journey information (core GET routes for journeys and gaps operational with mock data integration)
-- [X] Gap detection algorithm functioning (initial version integrated into JourneyEngine)
-- [X] Sync system foundation (mock API endpoint for status exists)
+- [X] Working local database with journey data (schema created, basic tables present, migration system in place)
+- [X] Journey Engine Development (computation, gap detection, caching implemented)
+- [~] Enhanced Backend API (GET routes for journeys/gaps operational; POST for gap resolution pending)
+- [X] State Architecture Setup (Frontend state for journeys established)
+- [ ] Sync system foundation (mock API endpoint for status exists)
 
 ### Phase 2: Core Views - Journey & System Lenses
 

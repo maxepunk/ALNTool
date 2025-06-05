@@ -219,27 +219,55 @@ class JourneyEngine {
    * @returns {Promise<object|null>} - The character's journey object, or null if character not found.
    */
   async buildCharacterJourney(characterId) {
+    // 1. Attempt to retrieve a cached journey
+    const cachedJourney = await dbQueries.getCachedJourney(characterId);
+
+    // 2. Validate the cached journey
+    if (cachedJourney && dbQueries.isValidJourneyCache(cachedJourney)) {
+      // console.log(`Returning valid cached journey for character ${characterId}`);
+      // Ensure character_info is present, as getCachedJourney might not populate it fully
+      // to avoid storing redundant character details with every segment/gap.
+      // The original buildCharacterJourney structure included character_info.
+      const characterData = await dbQueries.getCharacterById(characterId);
+      if (!characterData) {
+          console.error(`Character with ID ${characterId} not found even for cached journey. This shouldn't happen.`);
+          // Proceed to compute, as something is inconsistent.
+      } else {
+          return {
+              ...cachedJourney, // contains character_id, segments, gaps, cached_at
+              character_info: characterData,
+          };
+      }
+    }
+
+    // 3. If no valid cached journey, compute it
+    // console.log(`No valid cached journey found for character ${characterId}. Computing...`);
     const characterData = await dbQueries.getCharacterById(characterId);
     if (!characterData) {
       console.error(`Character with ID ${characterId} not found.`);
       return null; // Or throw error
     }
 
-    // Fetch all data and filter in computeJourneySegments or here if preferred
     const eventsData = await dbQueries.getAllEvents();
     const puzzlesData = await dbQueries.getAllPuzzles();
     const elementsData = await dbQueries.getAllElements();
 
-    // Pass all data to computeJourneySegments, it will filter internally or use character-specific data
     const segments = await this.computeJourneySegments(characterData, eventsData, puzzlesData, elementsData);
     const gaps = await this.detectGaps(segments, characterId);
 
-    return {
+    const computedJourney = {
       character_id: characterId,
-      character_info: characterData, // This is the full character object from DB
+      character_info: characterData,
       segments: segments,
       gaps: gaps,
+      // No need to add cached_at here, saveCachedJourney handles its own timestamp
     };
+
+    // 4. Save the newly computed journey to the cache
+    await dbQueries.saveCachedJourney(characterId, computedJourney);
+    // console.log(`Saved newly computed journey to cache for character ${characterId}`);
+
+    return computedJourney;
   }
 
   /**

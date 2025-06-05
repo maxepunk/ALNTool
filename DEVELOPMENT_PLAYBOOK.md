@@ -11,8 +11,8 @@
 
 **Active Phase**: Phase 1 - Foundation - Journey Infrastructure
 **Active Phase**: Phase 1 - Foundation - Journey Infrastructure
-**Current Milestone**: P1.M2 - Journey Engine
-**Current Task**: P1.M2.4 - Implement Journey Caching in Database
+**Current Milestone**: P1.M3 - API Endpoints
+**Current Task**: P1.M3.2: Implement `POST /api/gaps/:gapId/resolve` Endpoint
 **Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
 
 ---
@@ -193,7 +193,7 @@ detectGaps(segments) {
 - [x] Groups consecutive gaps
 - [x] Calculates severity correctly
 
-#### P1.M2.4: Implement Journey Caching in Database ⏳
+#### P1.M2.4: Implement Journey Caching in Database ✅
 
 **File(s) likely affected**:
 - `backend/src/services/journeyEngine.js` (modify `buildCharacterJourney`)
@@ -209,9 +209,9 @@ detectGaps(segments) {
 3. Add necessary functions to `db/queries.js` for these save/retrieve operations.
 
 **Acceptance Criteria**:
-- [ ] `buildCharacterJourney` first attempts to retrieve a computed journey from the database.
-- [ ] If cached journey is found and valid, it's returned without re-computation.
-- [ ] If no valid cached journey, it's computed and then the results are stored in the database.
+- [x] `buildCharacterJourney` first attempts to retrieve a computed journey from the database.
+- [x] If cached journey is found and valid, it's returned without re-computation.
+- [x] If no valid cached journey, it's computed and then the results are stored in the database.
 
 ### P1.M3: API Endpoints 🚧
 
@@ -738,10 +738,10 @@ P2.M1.3 (Current)
 
 ## 📊 Progress Tracking
 
-### Phase 1: 🚧 In Progress (1/4 milestones fully complete, P1.M1 now complete)
+### Phase 1: 🚧 In Progress (P1.M1, P1.M2, P1.M4 complete. P1.M3 partially complete.)
 - P1.M1: Database Layer ✅
-- P1.M2: Journey Engine 🚧
-- P1.M3: API Endpoints 🚧
+- P1.M2: Journey Engine ✅
+- P1.M3: API Endpoints 🚧 (P1.M3.1 ✅, P1.M3.2 ⏳)
 - P1.M4: State Foundation ✅
 
 ### Phase 2: 🚧 In Progress (0/4 milestones fully complete)
@@ -750,7 +750,7 @@ P2.M1.3 (Current)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-Overall: ~9% Complete (P1.M4 is the only fully complete milestone from P1 & P2. Total milestones for P1 & P2 & P3 = 11.)
+Overall: ~27% Complete (P1.M1, P1.M2, P1.M4 are fully complete milestones from P1. Total milestones for P1, P2 & P3 = 11.)
 
 ---
 
