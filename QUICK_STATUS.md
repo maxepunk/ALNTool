@@ -4,7 +4,7 @@
 **Last Updated**: 2024-07-26
 **Current Task**: P1.M2.4: Implement Journey Caching in Database
 **File You Should Be In**: `storyforge/backend/src/services/journeyEngine.js` (and `storyforge/backend/src/db/queries.js`)
-**Branch**: `feature/production-intelligence-tool`
+**Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
 
 ---
 
