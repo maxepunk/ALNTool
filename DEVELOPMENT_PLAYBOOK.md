@@ -21,7 +21,7 @@
 ### Overview
 Backend can compute and serve character journeys with gap detection.
 
-### P1.M1: SQLite Database Layer ✅
+### P1.M1: SQLite Database Layer 🚧
 
 #### P1.M1.1: Install Dependencies & Create Database Service ✅
 **File**: `backend/src/db/database.js`
@@ -55,26 +55,29 @@ class DatabaseService {
 - [x] Foreign key constraints working
 - [x] Test data insertable
 
-#### P1.M1.3: Migration System ✅
-**File**: `backend/src/db/migrations.js`
+#### P1.M1.3: Implement Robust Migration System ⏳
+**File(s) likely affected**:
+- `backend/src/db/migrations.js` (major overhaul)
+- `backend/src/db/database.js` (potential adjustments)
+- New directory: `backend/src/db/migration-scripts/`
 
-```javascript
-// Implementation complete // Note: Actual implementation uses a function like:
-// function runMigrations(db) {
-//   db.exec("CREATE TABLE IF NOT EXISTS characters (...)");
-//   // ... other table creations ...
-//   // This is called by initializeDatabase if tables don't exist.
-// }
-// Summary: Checks if tables exist and calls initializeDatabase if not.
-```
-**Note**: The current migration system is basic and ensures initial schema setup. It does not currently include a version tracking table or support for incremental up/down migrations.
+**Implementation Plan**:
+1. Design a schema for a `schema_migrations` table (e.g., `id`, `version`, `name`, `applied_at`).
+2. Implement logic in `migrations.js` to:
+    - Create the `schema_migrations` table if it doesn't exist.
+    - Read all migration script files (e.g., `YYYYMMDDHHMMSS_description.sql`) from `migration-scripts/`.
+    - Check against the `schema_migrations` table to determine pending migrations.
+    - Apply pending migrations sequentially, recording each in the `schema_migrations` table.
+3. Create an initial migration script in `migration-scripts/` containing the current complete schema to establish a baseline.
+4. Refactor `initializeDatabase` in `database.js` to rely on the migration system. `runMigrations` should be the primary entry point for schema setup.
 
-**Verification**:
-- [ ] Migrations table exists // Not Implemented
-- [ ] Can run migrations up/down // Not Implemented
-- [ ] Version tracking works // Not Implemented
+**Acceptance Criteria**:
+- [ ] `schema_migrations` table is created and used to track applied migrations.
+- [ ] System can apply new SQL migration scripts from a designated directory.
+- [ ] Initial schema is successfully established via the first migration script.
+- [ ] `runMigrations` function correctly brings the database schema to the latest version.
 
-### P1.M2: Journey Engine ✅
+### P1.M2: Journey Engine 🚧
 
 #### P1.M2.1: Core Engine Structure ✅
 **File**: `backend/src/services/journeyEngine.js`
@@ -102,8 +105,8 @@ class JourneyEngine {
     // 4. Detect gaps
     const gaps = this.detectGaps(segments);
     
-    // 5. Cache in database // TODO: This step appears to be missing in the current implementation.
-    this.cacheJourney(characterId, segments, gaps);
+    // 5. Cache in database // Addressed by P1.M2.4
+    // this.cacheJourney(characterId, segments, gaps);
     
     return { character, segments, gaps };
   }
@@ -189,6 +192,26 @@ detectGaps(segments) {
 - [x] Groups consecutive gaps
 - [x] Calculates severity correctly
 
+#### P1.M2.4: Implement Journey Caching in Database ⏳
+
+**File(s) likely affected**:
+- `backend/src/services/journeyEngine.js` (modify `buildCharacterJourney`)
+- `backend/src/db/queries.js` (new queries to write/read cached journeys)
+- `backend/src/db/database.js` (potential schema changes for caching tables/fields)
+
+**Implementation Plan**:
+1. Determine schema for storing computed/cached journeys (e.g., new tables like `computed_journey_segments` or adapt existing ones).
+2. Modify `buildCharacterJourney` in `journeyEngine.js`:
+    - Before computation, attempt to fetch a previously computed journey for the `characterId`.
+    - If a valid cached journey exists (e.g., based on TTL or data change detection), return it.
+    - Otherwise, compute the journey and then save the resulting segments and gaps to the database.
+3. Add necessary functions to `db/queries.js` for these save/retrieve operations.
+
+**Acceptance Criteria**:
+- [ ] `buildCharacterJourney` first attempts to retrieve a computed journey from the database.
+- [ ] If cached journey is found and valid, it's returned without re-computation.
+- [ ] If no valid cached journey, it's computed and then the results are stored in the database.
+
 ### P1.M3: API Endpoints 🚧
 
 #### P1.M3.1: Journey Routes ✅
@@ -235,22 +258,29 @@ router.get('/gaps/all', async (req, res) => {
   }
 });
 
-**NOTE: The following POST endpoint is NOT YET IMPLEMENTED.**
-// POST /api/gaps/:gapId/resolve
-// router.post('/gaps/:gapId/resolve', async (req, res) => {
-//   try {
-//     const result = await gapController.resolveGap(req.params.gapId, req.body);
-//     res.json(result);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
+**Task: Implement `POST /api/gaps/:gapId/resolve` Endpoint** ⏳
+
+**File(s) likely affected**:
+- `backend/src/routes/journeyRoutes.js` (add route)
+- `backend/src/controllers/journeyController.js` (new `resolveGap` handler)
+- `backend/src/db/queries.js` (new query to update gap in DB)
+
+**Implementation Plan**:
+1. Define `router.post('/gaps/:gapId/resolve', resolveGap);` in `journeyRoutes.js`.
+2. Implement `resolveGap` controller in `journeyController.js` to handle request body (e.g., status, comment) and call DB query.
+3. Implement DB query in `queries.js` to update the gap record.
+
+**Acceptance Criteria (for the POST endpoint)**:
+- [ ] `POST /api/gaps/:gapId/resolve` endpoint is implemented and functional.
+- [ ] Endpoint accepts a payload to update the gap (e.g., new status, resolution notes).
+- [ ] The corresponding gap record in the database is updated correctly.
+- [ ] Appropriate success or error responses are returned.
 ```
 
 **Verification**:
 - [x] Can fetch all gaps across characters
-- [ ] Resolution endpoint accepts suggestions // Not Implemented
-- [ ] Updates database correctly // Not Implemented
+- [ ] Resolution endpoint accepts suggestions // Not Implemented until task above is done
+- [ ] Updates database correctly // Not Implemented until task above is done
 
 ### P1.M4: Frontend State Foundation ✅
 
@@ -707,19 +737,19 @@ P2.M1.3 (Current)
 
 ## 📊 Progress Tracking
 
-### Phase 1: 🚧 In Progress (3/4 milestones fully complete)
-- P1.M1: Database Layer ✅
-- P1.M2: Journey Engine ✅  
-- P1.M3: API Endpoints 🚧 // Due to missing POST /resolve endpoint
+### Phase 1: 🚧 In Progress (1/4 milestones fully complete)
+- P1.M1: Database Layer 🚧
+- P1.M2: Journey Engine 🚧
+- P1.M3: API Endpoints 🚧
 - P1.M4: State Foundation ✅
 
-### Phase 2: 🚧 In Progress (0/4 milestones fully complete, P2.M1 partially complete)
-- P2.M1: Timeline Component 🚧 (Tasks partially complete, e.g. P2.M1.4)
+### Phase 2: 🚧 In Progress (0/4 milestones fully complete)
+- P2.M1: Timeline Component 🚧 (P2.M1.1, P2.M1.2, P2.M1.3 are ✅, but P2.M1.4 is 🚧)
 - P2.M2: Gap Resolution ⏳ (0/2 tasks)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-### Overall: ~36% Complete (4/11 milestones fully complete)
+Overall: ~9% Complete (P1.M4 is the only fully complete milestone from P1 & P2. Total milestones for P1 & P2 & P3 = 11.)
 
 ---
 
