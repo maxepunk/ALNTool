@@ -1,0 +1,23 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "## Overview",
+  "main": "subtask_verify_migrations.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maxepunk/ALNTool.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maxepunk/ALNTool/issues"
+  },
+  "homepage": "https://github.com/maxepunk/ALNTool#readme",
+  "dependencies": {
+    "better-sqlite3": "^11.10.0"
+  }
+}

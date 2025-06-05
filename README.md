@@ -81,8 +81,8 @@ ALNTool/
 
 ## 🎯 Current Status
 
-**Active Task**: P2.M1.3 - Timeline Interactivity  
-**Progress**: Phase 1 ✅ | Phase 2 🚧 (25%) | Overall ~35%
+**Active Task**: P1.M2.4 - Implement Journey Caching in Database
+**Progress**: Phase 1 🚧 (50%) | Phase 2 🚧 (P2.M1 partially complete) | Overall ~18%
 
 See [QUICK_STATUS.md](./QUICK_STATUS.md) for details.
 

@@ -1,9 +1,9 @@
 # Quick Status Check
 ## Where Are You Right Now?
 
-**Last Updated**: YYYY-MM-DD
-**Current Task**: P1.M1.3 - Implement Robust Migration System
-**File You Should Be In**: `backend/src/db/migrations.js` (and potentially `backend/src/db/migration-scripts/`)
+**Last Updated**: 2024-07-26
+**Current Task**: P1.M2.4: Implement Journey Caching in Database
+**File You Should Be In**: `storyforge/backend/src/services/journeyEngine.js` (and `storyforge/backend/src/db/queries.js`)
 **Branch**: `feature/production-intelligence-tool`
 
 ---
@@ -11,25 +11,28 @@
 ## 🎯 Your Current Focus
 
 ### What You're Building
-Implement a robust database migration system. This involves creating a `schema_migrations` table, logic to apply pending SQL migration scripts from a designated directory, and establishing an initial baseline migration.
+Implement a caching mechanism for computed character journeys. `buildCharacterJourney` should first attempt to retrieve a journey from the database. If a valid cached journey exists, return it. Otherwise, compute the journey and then save the results (segments and gaps) to the database.
 
-### Acceptance Criteria Checklist (from DEVELOPMENT_PLAYBOOK.md for P1.M1.3)
-- [ ] `schema_migrations` table is created and used to track applied migrations.
-- [ ] System can apply new SQL migration scripts from a designated directory.
-- [ ] Initial schema is successfully established via the first migration script.
-- [ ] `runMigrations` function correctly brings the database schema to the latest version.
+### Acceptance Criteria Checklist (from DEVELOPMENT_PLAYBOOK.md for P1.M2.4)
+- [ ] `buildCharacterJourney` first attempts to retrieve a computed journey from the database.
+- [ ] If cached journey is found and valid, it's returned without re-computation.
+- [ ] If no valid cached journey, it's computed and then the results are stored in the database.
 
 ### Code You Need
 ```javascript
-// In backend/src/db/migrations.js (Conceptual)
-// function applyMigration(scriptName, scriptContent) { /* ... */ }
-// function getAppliedMigrations() { /* ... */ }
-// function runMigrations() {
-//   // 1. Ensure schema_migrations table exists
-//   // 2. Read scripts from migration-scripts/
-//   // 3. Compare with applied migrations
-//   // 4. Execute pending scripts & record them
+// In storyforge/backend/src/services/journeyEngine.js (Conceptual)
+// async buildCharacterJourney(characterId) {
+//   const cached = await dbQueries.getCachedJourney(characterId);
+//   if (cached && isValid(cached)) return cached;
+//
+//   const journey = await this.computeNewJourney(characterId);
+//   await dbQueries.saveCachedJourney(characterId, journey);
+//   return journey;
 // }
+
+// In storyforge/backend/src/db/queries.js (Conceptual)
+// async function getCachedJourney(characterId) { /* ... */ }
+// async function saveCachedJourney(characterId, journeyData) { /* ... */ }
 ```
 
 ---
@@ -38,8 +41,8 @@ Implement a robust database migration system. This involves creating a `schema_m
 
 ### Phase 1: Foundation 🚧 (In Progress - Current Active Phase)
 - ✅ P1.M4: Frontend State Foundation
-- 🚧 P1.M1: SQLite Database Layer (Current Milestone: P1.M1.3 Robust Migrations ⏳)
-- 🚧 P1.M2: Journey Engine (P1.M2.4 Caching ⏳)
+- ✅ P1.M1: SQLite Database Layer (P1.M1.1 Dependencies ✅, P1.M1.2 Schema ✅, P1.M1.3 Robust Migrations ✅)
+- 🚧 P1.M2: Journey Engine (Current Milestone: P1.M2.4 Caching ⏳)
 - 🚧 P1.M3: API Endpoints (P1.M3.2 POST /resolve ⏳)
 *(Note: Initial setups for DB, Journey Engine, Gaps, APIs were done, but key foundational tasks are now active.)*
 
@@ -54,25 +57,28 @@ Implement a robust database migration system. This involves creating a `schema_m
 
 ## 📍 Navigation
 
-**Detailed Implementation** → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#p1m13-implement-robust-migration-system-%E2%8F%B3)
+**Detailed Implementation** → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#p1m24-implement-journey-caching-in-database-%E2%8F%B3)
 **Stuck?** → [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)  
-**UI Specs** → [PRD Section 7.1.2](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md#712-gap-indicators)
+**UI Specs** → [PRD Section relevant to Caching if any, else general Backend sections](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)
 
 ---
 
 ## 🚀 Quick Commands
 
 ```bash
-# Test your current work
-cd storyforge/frontend
-npm test -- TimelineView
+# Test your current work (example for journey engine)
+cd storyforge/backend
+npm test -- journeyEngine
 
 # Run the app
-npm run dev
+# (from /app/storyforge/backend)
+# npm run dev
+# (from /app/storyforge/frontend)
+# npm run dev
 
 # Commit when done
 git add .
-git commit -m "Complete P2.M1.3 - Timeline zoom/pan controls"
+git commit -m "Begin P1.M2.4 - Journey Caching: Setup and initial logic"
 ```
 
 ---
@@ -88,7 +94,7 @@ git commit -m "Complete P2.M1.3 - Timeline zoom/pan controls"
 ---
 
 ## 📊 Progress Bar
-Phase 1: 🚧 In Progress (P1.M4 complete, ~25% of Phase 1 milestones)
+Phase 1: 🚧 In Progress (P1.M4, P1.M1 complete. ~50% of Phase 1 milestones)
 Phase 2: 🚧 In Progress (P2.M1 tasks P2.M1.1, P2.M1.2, P2.M1.3 are ✅; P2.M1 overall is 🚧. P2.M2-M4 pending)
 Phase 3: 📅 Planned (0% complete)
-Overall: ~9% (1/11 total P1-P3 milestones fully complete: P1.M4)
+Overall: ~18% (2/11 total P1-P3 milestones fully complete: P1.M4, P1.M1)
