@@ -328,6 +328,27 @@ const useJourneyStore = create(
 - [x] Can load journey data
 - [x] Selectors return correct data
 
+#### P1.M4.2: User Review and Frontend Access (Phase 1 End)
+
+**Expected Frontend State:**
+- While no interactive UI components are built in Phase 1, the frontend's `journeyStore.js` is capable of fetching and managing character journey data (segments, activities, interactions, discoveries) and gap information from the backend API.
+
+**Accessing for Review:**
+- **Method:** Developer-assisted demonstration or via a temporary debug interface.
+- **Steps (Developer Lead):**
+    1. Run the backend server.
+    2. Run the frontend application.
+    3. Using browser developer tools or a temporary debug view, demonstrate that selecting/inputting a `characterId` triggers API calls to `/api/journeys/:characterId`.
+    4. Show that the `journeyStore` is populated with the expected data structures:
+        - Journey segments (e.g., 18 segments for a 90-minute journey).
+        - Associated activities, interactions, and discoveries within segments.
+        - Identified gaps with their start and end times.
+
+**Key Review Goals:**
+- Verify that the frontend can successfully connect to the backend API.
+- Confirm that character journey data and gap information are fetched and structured correctly in the frontend state store (`journeyStore.js`).
+- Check for any errors during data fetching or processing in the browser console.
+
 ---
 
 ## Phase 2: Core Views - Journey & System Lenses 🚧
@@ -464,6 +485,38 @@ describe('Timeline Interactivity', () => {
 2. Click gap to select in store
 3. Hover to preview gap details
 4. Animated attention indicators
+
+### P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
+*(Note: This review point assumes completion of P2.M1.1 through P2.M1.4)*
+
+**Expected Frontend State:**
+- The `TimelineView.jsx` component is implemented and integrated, providing a visual representation of character journeys.
+- The timeline should display segments, activities, interactions, discoveries, and highlight identified gaps.
+- Basic timeline interactivity (zoom, pan, click for details - subject to P2.M1.3 completion) should be functional.
+
+**Accessing for Review:**
+- **Method:** Run the full application (backend and frontend) and navigate to the Player Journey Timeline view.
+- **Steps:**
+    1. Ensure the backend server is running and serving data.
+    2. Start the frontend development server (e.g., `npm run dev` or equivalent in `storyforge/frontend`).
+    3. Open the application in a web browser.
+    4. Navigate to the section displaying the Player Journey Timeline. This might involve selecting a character.
+
+**Key Review Goals:**
+- **Visual Accuracy:**
+    - Timeline displays with a clear header, time ruler, and 18 chronological segments for a 90-minute journey.
+    - Activities, interactions, and discoveries are represented as icons/markers within the correct time segments.
+    - Empty segments are visually distinct (e.g., different background color).
+    - Identified gaps are highlighted on the timeline (severity colors if P2.M1.4 is complete).
+    - Spot-check data accuracy for a few key events against Notion or test data.
+- **Interactivity (as per P2.M1.3 completion):**
+    - **Zoom:** The timeline can be zoomed in and out using available controls.
+    - **Pan:** When zoomed, the timeline can be panned horizontally.
+    - **Selection/Details:** Clicking on a segment, event, or gap provides more details or highlights it (specifics depend on P2.M1.4 implementation for gaps).
+- **Responsiveness & Errors:**
+    - The timeline view loads without errors in the console.
+    - Basic responsiveness is adequate (no major layout breaks).
+- **Character Switching:** Selecting different characters updates the timeline to show their respective journeys.
 
 ### P2.M2: Gap Resolution Workflow 🚧
 
