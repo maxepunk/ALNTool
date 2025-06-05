@@ -12,7 +12,7 @@
 **Active Phase**: Phase 2 - Core Views - Journey & System Lenses
 **Active Phase**: Phase 2 - Core Views - Journey & System Lenses
 **Current Milestone**: P2.M1 - Player Journey Timeline Component
-**Current Task**: P2.M1.4: Gap Highlighting & Selection
+**Current Task**: P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
 **Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
 
 ---
@@ -492,14 +492,14 @@ describe('Timeline Interactivity', () => {
 });
 ```
 
-#### P2.M1.4: Gap Highlighting & Selection 🚧 (Partially Implemented)
+#### P2.M1.4: Gap Highlighting & Selection ✅
 **Waiting on**: P2.M1.3 completion
 
 **Implementation Plan**:
 1. Visual gap indicators with severity colors ✅ (Implemented in GapIndicator.jsx)
 2. Click gap to select in store ✅ (Implemented in GapIndicator.jsx)
-3. Hover to preview gap details 🚧 (Basic hover styling exists; detailed preview pop-up not implemented)
-4. Animated attention indicators ⏳ (Not implemented)
+3. Hover to preview gap details ✅
+4. Animated attention indicators ✅
 
 ### P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
 *(Note: This review point assumes completion of P2.M1.1 through P2.M1.4)*
@@ -744,13 +744,13 @@ P2.M1.3 (Current)
 - P1.M3: API Endpoints ✅ (P1.M3.1 ✅, P1.M3.2 ✅)
 - P1.M4: State Foundation ✅
 
-### Phase 2: 🚧 In Progress (0/4 milestones fully complete)
-- P2.M1: Timeline Component 🚧 (P2.M1.1, P2.M1.2, P2.M1.3 are ✅, but P2.M1.4 is 🚧)
+### Phase 2: 🚧 In Progress (1/4 milestones fully complete)
+- P2.M1: Timeline Component ✅ (P2.M1.1, P2.M1.2, P2.M1.3, P2.M1.4 are ✅)
 - P2.M2: Gap Resolution ⏳ (0/2 tasks)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-Overall: ~36% Complete (P1.M1, P1.M2, P1.M3, P1.M4 are fully complete milestones from P1. Total milestones for P1, P2 & P3 = 11.)
+Overall: ~45% Complete (P1.M1, P1.M2, P1.M3, P1.M4, P2.M1 are fully complete milestones. Total milestones for P1, P2 & P3 = 11.)
 
 ---
 

@@ -1,8 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Paper, Typography, Box } from '@mui/material';
+import { keyframes } from '@mui/system';
 import useJourneyStore from '../../stores/journeyStore'; // Corrected path
+import GapDetailPopup from './GapDetailPopup';
+
+const pulseAnimation = keyframes`
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+  }
+`;
 
 const GapIndicator = ({ gap }) => {
+  const [isHovering, setIsHovering] = useState(false);
   const setSelectedGap = useJourneyStore(state => state.setSelectedGap);
   const selectedGap = useJourneyStore(state => state.selectedGap);
 
@@ -39,6 +54,8 @@ const GapIndicator = ({ gap }) => {
 
   return (
     <Paper
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       elevation={paperElevation}
       onClick={() => setSelectedGap(gap)}
       sx={{
@@ -52,7 +69,9 @@ const GapIndicator = ({ gap }) => {
           transform: 'scale(1.01)',
           boxShadow: `0 0 8px ${textColor}aa`,
         },
-        ...selectedStyle
+        ...selectedStyle,
+        position: 'relative', // Added for positioning the popup
+        animation: gap.isNew ? `${pulseAnimation} 2s infinite` : 'none', // Apply animation if gap.isNew is true
       }}
     >
       <Typography variant="caption" sx={{ fontWeight: 'bold', color: textColor, display: 'block' }}>
@@ -62,6 +81,7 @@ const GapIndicator = ({ gap }) => {
         Duration: {duration} min ({start_minute}-{end_minute} min)
       </Typography>
       {/* Future: Could include suggested solutions here */}
+      {isHovering && <GapDetailPopup gap={gap} />}
     </Paper>
   );
 };
