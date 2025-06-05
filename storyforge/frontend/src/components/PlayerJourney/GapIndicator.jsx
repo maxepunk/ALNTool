@@ -1,6 +1,6 @@
 import React from 'react';
 import { Paper, Typography, Box } from '@mui/material';
-import useJourneyStore from '../../../stores/journeyStore'; // Adjusted path
+import useJourneyStore from '../../stores/journeyStore'; // Corrected path
 
 const GapIndicator = ({ gap }) => {
   const setSelectedGap = useJourneyStore(state => state.setSelectedGap);

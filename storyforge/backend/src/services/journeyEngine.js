@@ -44,30 +44,42 @@ class JourneyEngine {
         // Assuming event.minute is the specific minute it occurs
         // Or event.date could be a timestamp or a string like "0-15 minutes"
         let eventMinute = -1;
-        if (typeof event.date === 'number') {
+        if (typeof event.date === 'number') { // Direct minute provided
             eventMinute = event.date;
         } else if (typeof event.date === 'string') {
-            // Try to parse "X minutes" or "X-Y minutes" - very basic
-            const match = event.date.match(/^(\d+)(-(\d+))?\s*minutes$/);
-            if (match && match[1]) {
-                eventMinute = parseInt(match[1], 10);
+            // Attempt to parse "X minutes" or "X-Y minutes" (takes start of range)
+            const simpleMinuteMatch = event.date.match(/^(\d+)(-(\d+))?\s*minutes$/i);
+            if (simpleMinuteMatch && simpleMinuteMatch[1]) {
+                eventMinute = parseInt(simpleMinuteMatch[1], 10);
             }
-            // Add more sophisticated parsing if needed
+            // Placeholder for ISO date string parsing (e.g., "2023-10-26T12:00:00.000Z")
+            // This would require a reference game start time and date-fns or similar.
+            // Example:
+            // else if (event.date.includes('T')) { /* try parsing as ISO */ eventMinute = parseAndConvertDateToGameMinute(event.date); }
+            // For now, this engine primarily expects a direct minute or simple "X minutes" string.
+            // The propertyMapper should ideally prioritize a direct "Game Minute" field from Notion.
+            else {
+                // console.warn(`Event ${event.id} has unparsable date string: ${event.date}. Needs specific 'Game Minute' property or enhanced parsing.`);
+            }
         }
 
-
-        if (eventMinute >= segment.start_minute && eventMinute < segment.end_minute) {
-          segment.activities.push(`Participated in event: ${event.description || event.id}`);
+        if (eventMinute !== -1 && eventMinute >= segment.start_minute && eventMinute < segment.end_minute) {
+          segment.activities.push(`Participated in event: ${event.name || event.description || event.id}`);
         }
       });
 
       // Example: Check puzzles active in this segment
       puzzles.forEach(puzzle => {
-        // Assuming puzzle.timing could be "0-15", "Early Game" (0-30), "Mid Game" (30-60), "Late Game" (60-90)
         let puzzleStart = -1, puzzleEnd = -1;
         if (typeof puzzle.timing === 'string') {
-            if (puzzle.timing.match(/^\d+-\d+$/)) {
-                [puzzleStart, puzzleEnd] = puzzle.timing.split('-').map(Number);
+            const rangeMatch = puzzle.timing.match(/^(\d+)\s*-\s*(\d+)$/);
+            const minuteMatch = puzzle.timing.match(/^minute\s+(\d+)$/i);
+
+            if (rangeMatch) {
+                [puzzleStart, puzzleEnd] = [parseInt(rangeMatch[1], 10), parseInt(rangeMatch[2], 10)];
+            } else if (minuteMatch) {
+                puzzleStart = parseInt(minuteMatch[1], 10);
+                puzzleEnd = puzzleStart + this.INTERVAL_MINUTES; // Assume puzzle duration is one interval if single minute given
             } else if (puzzle.timing.toLowerCase() === 'early game') {
                 [puzzleStart, puzzleEnd] = [0, 30];
             } else if (puzzle.timing.toLowerCase() === 'mid game') {
@@ -75,10 +87,14 @@ class JourneyEngine {
             } else if (puzzle.timing.toLowerCase() === 'late game') {
                 [puzzleStart, puzzleEnd] = [60, 90];
             }
+            // Relational timings like "Between Event A and B" are not handled here and would require more complex logic.
+            else {
+                // console.warn(`Puzzle ${puzzle.id} has unparsable timing string: ${puzzle.timing}`);
+            }
         }
 
-        if ( (puzzleStart !== -1 && puzzleEnd !== -1) &&
-             (segment.start_minute < puzzleEnd && segment.end_minute > puzzleStart) ) {
+        if (puzzleStart !== -1 && puzzleEnd !== -1 &&
+            segment.start_minute < puzzleEnd && segment.end_minute > puzzleStart) {
           segment.activities.push(`Engaged with puzzle: ${puzzle.name || puzzle.id}`);
         }
       });

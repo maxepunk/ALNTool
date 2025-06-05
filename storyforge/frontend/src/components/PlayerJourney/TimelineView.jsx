@@ -14,7 +14,7 @@ const TimelineView = () => {
   const loadingJourneyCharacterId = useJourneyStore(state => state.loadingJourneyCharacterId);
   const error = useJourneyStore(state => state.error);
   const loadJourney = useJourneyStore(state => state.loadJourney);
-  // const setActiveCharacterId = useJourneyStore(state => state.setActiveCharacterId); // For testing
+  const selectedTimeRange = useJourneyStore(state => state.selectedTimeRange); // Added
 
   const activeJourney = activeCharacterId ? journeyData.get(activeCharacterId) : null;
   const activeGaps = activeCharacterId ? gapsData.get(activeCharacterId) || [] : [];
@@ -78,13 +78,32 @@ const TimelineView = () => {
       </Typography>
       <List dense>
         {timeIntervals.map((interval, index) => {
-          const segmentsInInterval = activeJourney.segments?.filter(
+          // Initial filtering by the 5-minute interval block
+          let segmentsInInterval = activeJourney.segments?.filter(
             segment => segment.start_minute >= interval.start && segment.start_minute < interval.end
           ) || [];
 
-          const gapsInInterval = activeGaps.filter(
+          let gapsInInterval = activeGaps.filter(
             gap => Math.max(gap.start_minute, interval.start) < Math.min(gap.end_minute, interval.end)
           );
+
+          // Further filter by selectedTimeRange from the store
+          segmentsInInterval = segmentsInInterval.filter(
+            segment => segment.start_minute >= selectedTimeRange[0] && segment.start_minute < selectedTimeRange[1]
+          );
+
+          gapsInInterval = gapsInInterval.filter(
+            gap => Math.max(gap.start_minute, selectedTimeRange[0]) < Math.min(gap.end_minute, selectedTimeRange[1])
+          );
+
+          // If after global filtering, this interval is entirely outside the selectedTimeRange and has no items,
+          // we could potentially skip rendering it, or render it differently.
+          // For now, just filter contents. The interval itself will still show.
+          // We only render the list item if it's within the broad selectedTimeRange or to show empty state for it.
+          // This check ensures we don't render time intervals completely outside the selected range,
+          // unless those intervals are the ones that *would* contain items if not for the global filter.
+          // A simpler approach is to always render the interval row and let the filtering handle content.
+          // Let's stick to filtering content as requested first.
 
           return (
             <React.Fragment key={`interval-${interval.start}`}>
@@ -102,7 +121,10 @@ const TimelineView = () => {
                 />
                 <Box sx={{ flexGrow: 1, ml: 2 }}> {/* Box for activities and gaps */}
                   {segmentsInInterval.length === 0 && gapsInInterval.length === 0 && (
-                    <Typography variant="caption" color="textSecondary">No recorded activity or gaps.</Typography>
+                     // Check if the interval itself is outside the selected range to hide "No recorded activity"
+                    (interval.end > selectedTimeRange[0] && interval.start < selectedTimeRange[1]) ?
+                      <Typography variant="caption" color="textSecondary">No recorded activity or gaps in selected range.</Typography>
+                      : <Typography variant="caption" color="textSecondary">-</Typography> // Interval outside selection
                   )}
                   {segmentsInInterval.map(segment => (
                     segment.activities?.map((activity, actIndex) => (

@@ -11,46 +11,7 @@ const { getDB } = require('../db/database'); // For JourneyEngine if it needs di
 const db = getDB(); // Get database instance
 const journeyEngine = new JourneyEngine(db); // Pass db if JourneyEngine constructor uses it
 
-// --- Mock Data (if NotionService integration is complex for this phase) ---
-const MOCK_CHARACTERS = {
-  char1: { id: 'char1', name: 'Alex Reeves', type: 'Protagonist', tier: 'A', logline: 'A driven journalist seeking truth.' },
-  char2: { id: 'char2', name: 'Marcus Blackwood', type: 'Antagonist', tier: 'A', logline: 'A shadowy CEO with hidden motives.' },
-  char3: { id: 'char3', name: 'Sarah Chen', type: 'Ally', tier: 'B', logline: 'A resourceful hacker aiding Alex.' },
-};
-
-const MOCK_EVENTS = {
-  char1: [
-    { id: 'event1', character_id: 'char1', description: 'Attends secret meeting', date: 10 }, // minute 10
-    { id: 'event2', character_id: 'char1', description: 'Finds a clue', date: '20-25 minutes' },
-  ],
-  char2: [
-    { id: 'event3', character_id: 'char2', description: 'Makes a threatening call', date: 15 },
-  ],
-  char3: [
-    { id: 'event4', character_id: 'char3', description: 'Hacks a server', date: '30-40 minutes'},
-  ],
-};
-
-const MOCK_PUZZLES = {
-  char1: [
-    { id: 'puzzle1', character_id: 'char1', name: 'Decode encrypted message', timing: 'Early Game' },
-  ],
-  char2: [],
-  char3: [
-    { id: 'puzzle2', character_id: 'char3', name: 'Bypass security system', timing: '35-45' },
-  ],
-};
-
-const MOCK_ELEMENTS = {
-  char1: [
-    { id: 'elem1', character_id: 'char1', name: 'Encrypted USB', type: 'Clue', description: 'Contains financial records.' },
-  ],
-  char2: [],
-  char3: [
-    { id: 'elem2', character_id: 'char3', name: 'Security Schematics', type: 'Intel', description: 'Building layout.' },
-  ],
-};
-// --- End Mock Data ---
+// Mock data has been removed. Live data will be fetched from NotionService.
 
 /**
  * Get character journey details.
@@ -58,30 +19,19 @@ const MOCK_ELEMENTS = {
 async function getCharacterJourney(req, res) {
   const { characterId } = req.params;
   try {
-    // Phase 1: Prioritize using mock data for stability.
-    // Replace with NotionService calls when its capabilities are confirmed/extended.
-    const characterData = MOCK_CHARACTERS[characterId];
-    const eventsData = MOCK_EVENTS[characterId] || [];
-    const puzzlesData = MOCK_PUZZLES[characterId] || [];
-    const elementsData = MOCK_ELEMENTS[characterId] || [];
+    const characterDetails = await NotionService.getCharacterDetails(characterId);
 
-    if (!characterData) {
-      return res.status(404).json({ error: 'Character not found with mock data.' });
+    if (!characterDetails || !characterDetails.character) {
+      return res.status(404).json({ error: 'Character not found or failed to load details.' });
     }
 
-    /*
-    // Example of future NotionService integration:
-    const characterData = await NotionService.getCharacterById(characterId);
-    if (!characterData) {
-      return res.status(404).json({ error: 'Character not found.' });
-    }
-    // These might be direct calls or fetched via relations from characterData
-    const eventsData = await NotionService.getEventsForCharacter(characterId);
-    const puzzlesData = await NotionService.getPuzzlesForCharacter(characterId);
-    const elementsData = await NotionService.getElementsForCharacter(characterId);
-    */
-
-    const journey = await journeyEngine.buildCharacterJourney(characterId, characterData, eventsData, puzzlesData, elementsData);
+    const journey = await journeyEngine.buildCharacterJourney(
+      characterDetails.character.id, // Pass the character ID
+      characterDetails.character,    // Pass the full mapped character object
+      characterDetails.events,
+      characterDetails.puzzles,
+      characterDetails.elements
+    );
     res.json(journey);
   } catch (error) {
     console.error(`Error fetching journey for character ${characterId}:`, error);
@@ -95,27 +45,19 @@ async function getCharacterJourney(req, res) {
 async function getCharacterGaps(req, res) {
   const { characterId } = req.params;
   try {
-    const characterData = MOCK_CHARACTERS[characterId];
-    const eventsData = MOCK_EVENTS[characterId] || [];
-    const puzzlesData = MOCK_PUZZLES[characterId] || [];
-    const elementsData = MOCK_ELEMENTS[characterId] || [];
+    const characterDetails = await NotionService.getCharacterDetails(characterId);
 
-    if (!characterData) {
-      return res.status(404).json({ error: 'Character not found with mock data.' });
+    if (!characterDetails || !characterDetails.character) {
+      return res.status(404).json({ error: 'Character not found or failed to load details.' });
     }
 
-    /*
-    // Future NotionService integration:
-    const characterData = await NotionService.getCharacterById(characterId);
-    if (!characterData) {
-      return res.status(404).json({ error: 'Character not found.' });
-    }
-    const eventsData = await NotionService.getEventsForCharacter(characterId);
-    const puzzlesData = await NotionService.getPuzzlesForCharacter(characterId);
-    const elementsData = await NotionService.getElementsForCharacter(characterId);
-    */
-
-    const journey = await journeyEngine.buildCharacterJourney(characterId, characterData, eventsData, puzzlesData, elementsData);
+    const journey = await journeyEngine.buildCharacterJourney(
+      characterDetails.character.id,
+      characterDetails.character,
+      characterDetails.events,
+      characterDetails.puzzles,
+      characterDetails.elements
+    );
     res.json(journey.gaps || []);
   } catch (error) {
     console.error(`Error fetching gaps for character ${characterId}:`, error);
@@ -125,25 +67,36 @@ async function getCharacterGaps(req, res) {
 
 /**
  * Get all gaps for all (or a subset of) characters.
+ * Note: This can be slow as it fetches details for each character sequentially.
+ * Future optimizations: parallel fetching, caching, background processing.
  */
 async function getAllGaps(req, res) {
   try {
     const allGapsCollected = [];
-    // For Phase 1, iterate through mock characters.
-    // Replace with NotionService.getAllCharactersWithDetails() or similar in future.
-    const characterIdsToProcess = Object.keys(MOCK_CHARACTERS); // Using all mock characters
+    const characterOverviews = await NotionService.getAllCharacterOverviews();
 
-    for (const characterId of characterIdsToProcess) {
-      const characterData = MOCK_CHARACTERS[characterId];
-      const eventsData = MOCK_EVENTS[characterId] || [];
-      const puzzlesData = MOCK_PUZZLES[characterId] || [];
-      const elementsData = MOCK_ELEMENTS[characterId] || [];
+    if (!characterOverviews || characterOverviews.length === 0) {
+      console.log('No characters found to process for getAllGaps.');
+      return res.json([]);
+    }
 
-      if (characterData) {
-        const journey = await journeyEngine.buildCharacterJourney(characterId, characterData, eventsData, puzzlesData, elementsData);
+    for (const charOverview of characterOverviews) {
+      const characterDetails = await NotionService.getCharacterDetails(charOverview.id);
+      if (characterDetails && characterDetails.character) {
+        const journey = await journeyEngine.buildCharacterJourney(
+          characterDetails.character.id,
+          characterDetails.character,
+          characterDetails.events,
+          characterDetails.puzzles,
+          characterDetails.elements
+        );
         if (journey.gaps && journey.gaps.length > 0) {
-          allGapsCollected.push(...journey.gaps);
+          // Add character info to each gap for context if needed, or ensure gap objects are self-contained.
+          // For now, just collecting them.
+          allGapsCollected.push(...journey.gaps.map(gap => ({...gap, characterId: charOverview.id, characterName: charOverview.name })));
         }
+      } else {
+        console.warn(`Could not retrieve details for character ID ${charOverview.id} in getAllGaps.`);
       }
     }
     res.json(allGapsCollected);
