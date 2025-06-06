@@ -19,7 +19,18 @@ describe('PuzzleSyncer Integration Tests', () => {
     mockDB = {
       prepare: jest.fn(),
       exec: jest.fn(),
-      inTransaction: false
+      inTransaction: false,
+      transaction: jest.fn((callback) => {
+        mockDB.inTransaction = true;
+        try {
+          const result = callback();
+          mockDB.inTransaction = false;
+          return result;
+        } catch (error) {
+          mockDB.inTransaction = false;
+          throw error;
+        }
+      })
     };
     getDB.mockReturnValue(mockDB);
 
@@ -45,7 +56,8 @@ describe('PuzzleSyncer Integration Tests', () => {
     syncer = new PuzzleSyncer({
       notionService: mockNotionService,
       propertyMapper: mockPropertyMapper,
-      logger: mockLogger
+      logger: mockLogger,
+      db: mockDB
     });
   });
 
@@ -258,6 +270,69 @@ describe('PuzzleSyncer Integration Tests', () => {
         '[]',
         '',
         '[]'
+      );
+    });
+
+    it('should handle database errors during puzzle insertion', async () => {
+      const mockNotionPuzzles = [
+        { id: 'puzzle1', properties: {} }
+      ];
+
+      mockNotionService.getPuzzles.mockResolvedValue(mockNotionPuzzles);
+      mockPropertyMapper.mapPuzzleWithNames.mockResolvedValue({
+        id: 'puzzle1',
+        name: 'Test Puzzle',
+        type: 'Investigation',
+        timing: 'Act 1',
+        story_reveals: ['reveal1'],
+        narrative_threads: ['thread1']
+      });
+
+      // Mock database statements
+      const mockStmts = {
+        deletePuzzleElements: { run: jest.fn() },
+        deletePuzzleRewards: { run: jest.fn() },
+        deletePuzzleCharacters: { run: jest.fn() },
+        deletePuzzles: { run: jest.fn() },
+        insertPuzzle: { 
+          run: jest.fn().mockImplementation(() => {
+            const error = new Error('FOREIGN KEY constraint failed');
+            error.code = 'SQLITE_CONSTRAINT_FOREIGNKEY';
+            throw error;
+          })
+        },
+        insertPuzzleElement: { run: jest.fn() },
+        insertPuzzleReward: { run: jest.fn() },
+        insertPuzzleCharacter: { run: jest.fn() }
+      };
+
+      // Setup prepare mock to return appropriate statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('DELETE FROM puzzle_elements')) return mockStmts.deletePuzzleElements;
+        if (sql.includes('DELETE FROM puzzle_rewards')) return mockStmts.deletePuzzleRewards;
+        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deletePuzzleCharacters;
+        if (sql.includes('DELETE FROM puzzles')) return mockStmts.deletePuzzles;
+        if (sql.includes('INSERT INTO puzzles')) return mockStmts.insertPuzzle;
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElement;
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_rewards')) return mockStmts.insertPuzzleReward;
+        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) return mockStmts.insertPuzzleCharacter;
+        throw new Error(`Unexpected SQL: ${sql}`);
+      });
+
+      const result = await syncer.sync();
+
+      expect(result).toEqual({
+        fetched: 1,
+        synced: 0,
+        errors: 1
+      });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error processing puzzles puzzle1',
+        'FOREIGN KEY constraint failed'
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Raw Notion data for failed puzzle puzzle1:',
+        '{}'
       );
     });
   });

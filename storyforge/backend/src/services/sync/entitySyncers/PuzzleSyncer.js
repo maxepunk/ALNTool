@@ -18,8 +18,7 @@ class PuzzleSyncer extends BaseSyncer {
    * @param {Object} dependencies.logger - SyncLogger instance
    */
   constructor(dependencies) {
-    super(dependencies);
-    this.entityType = 'puzzles';
+    super({ ...dependencies, entityType: 'puzzles' });
   }
 
   /**

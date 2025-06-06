@@ -13,7 +13,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
  *   node scripts/sync-data.js --status     # Check current database status
  */
 
-const DataSyncService = require('../src/services/dataSyncService');
+const dataSyncService = require('../src/services/dataSyncService');
 const { initializeDatabase, closeDB } = require('../src/db/database');
 
 async function main() {
@@ -25,7 +25,7 @@ async function main() {
     console.log('🔧 Initializing database...');
     initializeDatabase();
     
-    const syncService = new DataSyncService();
+    const syncService = dataSyncService;
 
     if (command === '--status') {
       console.log('📊 Checking database status...');

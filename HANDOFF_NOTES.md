@@ -1,3 +1,93 @@
+# Handoff Notes - Technical Debt Repayment & DataSync Refactor
+## Session Date: 2025-06-09
+
+### 🎯 What We Were Working On
+We were implementing the technical debt repayment plan, specifically focusing on the DataSyncService refactor (P.DEBT.3). The immediate goals were to complete the RelationshipSyncer extraction (P.DEBT.3.4) and begin the Compute Services extraction (P.DEBT.3.5).
+
+### ✅ What We Successfully Completed
+
+#### 1. **RelationshipSyncer Implementation (P.DEBT.3.4)** - COMPLETE!
+- **Problem**: Relationship sync logic was mixed with entity syncers, causing potential race conditions and making testing difficult
+- **Solution**:
+  - Created `RelationshipSyncer` extending `BaseSyncer`
+  - Implemented two-phase sync architecture:
+    - Phase 1: Sync all base entities (characters, elements, puzzles, timeline_events)
+    - Phase 2: Sync all relationships after base data exists
+  - Added comprehensive validation:
+    - Checks for missing referenced entities
+    - Prevents foreign key constraint violations
+    - Validates relationship types
+  - Implemented character link computation:
+    - Based on shared experiences (events, puzzles, elements)
+    - Weighted scoring system (events: 30, puzzles: 25, elements: 15)
+    - Capped at 100 strength points
+  - Added transaction management:
+    - All operations in single transaction
+    - Automatic rollback on failure
+    - Clear error messages
+- **Impact**: Reduced dataSyncService from 760 to 420 lines (45% total reduction)
+- **Verified**: All tests passing, integration complete
+
+#### 2. **Compute Services Extraction (P.DEBT.3.5)** - IN PROGRESS
+- **Problem**: Derived field computation mixed with sync logic
+- **Current Status**: Starting implementation of:
+  - `ActFocusComputer`: Computes act focus for timeline events
+  - `ResolutionPathComputer`: Computes resolution paths for all entities
+- **Next Steps**:
+  - Implement remaining computers (NarrativeThreadComputer, CharacterLinkComputer)
+  - Create orchestrator for running all computations
+  - Add comprehensive unit tests
+  - Ensure computations are idempotent
+
+### 📁 Key Files Modified
+
+1. **`storyforge/backend/src/services/sync/RelationshipSyncer.js`** (New)
+   - Implements two-phase sync architecture
+   - Handles all relationship types
+   - Includes transaction management
+
+2. **`storyforge/backend/src/services/sync/entitySyncers/BaseSyncer.js`**
+   - Updated to support relationship validation
+   - Added transaction support
+
+3. **`storyforge/backend/src/services/dataSyncService.js`**
+   - Updated to use new RelationshipSyncer
+   - Reduced from 760 to 420 lines
+
+4. **`storyforge/backend/src/services/compute/`** (New Directory)
+   - Created for new compute services
+   - Initial implementation of ActFocusComputer and ResolutionPathComputer
+
+### 🔍 How to Verify Everything is Working
+
+```bash
+# 1. Run the full test suite
+cd storyforge/backend
+npm test
+
+# 2. Verify sync process
+node scripts/sync-data.js --full
+# Should show successful sync of all entities and relationships
+
+# 3. Check computed fields
+node scripts/verify-computed-fields.js
+# Should show all computed fields present and correct
+```
+
+### 💡 Critical Understanding
+
+The compute services extraction (P.DEBT.3.5) is critical because these computed fields are essential for core features:
+- Act Focus enables timeline filtering
+- Resolution Paths power the Balance Dashboard
+- Narrative Threads support story coherence analysis
+- Character Links enable relationship visualization
+
+All computations must be:
+1. Pure functions with no side effects
+2. Idempotent (same input always produces same output)
+3. Efficient (meet performance targets)
+4. Well-tested (100% unit test coverage)
+
 # Handoff Notes - Architectural Fixes & Full Sync
 ## Session Date: 2025-06-07
 

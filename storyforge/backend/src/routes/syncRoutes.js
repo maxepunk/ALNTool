@@ -1,71 +1,148 @@
 const express = require('express');
 const router = express.Router();
+const dataSyncService = require('../services/dataSyncService');
 
-const DataSyncService = require('../services/dataSyncService');
-
-// Instantiate sync service
-const syncService = new DataSyncService();
+// Helper to format dates consistently
+const formatDate = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+};
 
 /**
  * POST /api/sync/data - Trigger full data sync
+ * 
+ * Response:
+ * - 200: Sync completed successfully
+ * - 409: Sync already in progress
+ * - 500: Internal server error
  */
 router.post('/data', async (req, res) => {
   try {
-    console.log('🔄 API sync request received');
-    const result = await syncService.syncAllData();
+    // Check if sync is already running
+    const status = dataSyncService.getSyncStatus();
+    if (!status || typeof status.isRunning !== 'boolean') {
+      throw new Error('Invalid sync status');
+    }
     
-    if (result.success) {
-      res.json({
-        success: true,
-        message: 'Data sync completed successfully',
-        stats: result.stats,
-        duration: result.duration
-      });
-    } else {
-      res.status(500).json({
+    if (status.isRunning) {
+      return res.status(409).json({
         success: false,
-        message: 'Data sync failed',
-        error: result.error,
-        stats: result.stats
+        error: 'Sync already in progress',
+        message: 'A sync operation is already running'
       });
     }
+
+    console.log('🔄 API sync request received');
+    const result = await dataSyncService.syncAll();
+    
+    if (!result || !result.phases) {
+      throw new Error('Invalid sync result');
+    }
+
+    res.json({
+      success: true,
+      message: 'Sync completed successfully',
+      stats: {
+        phases: result.phases,
+        totalDuration: result.totalDuration,
+        status: result.status
+      }
+    });
   } catch (error) {
     console.error('❌ Sync API error:', error);
+    
+    // Handle specific error types
+    if (error.message === 'Sync already in progress') {
+      return res.status(409).json({
+        success: false,
+        error: error.message,
+        message: 'A sync operation is already running'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Internal server error during sync',
-      error: error.message
+      error: error.message || 'Sync failed',
+      message: 'Failed to complete sync operation'
     });
   }
 });
 
 /**
  * GET /api/sync/status - Get current sync status
+ * 
+ * Response:
+ * - 200: Status retrieved successfully
+ * - 500: Internal server error
  */
-router.get('/status', async (req, res) => {
+router.get('/status', (req, res) => {
   try {
-    const status = await syncService.getSyncStatus();
+    const status = dataSyncService.getSyncStatus();
     
-    if (status.success) {
-      res.json({
-        success: true,
-        status: 'ready',
-        counts: status.counts,
-        lastSync: status.lastSync
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get sync status',
-        error: status.error
-      });
+    if (!status || typeof status.isRunning !== 'boolean') {
+      throw new Error('Invalid sync status');
     }
+
+    // Add additional status information with consistent date format
+    const enhancedStatus = {
+      ...status,
+      startTime: formatDate(status.startTime),
+      progress: typeof status.progress === 'number' ? status.progress : 0
+    };
+
+    res.json({
+      success: true,
+      status: enhancedStatus
+    });
   } catch (error) {
-    console.error('❌ Sync status API error:', error);
+    console.error('❌ Status API error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error getting sync status',
-      error: error.message
+      error: error.message || 'Failed to get status',
+      message: 'Failed to get sync status'
+    });
+  }
+});
+
+/**
+ * POST /api/sync/cancel - Cancel current sync operation
+ * 
+ * Response:
+ * - 200: Cancellation successful or no sync running
+ * - 500: Internal server error
+ */
+router.post('/cancel', async (req, res) => {
+  try {
+    const status = dataSyncService.getSyncStatus();
+    
+    if (!status || typeof status.isRunning !== 'boolean') {
+      throw new Error('Invalid sync status');
+    }
+    
+    if (!status.isRunning) {
+      return res.json({
+        success: true,
+        message: 'No sync operation to cancel'
+      });
+    }
+
+    // Let errors from cancelSync propagate to the outer catch
+    const cancelled = await dataSyncService.cancelSync();
+    if (typeof cancelled !== 'boolean') {
+      throw new Error('Invalid cancellation result');
+    }
+
+    res.json({
+      success: true,
+      message: cancelled ? 'Sync cancellation requested' : 'No sync operation to cancel'
+    });
+  } catch (error) {
+    console.error('❌ Cancel API error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to cancel',
+      message: 'Failed to cancel sync operation'
     });
   }
 });

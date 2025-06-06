@@ -10,21 +10,22 @@ class BaseSyncer {
    * @param {Object} dependencies.notionService - Service for fetching from Notion
    * @param {Object} dependencies.propertyMapper - Service for mapping Notion properties
    * @param {Object} dependencies.logger - SyncLogger instance
+   * @param {string} dependencies.entityType - Type of entity being synced (e.g. 'characters', 'elements')
    */
-  constructor({ notionService, propertyMapper, logger }) {
+  constructor({ notionService, propertyMapper, logger, entityType }) {
     if (new.target === BaseSyncer) {
       throw new Error('BaseSyncer is an abstract class and cannot be instantiated directly');
+    }
+    
+    if (!entityType) {
+      throw new Error('entityType is required in BaseSyncer constructor');
     }
     
     this.notionService = notionService;
     this.propertyMapper = propertyMapper;
     this.logger = logger;
     this.db = null;
-    
-    // Validate that subclass implements required properties
-    if (!this.entityType) {
-      throw new Error(`${this.constructor.name} must define entityType property`);
-    }
+    this.entityType = entityType;
   }
 
   /**

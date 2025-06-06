@@ -14,8 +14,7 @@ class CharacterSyncer extends BaseSyncer {
    * @param {Object} dependencies.logger - SyncLogger instance
    */
   constructor(dependencies) {
-    super(dependencies);
-    this.entityType = 'characters';
+    super({ ...dependencies, entityType: 'characters' });
   }
 
   /**
@@ -112,60 +111,20 @@ class CharacterSyncer extends BaseSyncer {
   }
 
   /**
-   * Process character relationships after all characters are synced
+   * Store character relationships for later processing by RelationshipSyncer
+   * CharacterSyncer should only handle character entities, not relationships
    * @returns {Promise<void>}
    */
   async postProcess() {
-    if (!this._pendingRelationships || this._pendingRelationships.length === 0) {
-      return;
-    }
-
-    this.logger.info(`Processing relationships for ${this._pendingRelationships.length} characters...`);
-
-    // Prepare insert statements
-    const insertEventRel = this.db.prepare(
-      'INSERT OR IGNORE INTO character_timeline_events (character_id, timeline_event_id) VALUES (?, ?)'
-    );
-    const insertOwnedElement = this.db.prepare(
-      'INSERT OR IGNORE INTO character_owned_elements (character_id, element_id) VALUES (?, ?)'
-    );
-    const insertAssocElement = this.db.prepare(
-      'INSERT OR IGNORE INTO character_associated_elements (character_id, element_id) VALUES (?, ?)'
-    );
-    const insertPuzzleRel = this.db.prepare(
-      'INSERT OR IGNORE INTO character_puzzles (character_id, puzzle_id) VALUES (?, ?)'
-    );
-
-    // Process all pending relationships
-    for (const pending of this._pendingRelationships) {
-      const { characterId, relationships } = pending;
-      
-      // Process each relationship type
-      this._processRelations(relationships.events, characterId, insertEventRel);
-      this._processRelations(relationships.ownedElements, characterId, insertOwnedElement);
-      this._processRelations(relationships.associatedElements, characterId, insertAssocElement);
-      this._processRelations(relationships.puzzles, characterId, insertPuzzleRel);
-    }
-
-    // Clear pending relationships
-    this._pendingRelationships = [];
+    // Character relationships are now handled by RelationshipSyncer in Phase 2
+    // This ensures all entities exist before relationships are created
+    this.logger.info(`Stored relationship data for ${this._pendingRelationships?.length || 0} characters for Phase 2 processing`);
+    
+    // Relationships will be processed by RelationshipSyncer after all entities are synced
+    // This prevents foreign key constraint violations
   }
 
-  /**
-   * Helper to process a set of relations
-   * @private
-   * @param {Array} relations - Array of relation objects with id property
-   * @param {string} characterId - Character ID
-   * @param {Object} stmt - Prepared statement for insertion
-   */
-  _processRelations(relations, characterId, stmt) {
-    if (relations && Array.isArray(relations)) {
-      for (const rel of relations) {
-        const relId = rel.id || rel;
-        stmt.run(characterId, relId);
-      }
-    }
-  }
+  // _processRelations method removed - relationships now handled by RelationshipSyncer
 
   /**
    * Get current character count for dry run

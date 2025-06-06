@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node storyforge/backend/src/index.js",
     "sync": "node storyforge/backend/scripts/sync-data.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "verify:migrations": "cd storyforge/backend && npm run verify:migrations",
+    "verify:pre-deploy": "cd storyforge/backend && npm run verify:pre-deploy",
+    "verify:all": "cd storyforge/backend && npm run verify:all",
+    "verify:docs": "cd storyforge/backend && npm run verify-docs",
+    "check-deps": "cd storyforge/backend && npm run check-deps"
   },
   "repository": {
     "type": "git",

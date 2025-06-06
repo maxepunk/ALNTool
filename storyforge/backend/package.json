@@ -6,7 +6,16 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand"
+    "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
+    "verify:migrations": "node scripts/verify-migrations.js",
+    "verify:migrations:fix": "node scripts/verify-migrations.js --auto-fix",
+    "verify:pre-deploy": "node scripts/pre-deploy-verify.js",
+    "verify:all": "npm run verify:migrations && npm run verify:pre-deploy && npm run docs:verify-sync",
+    "docs:init": "node scripts/docs/update-docs.js init",
+    "docs:task-complete": "node scripts/docs/update-docs.js task-complete",
+    "docs:verify-sync": "node scripts/docs/update-docs.js verify-sync",
+    "docs:status-report": "node scripts/docs/update-docs.js status-report",
+    "docs:test": "node scripts/docs/test-automation.js"
   },
   "keywords": [
     "notion",
@@ -34,6 +43,8 @@
     "jest": "^29.7.0",
     "jest-watch-typeahead": "^2.2.2",
     "nodemon": "^3.0.2",
-    "supertest": "^6.3.3"
+    "supertest": "^6.3.3",
+    "sqlite3": "^5.1.7",
+    "better-sqlite3": "^9.4.3"
   }
 }

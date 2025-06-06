@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(sqlite3:*)",
+      "Bash(cd:*)",
+      "Bash(git:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(pwd:*)",
+      "Bash(npm run verify:all:*)",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(npm run docs:verify-sync:*)",
+      "Bash(npm run docs:status-report:*)",
+      "Bash(npm run docs:test:*)",
+      "Bash(rg:*)",
+      "Bash(awk:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": []
+  }
+}

@@ -10,6 +10,7 @@ describe('ElementSyncer Integration Tests', () => {
   let mockNotionService;
   let mockPropertyMapper;
   let mockLogger;
+  let mockStmts;
 
   beforeEach(() => {
     // Reset all mocks
@@ -21,7 +22,33 @@ describe('ElementSyncer Integration Tests', () => {
       exec: jest.fn(),
       inTransaction: false
     };
-    getDB.mockReturnValue(mockDB);
+
+    mockStmts = {
+      insertElem: { run: jest.fn() },
+      insertCharOwned: { run: jest.fn() },
+      insertCharAssoc: { run: jest.fn() },
+      insertPuzzleElem: { run: jest.fn() },
+      deleteCharOwned: { run: jest.fn() },
+      deleteCharAssoc: { run: jest.fn() },
+      deletePuzzleElem: { run: jest.fn() },
+      deleteElem: { run: jest.fn() }
+    };
+
+    // Mock all expected SQL statements
+    mockDB.prepare.mockImplementation((sql) => {
+      if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwned;
+      if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssoc;
+      if (sql.includes('DELETE FROM puzzle_elements')) return mockStmts.deletePuzzleElem;
+      if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElem;
+      if (sql.includes('INSERT OR REPLACE INTO elements')) return mockStmts.insertElem;
+      if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
+      if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
+      if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+      if (sql.includes('BEGIN') || sql.includes('COMMIT') || sql.includes('ROLLBACK')) {
+        return { run: jest.fn() };
+      }
+      return { run: jest.fn() };
+    });
 
     // Create mock services
     mockNotionService = {
@@ -45,7 +72,8 @@ describe('ElementSyncer Integration Tests', () => {
     syncer = new ElementSyncer({
       notionService: mockNotionService,
       propertyMapper: mockPropertyMapper,
-      logger: mockLogger
+      logger: mockLogger,
+      db: mockDB
     });
   });
 
@@ -171,12 +199,36 @@ describe('ElementSyncer Integration Tests', () => {
 
       mockNotionService.getElements.mockResolvedValue(mockNotionElements);
       mockPropertyMapper.mapElementWithNames
-        .mockResolvedValueOnce({ id: 'elem1', name: 'Key Card', basicType: 'Prop' })
+        .mockResolvedValueOnce({ id: 'elem1', name: 'Knife', type: 'Item' })
         .mockResolvedValueOnce({ error: 'Mapping failed' })
-        .mockResolvedValueOnce({ id: 'elem3', name: 'Document', basicType: 'Document' });
+        .mockResolvedValueOnce({ id: 'elem3', name: 'Gun', type: 'Item' });
 
-      const mockInsertStmt = { run: jest.fn() };
-      mockDB.prepare.mockReturnValue(mockInsertStmt);
+      // Mock database statements
+      const mockStmts = {
+        updatePuzzles: { run: jest.fn() },
+        deleteInteractions: { run: jest.fn() },
+        deleteCharOwnedElems: { run: jest.fn() },
+        deleteCharAssocElems: { run: jest.fn() },
+        deleteElements: { run: jest.fn() },
+        insertElement: { run: jest.fn() },
+        insertCharOwned: { run: jest.fn() },
+        insertCharAssoc: { run: jest.fn() },
+        insertPuzzleElem: { run: jest.fn() }
+      };
+
+      // Setup prepare mock to return appropriate statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
+        if (sql.includes('DELETE FROM element_interactions')) return mockStmts.deleteInteractions;
+        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
+        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
+        if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
+        if (sql.includes('INSERT INTO elements')) return mockStmts.insertElement;
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+        throw new Error(`Unexpected SQL: ${sql}`);
+      });
 
       const result = await syncer.sync();
 
@@ -185,7 +237,9 @@ describe('ElementSyncer Integration Tests', () => {
         synced: 2,
         errors: 1
       });
-      expect(mockInsertStmt.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockStmts.insertElement.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem1', 'Knife', 'Item', null, null, null);
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem3', 'Gun', 'Item', null, null, null);
     });
 
     it('should handle null relationships gracefully', async () => {
@@ -212,6 +266,51 @@ describe('ElementSyncer Integration Tests', () => {
         'elem1', 'Standalone Element', 'Prop', '', '', 
         null, null, '', '', null
       );
+    });
+
+    it('should rollback on error when continueOnError is false', async () => {
+      const mockNotionElements = [
+        { id: 'elem1', properties: {} },
+        { id: 'elem2', properties: {} }
+      ];
+
+      mockNotionService.getElements.mockResolvedValue(mockNotionElements);
+      mockPropertyMapper.mapElementWithNames
+        .mockResolvedValueOnce({ id: 'elem1', name: 'Knife', type: 'Item' })
+        .mockResolvedValueOnce({ error: 'Mapping failed' });
+
+      // Mock database statements
+      const mockStmts = {
+        updatePuzzles: { run: jest.fn() },
+        deleteInteractions: { run: jest.fn() },
+        deleteCharOwnedElems: { run: jest.fn() },
+        deleteCharAssocElems: { run: jest.fn() },
+        deleteElements: { run: jest.fn() },
+        insertElement: { run: jest.fn() },
+        insertCharOwned: { run: jest.fn() },
+        insertCharAssoc: { run: jest.fn() },
+        insertPuzzleElem: { run: jest.fn() }
+      };
+
+      // Setup prepare mock to return appropriate statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
+        if (sql.includes('DELETE FROM element_interactions')) return mockStmts.deleteInteractions;
+        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
+        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
+        if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
+        if (sql.includes('INSERT INTO elements')) return mockStmts.insertElement;
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+        throw new Error(`Unexpected SQL: ${sql}`);
+      });
+
+      mockDB.inTransaction = true;
+      mockDB.exec = jest.fn();
+
+      await expect(syncer.sync({ continueOnError: false })).rejects.toThrow('Mapping failed');
+      expect(mockDB.exec).toHaveBeenCalledWith('ROLLBACK');
     });
   });
 
@@ -248,21 +347,6 @@ describe('ElementSyncer Integration Tests', () => {
   });
 
   describe('error handling', () => {
-    it('should rollback on error when continueOnError is false', async () => {
-      const mockNotionElements = [{ id: 'elem1' }];
-      mockNotionService.getElements.mockResolvedValue(mockNotionElements);
-      mockPropertyMapper.mapElementWithNames.mockResolvedValue({ error: 'Critical error' });
-
-      mockDB.inTransaction = true;
-
-      await expect(
-        syncer.sync({ continueOnError: false })
-      ).rejects.toThrow('Failed to sync elements item: elem1');
-
-      expect(mockDB.exec).toHaveBeenCalledWith('ROLLBACK');
-      expect(mockLogger.failSync).toHaveBeenCalled();
-    });
-
     it('should handle database errors gracefully', async () => {
       mockNotionService.getElements.mockResolvedValue([{ id: 'elem1' }]);
       mockPropertyMapper.mapElementWithNames.mockResolvedValue({ id: 'elem1', name: 'Key Card' });

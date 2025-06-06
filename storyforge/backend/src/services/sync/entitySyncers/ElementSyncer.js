@@ -19,8 +19,7 @@ class ElementSyncer extends BaseSyncer {
    * @param {Object} dependencies.logger - SyncLogger instance
    */
   constructor(dependencies) {
-    super(dependencies);
-    this.entityType = 'elements';
+    super({ ...dependencies, entityType: 'elements' });
   }
 
   /**

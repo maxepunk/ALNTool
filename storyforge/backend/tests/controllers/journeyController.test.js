@@ -3,36 +3,67 @@ const {
     getCharacterGaps,
     getAllGaps,
 } = require('../../src/controllers/journeyController');
-const JourneyEngine = require('../../src/services/journeyEngine');
+const journeyEngine = require('../../src/services/journey/journeyEngine');
 const dbQueries = require('../../src/db/queries');
 
-jest.mock('../../src/services/journeyEngine');
+jest.mock('../../src/services/journey/journeyEngine');
 jest.mock('../../src/db/queries');
 
 describe('Journey Controller', () => {
-    let mockReq, mockRes, next;
+    let mockReq;
+    let mockRes;
+    let next;
     let mockEngineInstance;
 
     beforeEach(() => {
-        mockReq = { params: {}, query: {} };
-        mockRes = {
-            status: jest.fn().mockReturnThis(),
-            json: jest.fn(),
+        // Reset all mocks
+        jest.clearAllMocks();
+        
+        // Setup mock request
+        mockReq = {
+            params: { characterId: 'test-character-id' }
         };
+        
+        // Setup mock response
+        mockRes = {
+            json: jest.fn(),
+            status: jest.fn().mockReturnThis()
+        };
+        
+        // Setup mock next function
         next = jest.fn();
         
-        // Setup the mock engine instance
+        // Setup mock journey engine instance
         mockEngineInstance = {
-            buildCharacterJourney: jest.fn(),
+            buildCharacterJourney: jest.fn()
         };
-        JourneyEngine.mockImplementation(() => mockEngineInstance);
+        journeyEngine.getInstance = jest.fn().mockReturnValue(mockEngineInstance);
         
-        jest.clearAllMocks();
+        // Setup mock data
+        const mockJourney = {
+            character_info: {
+                id: 'test-character-id',
+                name: 'Test Character'
+            },
+            timeline: [],
+            gaps: []
+        };
+        
+        const mockGaps = [
+            { id: 'gap1', description: 'Test Gap' }
+        ];
+        
+        // Setup mock implementations
+        mockEngineInstance.buildCharacterJourney.mockResolvedValue(mockJourney);
+        dbQueries.getAllCharacterIdsAndNames.mockResolvedValue([
+            { id: 'test-character-id', name: 'Test Character' },
+            { id: 'char2', name: 'Another Character' }
+        ]);
     });
 
     describe('getCharacterJourney', () => {
         it('should return a journey object for a valid characterId', async () => {
-            const characterId = 'char1';
+            const characterId = 'test-character-id';
             mockReq.params.characterId = characterId;
             const mockJourney = { character_id: characterId, segments: [], gaps: [] };
 
@@ -47,7 +78,7 @@ describe('Journey Controller', () => {
 
     describe('getCharacterGaps', () => {
         it('should return only the gaps array for a valid characterId', async () => {
-            const characterId = 'char1';
+            const characterId = 'test-character-id';
             mockReq.params.characterId = characterId;
             const mockGaps = [{ start_minute: 10, end_minute: 15, severity: 'low' }];
             const mockJourney = { gaps: mockGaps };
@@ -63,7 +94,7 @@ describe('Journey Controller', () => {
 
     describe('getAllGaps', () => {
         it('should return a collection of all gaps from all characters', async () => {
-            const mockCharacters = [{ id: 'char1', name: 'Character 1' }, { id: 'char2', name: 'Character 2' }];
+            const mockCharacters = [{ id: 'test-character-id', name: 'Test Character' }, { id: 'char2', name: 'Another Character' }];
             dbQueries.getAllCharacterIdsAndNames = jest.fn().mockResolvedValue(mockCharacters);
 
             const mockJourney1 = { gaps: [{ id: 'gap1' }] };
@@ -80,8 +111,8 @@ describe('Journey Controller', () => {
             
             // Check that the response includes gaps with character info
             const expectedGaps = [
-                { ...mockJourney1.gaps[0], characterId: 'char1', characterName: 'Character 1' },
-                { ...mockJourney2.gaps[0], characterId: 'char2', characterName: 'Character 2' }
+                { ...mockJourney1.gaps[0], characterId: 'test-character-id', characterName: 'Test Character' },
+                { ...mockJourney2.gaps[0], characterId: 'char2', characterName: 'Another Character' }
             ];
             expect(mockRes.json).toHaveBeenCalledWith(expectedGaps);
         });

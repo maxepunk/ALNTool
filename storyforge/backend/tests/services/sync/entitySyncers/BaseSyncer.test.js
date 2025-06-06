@@ -7,12 +7,19 @@ jest.mock('../../../../src/db/database');
 // Create a concrete test implementation
 class TestSyncer extends BaseSyncer {
   constructor(dependencies) {
-    super(dependencies);
-    this.entityType = 'test_entities';
+    super({ ...dependencies, entityType: 'test' });
   }
 
   async fetchFromNotion() {
-    return this.mockFetchFromNotion();
+    return [];
+  }
+
+  async mapFromNotion(data) {
+    return data;
+  }
+
+  async insertIntoDatabase(data) {
+    return data;
   }
 
   async clearExistingData() {
@@ -107,7 +114,7 @@ describe('BaseSyncer', () => {
       expect(testSyncer.notionService).toBe(mockNotionService);
       expect(testSyncer.propertyMapper).toBe(mockPropertyMapper);
       expect(testSyncer.logger).toBe(mockLogger);
-      expect(testSyncer.entityType).toBe('test_entities');
+      expect(testSyncer.entityType).toBe('test');
     });
   });
 
@@ -133,7 +140,7 @@ describe('BaseSyncer', () => {
       const result = await testSyncer.sync();
 
       // Verify workflow steps
-      expect(mockLogger.startSync).toHaveBeenCalledWith('test_entities');
+      expect(mockLogger.startSync).toHaveBeenCalledWith('test');
       expect(testSyncer.mockFetchFromNotion).toHaveBeenCalled();
       expect(mockDB.exec).toHaveBeenCalledWith('BEGIN');
       expect(testSyncer.mockClearExistingData).toHaveBeenCalled();
@@ -158,7 +165,7 @@ describe('BaseSyncer', () => {
 
       const result = await testSyncer.sync();
 
-      expect(mockLogger.warn).toHaveBeenCalledWith('No test_entities found in Notion.');
+      expect(mockLogger.warn).toHaveBeenCalledWith('No test found in Notion.');
       expect(mockDB.exec).not.toHaveBeenCalled(); // No transaction needed
       expect(result).toEqual({
         fetched: 0,
@@ -185,7 +192,7 @@ describe('BaseSyncer', () => {
 
       expect(testSyncer.mockInsertData).toHaveBeenCalledTimes(2); // Only successful mappings
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error processing test_entities 2',
+        'Error processing test 2',
         'Mapping failed'
       );
       expect(result).toEqual({

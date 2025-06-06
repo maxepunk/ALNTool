@@ -150,27 +150,25 @@ SF_ValueRating: [1-5]
 SF_MemoryType: [Personal|Business|Technical]
 ```
 
-**Extraction needed during sync:**
-```javascript
-function parseMemoryData(description) {
-  const data = {
-    rfid: null,
-    value: 0,
-    type: null
-  };
-  
-  const rfidMatch = description.match(/SF_RFID:\s*(\S+)/);
-  if (rfidMatch) data.rfid = rfidMatch[1];
-  
-  const valueMatch = description.match(/SF_ValueRating:\s*(\d+)/);
-  if (valueMatch) data.value = parseInt(valueMatch[1]);
-  
-  const typeMatch = description.match(/SF_MemoryType:\s*(\w+)/);
-  if (typeMatch) data.type = typeMatch[1];
-  
-  return data;
-}
-```
+**✅ Memory Value Extraction (IMPLEMENTED)**
+
+Database columns added:
+| Column | Type | Description |
+|--------|------|-------------|
+| rfid_tag | TEXT | RFID identifier for physical token |
+| value_rating | INTEGER | 1-5 rating scale |
+| memory_type | TEXT | Personal/Business/Technical |
+| memory_group | TEXT | Group name for completion bonuses |
+| group_multiplier | REAL | Group completion bonus multiplier |
+| calculated_memory_value | INTEGER | Individual token value (dollars) |
+
+**Value Calculation:**
+- Base values: 1=$100, 2=$500, 3=$1000, 4=$5000, 5=$10000
+- Type multipliers: Personal=2x, Business=5x, Technical=10x
+- Individual value = Base × Type Multiplier
+- Group multipliers stored separately for completion bonus logic
+
+**Implementation:** `MemoryValueExtractor` and `MemoryValueComputer` services
 
 ---
 
@@ -352,13 +350,131 @@ function assignResolutionPaths(entity, entityType) {
    - Rollup from reward elements
    - Needed for thematic filtering
 
-7. **🟢 MEDIUM - Extract memory values**
-   - Needed for path affinity
-   - Parse from description field
+7. **✅ COMPLETE - Extract memory values**
+   - ✅ MemoryValueExtractor service parses SF_ fields from descriptions
+   - ✅ Database columns: rfid_tag, value_rating, memory_type, memory_group, group_multiplier, calculated_memory_value
+   - ✅ Individual token values calculated (base × type multiplier)
+   - ✅ Group multipliers stored for completion bonus logic
 
 8. **🟢 LOW - Compute analytics**
    - Nice to have
    - Can be added incrementally
+
+---
+
+## Sync Architecture
+
+### Component Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   API Routes    │     │ DataSyncService │     │ SyncOrchestrator│
+│  (syncRoutes)   │────▶│   (Singleton)   │────▶│                 │
+└─────────────────┘     └─────────────────┘     └────────┬────────┘
+                                                         │
+                                                         ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Compute        │     │  Entity         │     │  Relationship   │
+│  Services       │◀────│  Syncers        │◀────│  Syncer         │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+### Data Flow
+
+1. **API Layer** (`syncRoutes.js`)
+   - Handles HTTP requests
+   - Uses DataSyncService singleton
+   - Manages response formatting
+   - Implements error handling
+
+2. **Service Layer** (`DataSyncService.js`)
+   - Singleton pattern
+   - Coordinates with SyncOrchestrator
+   - Manages compute services
+   - Handles cache invalidation
+
+3. **Orchestration Layer** (`SyncOrchestrator.js`)
+   - Manages sync phases
+   - Handles transactions
+   - Tracks progress
+   - Supports cancellation
+
+4. **Entity Layer**
+   - BaseSyncer (abstract)
+   - CharacterSyncer
+   - ElementSyncer
+   - PuzzleSyncer
+   - TimelineEventSyncer
+
+5. **Compute Layer**
+   - ActFocusComputer
+   - ResolutionPathComputer
+   - NarrativeThreadComputer
+   - CharacterLinkComputer
+
+### Sync Phases
+
+1. **Phase 1: Entity Sync**
+   - Sync base entities
+   - Transaction management
+   - Error handling
+   - Progress tracking
+
+2. **Phase 2: Relationship Sync**
+   - Sync relationships
+   - Compute character links
+   - Validate foreign keys
+   - Handle rollback
+
+3. **Phase 3: Compute**
+   - Compute derived fields
+   - Update cache
+   - Handle errors
+   - Track progress
+
+4. **Phase 4: Cache**
+   - Invalidate journey cache
+   - Clear expired cache
+   - Refresh as needed
+   - Handle failures
+
+### Error Handling
+
+1. **API Errors**
+   - HTTP status codes
+   - Error messages
+   - Stack traces (dev only)
+   - Recovery options
+
+2. **Sync Errors**
+   - Transaction rollback
+   - Partial sync handling
+   - Retry logic
+   - Error logging
+
+3. **Compute Errors**
+   - Individual computation
+   - Batch processing
+   - Error recovery
+   - Status reporting
+
+### Performance Targets
+
+1. **Sync Duration**
+   - Full sync: < 30s
+   - Entity sync: < 15s
+   - Relationship sync: < 5s
+   - Compute: < 10s
+
+2. **Memory Usage**
+   - Peak: < 500MB
+   - Stable: < 200MB
+   - Cache: < 100MB
+
+3. **Database**
+   - Connections: < 10
+   - Transaction time: < 5s
+   - Query time: < 1s
 
 ---
 

@@ -20,7 +20,18 @@ describe('CharacterSyncer Integration Tests', () => {
     mockDB = {
       prepare: jest.fn(),
       exec: jest.fn(),
-      inTransaction: false
+      inTransaction: false,
+      transaction: jest.fn((callback) => {
+        mockDB.inTransaction = true;
+        try {
+          const result = callback();
+          mockDB.inTransaction = false;
+          return result;
+        } catch (error) {
+          mockDB.inTransaction = false;
+          throw error;
+        }
+      })
     };
     getDB.mockReturnValue(mockDB);
 
@@ -47,7 +58,8 @@ describe('CharacterSyncer Integration Tests', () => {
     syncer = new CharacterSyncer({
       notionService: mockNotionService,
       propertyMapper: mockPropertyMapper,
-      logger: mockLogger
+      logger: mockLogger,
+      db: mockDB
     });
   });
 
@@ -188,12 +200,40 @@ describe('CharacterSyncer Integration Tests', () => {
 
       mockNotionService.getCharacters.mockResolvedValue(mockNotionCharacters);
       mockPropertyMapper.mapCharacterWithNames
-        .mockResolvedValueOnce({ id: 'char1', name: 'Sarah', type: 'Player' })
+        .mockResolvedValueOnce({ id: 'char1', name: 'Sarah', type: 'Player', description: '', themes: '', act_focus: 0 })
         .mockResolvedValueOnce({ error: 'Mapping failed' })
-        .mockResolvedValueOnce({ id: 'char3', name: 'Marcus', type: 'Player' });
+        .mockResolvedValueOnce({ id: 'char3', name: 'Marcus', type: 'Player', description: '', themes: '', act_focus: 0 });
 
-      const mockInsertStmt = { run: jest.fn() };
-      mockDB.prepare.mockReturnValue(mockInsertStmt);
+      // Mock database statements
+      const mockStmts = {
+        deleteCharLinks: { run: jest.fn() },
+        deleteCharEvents: { run: jest.fn() },
+        deleteCharOwnedElems: { run: jest.fn() },
+        deleteCharAssocElems: { run: jest.fn() },
+        deleteCharPuzzles: { run: jest.fn() },
+        deleteCharacters: { run: jest.fn() },
+        insertCharacter: { run: jest.fn() },
+        insertEventRel: { run: jest.fn() },
+        insertOwnedElem: { run: jest.fn() },
+        insertAssocElem: { run: jest.fn() },
+        insertPuzzleRel: { run: jest.fn() }
+      };
+
+      // Setup prepare mock to return appropriate statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('DELETE FROM character_links')) return mockStmts.deleteCharLinks;
+        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
+        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
+        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
+        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
+        if (sql.includes('DELETE FROM characters')) return mockStmts.deleteCharacters;
+        if (sql.includes('INSERT INTO characters')) return mockStmts.insertCharacter;
+        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) return mockStmts.insertEventRel;
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertOwnedElem;
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertAssocElem;
+        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) return mockStmts.insertPuzzleRel;
+        throw new Error(`Unexpected SQL: ${sql}`);
+      });
 
       const result = await syncer.sync();
 
@@ -202,13 +242,36 @@ describe('CharacterSyncer Integration Tests', () => {
         synced: 2,
         errors: 1
       });
-      expect(mockInsertStmt.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockStmts.insertCharacter.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockStmts.insertCharacter.run).toHaveBeenCalledWith('char1', 'Sarah', 'Player', '', '', 0);
+      expect(mockStmts.insertCharacter.run).toHaveBeenCalledWith('char3', 'Marcus', 'Player', '', '', 0);
     });
 
     it('should rollback on error when continueOnError is false', async () => {
       const mockNotionCharacters = [{ id: 'char1' }];
       mockNotionService.getCharacters.mockResolvedValue(mockNotionCharacters);
       mockPropertyMapper.mapCharacterWithNames.mockResolvedValue({ error: 'Critical error' });
+
+      // Mock database statements
+      const mockStmts = {
+        deleteCharLinks: { run: jest.fn() },
+        deleteCharEvents: { run: jest.fn() },
+        deleteCharOwnedElems: { run: jest.fn() },
+        deleteCharAssocElems: { run: jest.fn() },
+        deleteCharPuzzles: { run: jest.fn() },
+        deleteCharacters: { run: jest.fn() }
+      };
+
+      // Setup prepare mock to return appropriate statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('DELETE FROM character_links')) return mockStmts.deleteCharLinks;
+        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
+        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
+        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
+        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
+        if (sql.includes('DELETE FROM characters')) return mockStmts.deleteCharacters;
+        throw new Error(`Unexpected SQL: ${sql}`);
+      });
 
       mockDB.inTransaction = true;
 

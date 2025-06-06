@@ -19,7 +19,18 @@ describe('TimelineEventSyncer Integration Tests', () => {
     mockDB = {
       prepare: jest.fn(),
       exec: jest.fn(),
-      inTransaction: false
+      inTransaction: false,
+      transaction: jest.fn((callback) => {
+        mockDB.inTransaction = true;
+        try {
+          const result = callback();
+          mockDB.inTransaction = false;
+          return result;
+        } catch (error) {
+          mockDB.inTransaction = false;
+          throw error;
+        }
+      })
     };
     getDB.mockReturnValue(mockDB);
 
@@ -45,7 +56,8 @@ describe('TimelineEventSyncer Integration Tests', () => {
     syncer = new TimelineEventSyncer({
       notionService: mockNotionService,
       propertyMapper: mockPropertyMapper,
-      logger: mockLogger
+      logger: mockLogger,
+      db: mockDB
     });
   });
 
@@ -242,8 +254,23 @@ describe('TimelineEventSyncer Integration Tests', () => {
         .mockResolvedValueOnce({ error: 'Missing required date' })
         .mockResolvedValueOnce({ id: 'event3', description: 'Event 3' });
 
-      const mockInsertStmt = { run: jest.fn() };
-      mockDB.prepare.mockReturnValue(mockInsertStmt);
+      // Create separate mock statements for different operations
+      const mockEventInsertStmt = { run: jest.fn() };
+      const mockCharEventRelStmt = { run: jest.fn() };
+      const mockClearStmt = { run: jest.fn() };
+
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('INSERT INTO timeline_events')) {
+          return mockEventInsertStmt;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) {
+          return mockCharEventRelStmt;
+        }
+        if (sql.includes('DELETE FROM')) {
+          return mockClearStmt;
+        }
+        return { run: jest.fn() };
+      });
 
       const result = await syncer.sync();
 
@@ -252,7 +279,23 @@ describe('TimelineEventSyncer Integration Tests', () => {
         synced: 2,
         errors: 1
       });
-      expect(mockInsertStmt.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockEventInsertStmt.run).toHaveBeenCalledTimes(2); // Only successful mappings
+      expect(mockEventInsertStmt.run).toHaveBeenCalledWith(
+        'event1',
+        'Event 1',
+        '',
+        '[]',
+        '[]',
+        ''
+      );
+      expect(mockEventInsertStmt.run).toHaveBeenCalledWith(
+        'event3',
+        'Event 3',
+        '',
+        '[]',
+        '[]',
+        ''
+      );
     });
   });
 

@@ -18,8 +18,7 @@ class TimelineEventSyncer extends BaseSyncer {
    * @param {Object} dependencies.logger - SyncLogger instance
    */
   constructor(dependencies) {
-    super(dependencies);
-    this.entityType = 'timeline_events';
+    super({ ...dependencies, entityType: 'timeline_events' });
   }
 
   /**
