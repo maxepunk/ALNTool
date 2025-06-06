@@ -1,6 +1,8 @@
 const { Client } = require('@notionhq/client');
 const NodeCache = require('node-cache');
 const propertyMapper = require('../utils/propertyMapper'); // Added import
+const { getDB } = require('../db/database');
+const dbQueries = require('../db/queries');
 
 // Initialize Notion client
 const notion = new Client({
@@ -170,6 +172,7 @@ module.exports = {
   // New functions for journey computation:
   getCharacterDetails,
   getAllCharacterOverviews,
+  getCharactersForList,
 };
 
 // --- Start of new functions for journey computation ---
@@ -292,3 +295,8 @@ async function getAllCharacterOverviews() {
 //   }
 //   return { centralPuzzle, mappedRelatedEntities };
 // }
+
+async function getCharactersForList(filter) {
+  // This is the new lightweight function.
+  return dbQueries.getCharactersForList();
+}

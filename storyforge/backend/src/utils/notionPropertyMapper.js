@@ -296,20 +296,18 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
     const puzzleIds = extractRelationByName(properties, 'Character Puzzles');
     const ownedElementIds = extractRelationByName(properties, 'Owned Elements');
     const associatedElementIds = extractRelationByName(properties, 'Associated Elements');
-    const linkedCharacterIds = extractRelationByName(properties, 'Linked Characters'); // New for sociogram
+    // NOTE: Linked Characters doesn't exist in Notion - will compute from shared events/puzzles later
 
     const [
       events,
       puzzles,
       ownedElements,
-      associatedElements,
-      linkedCharactersPages // New
+      associatedElements
     ] = await Promise.all([
       notionService.getPagesByIds(eventIds),
       notionService.getPagesByIds(puzzleIds),
       notionService.getPagesByIds(ownedElementIds),
-      notionService.getPagesByIds(associatedElementIds),
-      notionService.getPagesByIds(linkedCharacterIds), // New
+      notionService.getPagesByIds(associatedElementIds)
     ]);
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Puzzle'] || page.properties['Description'] || { title: [] }) });
@@ -329,15 +327,12 @@ async function mapCharacterWithNames(notionCharacter, notionService) {
       associatedElements: associatedElements.map(page => toIdName(page, 'Name')),
       connections: extractNumber(properties.Connections),
       lastEdited: notionCharacter.last_edited_time,
-      actFocus: extractSelectByName(properties, 'Act Focus'), // Assumes Character has "Act Focus"
-      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
-      // memorySets: undefined, // Characters likely don't have memory sets directly
-      linkedCharacters: linkedCharactersPages.map(page => toIdName(page, 'Name')),
-      resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
-      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed elsewhere
+      // These properties don't exist in the Characters database:
+      // actFocus: extractSelectByName(properties, 'Act Focus'),
+      // themes: extractMultiSelectByName(properties, 'Narrative Threads'), 
+      // resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
+      linkedCharacters: [] // Computed from character_links table after sync
     };
-    if (mappedChar.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedChar.actFocus} for char: ${mappedChar.name}`);
-    if (mappedChar.themes && mappedChar.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedChar.themes.join(', ')} for char: ${mappedChar.name}`);
     return mappedChar;
   } catch (error) {
     console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);
@@ -381,12 +376,15 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
       memType: extractRichTextByName(properties, 'mem type'),
       notes: extractRichTextByName(properties, 'Notes'),
       lastEdited: notionEvent.last_edited_time,
-      actFocus: extractSelectByName(properties, 'Act Focus'), // Assumes Timeline Event has "Act Focus"
-      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
-      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed elsewhere
+      // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
+      // Act Focus is computed from related elements' acts, not stored in Notion
+      // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed field
+      // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // May or may not exist in Notion
+      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep if it exists in Notion
     };
-    if (mappedEvent.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
-    if (mappedEvent.themes && mappedEvent.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedEvent.themes.join(', ')} for event: ${mappedEvent.description}`);
+    // Debug logging removed for commented fields
+    // if (mappedEvent.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
+    // if (mappedEvent.themes && mappedEvent.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedEvent.themes.join(', ')} for event: ${mappedEvent.description}`);
     return mappedEvent;
   } catch (error) {
     console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);
@@ -459,17 +457,19 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
       subPuzzles: subPuzzles.map(page => toIdName(page, 'Puzzle')),
       assetLink: extractUrlByName(properties, 'Asset Link'),
       description: extractRichTextByName(properties, 'Description/Solution'),
-      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed
+      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
       lastEdited: notionPuzzle.last_edited_time,
-      actFocus: extractSelectByName(properties, 'Timing'), // actFocus from "Timing"
-      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
-      // memorySets: undefined, // Puzzles likely don't have memory sets
+      // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
+      // Commenting out to prevent "Property not found" errors
+      // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed from timeline events
+      // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Duplicate of narrativeThreads
+      // resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'), // Computed field
       impactedCharacters: impactedCharactersPages.map(page => toIdName(page, 'Name')),
       relatedTimelineEvents: relatedTimelineEventPages.map(page => toIdName(page, 'Description')),
-      resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
     };
-    if (mappedPuzzle.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
-    if (mappedPuzzle.themes && mappedPuzzle.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
+    // Debug logging removed since fields are commented out
+    // if (mappedPuzzle.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
+    // if (mappedPuzzle.themes && mappedPuzzle.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
     return mappedPuzzle;
   } catch (error) {
     console.error(`Error mapping puzzle with ID ${notionPuzzle?.id || 'unknown'}:`, error);
@@ -535,15 +535,17 @@ async function mapElementWithNames(notionElement, notionService) {
       contentLink: extractUrlByName(properties, 'Content Link'),
       productionNotes: extractRichTextByName(properties, 'Production/Puzzle Notes'),
       lastEdited: notionElement.last_edited_time,
-      actFocus: extractSelectByName(properties, 'First Available'), // actFocus from "First Available"
-      themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Themes from "Narrative Threads"
-      memorySets: extractMultiSelectByName(properties, 'Memory Sets'), // Use "Memory Sets" as per prompt assumption (or "Memory Set" if that was the final decision)
-      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep original if needed
+      // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
+      // actFocus: extractSelectByName(properties, 'First Available'), // This was wrong - Act Focus is computed, not First Available
+      // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Duplicate of narrativeThreads
+      // memorySets: extractMultiSelectByName(properties, 'Memory Sets'), // May not exist in Notion
+      // resolutionPaths: computed field, not in Notion
     };
 
-    if (mappedElement.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedElement.actFocus} for element: ${mappedElement.name}`);
-    if (mappedElement.themes && mappedElement.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedElement.themes.join(', ')} for element: ${mappedElement.name}`);
-    if (mappedElement.memorySets && mappedElement.memorySets.length > 0) console.log(`[GRAPH DATA MAP] Mapped memorySets: ${mappedElement.memorySets.join(', ')} for element: ${mappedElement.name}`);
+    // Debug logging removed for commented fields
+    // if (mappedElement.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedElement.actFocus} for element: ${mappedElement.name}`);
+    // if (mappedElement.themes && mappedElement.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedElement.themes.join(', ')} for element: ${mappedElement.name}`);
+    // if (mappedElement.memorySets && mappedElement.memorySets.length > 0) console.log(`[GRAPH DATA MAP] Mapped memorySets: ${mappedElement.memorySets.join(', ')} for element: ${mappedElement.name}`);
 
     // Parse SF_RFID from Description/Text for memory-type Elements
     const descriptionText = mappedElement.description; // Already extracted

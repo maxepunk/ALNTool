@@ -1,9 +1,11 @@
 {
-  "name": "app",
+  "name": "storyforge-backend",
   "version": "1.0.0",
-  "description": "## Overview",
-  "main": "subtask_verify_migrations.js",
+  "description": "Backend for the StoryForge tool",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node storyforge/backend/src/index.js",
+    "sync": "node storyforge/backend/scripts/sync-data.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -18,6 +20,7 @@
   },
   "homepage": "https://github.com/maxepunk/ALNTool#readme",
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.5"
   }
 }

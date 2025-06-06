@@ -11,11 +11,11 @@
 
 ## Development Progress Tracker
 
-### Current Phase: Phase 1 Delivery - Journey Infrastructure
-### Last Updated: 2024-07-27
+### Current Phase: Phase 2 Delivery - Core Views
+### Last Updated: [Current Date]
 ### Phase Completion Status:
-- [X] Phase 1: Foundation - Journey Infrastructure (Core Backend Logic, API Endpoints including Gap Resolution, Journey Engine with Caching, SQLite DB with Migrations, and Frontend State Foundation all complete)
-- [ ] Phase 2: Core Views - Journey & System Lenses (Player Journey Timeline basics implemented, Gap Resolution workflow initiated)
+- [X] Phase 1: Foundation - Journey Infrastructure (Core Backend Logic, API Endpoints, Journey Engine with Caching, SQLite DB with Migrations, and Frontend State Foundation all complete and robustly refactored)
+- [IN PROGRESS] Phase 2: Core Views - Journey & System Lenses (Player Journey view refactored to a narrative graph model; layout and custom nodes implemented. Interaction mapping and full feature parity pending.)
 - [ ] Phase 3: System Intelligence
 - [ ] Phase 4: Content Creation Tools
 - [ ] Phase 5: Advanced Features & Polish
@@ -38,6 +38,22 @@
 12. [Success Criteria](#12-success-criteria)
 13. [Key Discoveries & Insights](#13-key-discoveries--insights)
 14. [Appendix: Current Codebase Structure](#14-appendix-current-codebase-structure)
+
+---
+
+## Related Documentation
+
+### 🎮 For Deeper Game Understanding
+- **[active_synthesis_streamlined.md](./game design background/active_synthesis_streamlined.md)** - Complete validated game design including memory economy, three paths, and facilitation
+- **[concept_evolution_streamlined.md](./game design background/concept_evolution_streamlined.md)** - How the game design evolved from initial concepts
+- **[questions_log_streamlined.md](./game design background/questions_log_streamlined.md)** - Design questions and their resolution status
+
+### 🔧 For Technical Implementation
+- **[SCHEMA_MAPPING_GUIDE.md](./SCHEMA_MAPPING_GUIDE.md)** - 🔴 **CRITICAL**: Complete Notion→SQL mappings including computed fields essential for Balance Dashboard and core features
+- **[DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)** - Step-by-step implementation guide with code examples
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues and solutions
+
+**⚠️ Important**: The "computed fields" documented in SCHEMA_MAPPING_GUIDE.md (Act Focus, Resolution Paths, etc.) are NOT optional - they enable the "intelligence" in Production Intelligence Tool.
 
 ---
 
@@ -367,41 +383,43 @@ CREATE TABLE path_metrics (
 
 ### 7.1 Journey Space (Left Side)
 
-#### Player Journey Timeline™
-**Purpose**: Primary view for understanding character experiences
+#### Player Journey Graph™ (Formerly Player Journey Timeline)
+**Purpose**: Primary view for understanding the causal chain of character experiences. This view answers "What must the player do and discover, and in what order?"
 
-**Enhanced Design**:
+**Evolved Design**: The initial concept of a linear, minute-by-minute timeline proved insufficient to model the game's true narrative structure. The "blow-by-blow" experience is not about time, but about dependencies. The new Journey Graph visualizes this reality.
+
+**Core Model**: The journey is modeled as a directed graph composed of two interwoven layers:
+1.  **The Gameplay Graph**: Represents the mechanical sequence of actions. Nodes are `Activities` (e.g., solving a puzzle) and `Discoveries` (e.g., finding an element). Edges represent hard dependencies (e.g., an element is required to solve a puzzle, which in turn rewards other elements).
+2.  **The Lore Graph**: Represents the static, 19-year backstory. Nodes are historical `Events`.
+3.  **Context Weaving**: The two graphs are linked by "Context Edges". When a `Discovery` in the Gameplay Graph is a piece of evidence related to a historical `Event` in the Lore Graph, a visual link is drawn, providing immediate narrative context to the gameplay action.
+
+**Enhanced Design Mockup**:
 ```
 ┌─ Journey Toolbar ──────────────────────────────────────────┐
-│ Character: [Sarah ▼] View: [Timeline|Graph|Checklist]      │
-│ Filters: [✓Activities ✓Interactions ✓Discoveries ✓Gaps]   │
+│ Character: [Alex Reeves ▼] View: [Graph|Checklist|Legacy Timeline] │
+│ Filters: [✓Gameplay ✓Lore ✓Interactions]                     │
 └────────────────────────────────────────────────────────────┘
 
-Sarah Chang - Tier 1 - Startup CEO
+Alex Reeves - Tier 1 - CTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[Act 1]                    [Act 2]
-0    15    30    45    60    75    90 min
+[ACT 1]──────────────────────────[ACT 2]──────────────────────
 
-▼ 0-5: AWAKENING
-  ◆ Find: Wallet, phone (locked), keys
-  ↳ "I'm Sarah, a CEO"
-  ⚡ Depends on: Starting props placement
+(Element: Note)─────▶(Puzzle: Open Box)─────▶(Element: Key)
+      │                     │                     │
+      │ (provides context)  │ (depends on)        │ (unlocks)
+      ▼                     ▼                     ▼
+(Lore: 2018 Affair)   (Element: UV Light)   (Puzzle: Final Safe)
+                         │
+                         │ (requires interaction with Sarah)
+                         ▼
+                    (Interaction: Get Light from Sarah)
 
-▼ 10-15: IDENTITY CRISIS
-  ◆ Discover threatening note from Marcus
-  ◆ Try phone - need birthday (234####)
-  ⚡ Ask others for birthday info
-  ! Potential bottleneck if isolated
-
-[Hovering shows connections to other journeys]
-[Clicking opens detailed view/editor]
-[Gaps highlighted in red with quick-fix options]
+[Nodes are color-coded by type: Activity, Discovery, Lore]
+[Solid lines are hard gameplay dependencies]
+[Dashed lines are contextual lore links or interactions]
 ```
 
-**Key Innovation**: Timeline can switch between multiple views:
-- **Timeline View**: Chronological activities
-- **Graph View**: Network of discoveries and dependencies
-- **Checklist View**: Production status for this character
+**Key Innovation**: The view makes the game's causal structure explicit, revealing true player paths and potential bottlenecks that were invisible in a linear timeline. The concept of "Gaps" is replaced by identifying un-rewarding paths or nodes with no downstream dependencies.
 
 #### Interaction Matrix™
 **Purpose**: Ensure character interactions align
@@ -549,62 +567,36 @@ Marcus: Name → Dead → Timeline → Motive → (memories only)
 
 **Objective**: Establish the journey-centric data layer and basic timeline visualization
 
-#### Technical Tasks
+**Status: ✅ COMPLETE**
 
-1. **SQLite Integration**
-   - Add `better-sqlite3` to backend dependencies
-   - Create database initialization service
-   - Design and implement schema for journeys, gaps, and computed data
-   - Build migration system for schema updates
+### Phase 1.5: Technical Debt Repayment (Current Phase)
 
-2. **Journey Engine Development**
-   ```javascript
-   // New service: backend/src/services/journeyEngine.js
-   class JourneyEngine {
-     buildCharacterJourney(characterId) // Includes caching
-     computeJourneySegments(character, events, puzzles, elements)
-     detectGaps(segments)
-     suggestGapSolutions(gap, allElements, allPuzzles)
-     getInteractionWindows(characterA, characterB)
-   }
-   ```
+**Objective**: Solidify the foundation by removing all architectural remnants of the legacy timeline/gap model before proceeding with new feature development.
 
-3. **Enhanced Backend API**
-   - `/api/journeys/:characterId` - Get complete journey with gaps
-   - `/api/journeys/:characterId/gaps` - Get just gaps
-   - `/api/gaps/all` - All gaps across all characters
-   - `/api/gaps/:gapId/resolve` - POST to update gap status (pending)
-   - `/api/sync/status` - Sync queue status
-   - Modify existing endpoints to include journey context
+**Status: 🚧 IN PROGRESS**
 
-4. **State Architecture Setup**
-   - Extend Zustand stores for journey state
-   - Implement sync queue with conflict detection
-   - Create optimistic update system
-   - Add offline detection and handling
-
-#### Key Deliverables
-- [X] Working local database with journey data (schema created, all initial tables present, robust migration system in place and utilized for schema updates)
-- [X] Journey Engine Development (core computation, gap detection, and journey caching in database implemented)
-- [X] Enhanced Backend API (includes GET routes for journeys and gaps, and POST route for gap resolution; all related controller and database query logic implemented and tested)
-- [X] State Architecture Setup (Frontend state store `journeyStore.js` capable of fetching and managing journey/gap data from backend)
-- [ ] Sync system foundation (mock API endpoint for status exists - *No change here, as this was not part of P1.M3.2*)
+#### Key Tasks
+1.  **Codebase Cleanup**: Eradicate all "zombie code," including obsolete functions, queries, and API logic that references the old model.
+2.  **Database Decommissioning**: Create and run a migration script to `DROP` all legacy tables (`journey_segments`, `gaps`, `cached_journey_segments`, `cached_journey_gaps`).
+3.  **Architectural Polish**: Refactor hybrid API responses to be consistent with the new model and re-implement a performance caching layer for graph data.
+4.  **Documentation Sync**: Update all planning documents to accurately reflect the current graph-based architecture.
 
 ### Phase 2: Core Views - Journey & System Lenses
 
-**Objective**: Build the dual-lens interface with Player Journey Timeline as the centerpiece
+**Objective**: Build the dual-lens interface with Player Journey **Graph** as the centerpiece.
+
+**Status: ⏳ PENDING (Blocked by Phase 1.5)**
 
 #### Technical Tasks
 
-1. **Player Journey Timeline Component**
-   ```jsx
-   // New component: frontend/src/components/PlayerJourney/TimelineView.jsx
-   - 90-minute timeline with 5-minute segments
-   - Visual gap indicators
-   - Activity/interaction/discovery icons
-   - Zoom and pan controls
-   - Time-based filtering
-   ```
+1.  **Player Journey Graph Component**
+    ```jsx
+    // New component: frontend/src/components/PlayerJourney/JourneyGraphView.jsx
+    - Render nodes and edges from the journey graph API
+    - Utilize custom node components for different entity types
+    - Integrate auto-layout hook for clean visualization
+    - Zoom and pan controls
+    ```
 
 2. **Layout Restructuring**
    - Create new dual-pane layout component
@@ -620,18 +612,16 @@ Marcus: Name → Dead → Timeline → Motive → (memories only)
    - Cross-view data flow
 
 4. **Gap Resolution Workflow**
-   - Click gap → context panel shows details
-   - Smart suggestions based on:
-     - Time slot availability
-     - Nearby character activities
-     - Unused elements/puzzles
-     - Theme consistency
-   - Preview impact before creating
+   - Click a node on the graph → context panel shows details
+   - Smart suggestions based on graph topology:
+     - Unconnected nodes
+     - Paths with no downstream dependencies
+   - Preview impact before creating new nodes or edges
 
 #### Key Deliverables
-- [PARTIAL] Functional Player Journey Timeline (renders activities, interactions, discoveries, and gaps; basic time-filtering implemented; zoom/pan pending)
+- [PARTIAL] Functional Player Journey Graph (renders nodes and edges; interactivity pending)
 - [ ] Dual-lens layout implemented
-- [PARTIAL] Basic gap resolution workflow (gap selection and mock suggestions implemented in store; UI context panel and backend integration pending)
+- [ ] Basic graph-aware resolution workflow
 - [ ] Views are synchronized
 
 ### Phase 3: System Intelligence
@@ -1164,6 +1154,11 @@ Every creation decision needs surrounding information:
 - Who else does this affect?
 - What themes does this reinforce?
 - How does this impact balance?
+
+### The Journey is a Causal Graph, Not a Timeline
+Our most critical insight has been the evolution of our understanding of a "player journey." An initial, intuitive approach is to model it as a linear, minute-by-minute timeline of events. However, for a game with complex, interwoven dependencies like "About Last Night," this model is insufficient and misleading. It leads to a view of a journey as a series of "gaps" to be filled, rather than a flow of logic to be constructed.
+
+The true "blow-by-blow" experience for a player is a **causal chain of discovery and action**. The journey is better modeled as a directed graph where nodes represent discoveries or activities, and edges represent the dependencies between them (e.g., finding a key *enables* opening a lock). This graph-based model, which separates the mechanical "Gameplay Graph" from the narrative "Lore Graph," allows us to accurately visualize the designed player path, identify true bottlenecks (nodes with many incoming dependencies), and see dead ends (paths with no outgoing dependencies). This architectural shift from a time-based to a dependency-based model is fundamental to the tool's ability to provide genuine production intelligence.
 
 ### Bidirectional Workflow
 Users need to fluidly move between:

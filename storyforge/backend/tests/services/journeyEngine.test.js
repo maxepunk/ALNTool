@@ -1,11 +1,16 @@
 const JourneyEngine = require('../../src/services/journeyEngine');
+const dbQueries = require('../../src/db/queries');
+
+// Mock the dbQueries module
+jest.mock('../../src/db/queries');
 
 describe('JourneyEngine', () => {
   let journeyEngine;
-  const mockDb = {}; // Mock DB if needed for future tests, not used in phase 1 engine methods
 
   beforeEach(() => {
-    journeyEngine = new JourneyEngine(mockDb);
+    journeyEngine = new JourneyEngine();
+    // Reset mocks before each test
+    jest.clearAllMocks();
   });
 
   describe('constructor', () => {
@@ -18,13 +23,13 @@ describe('JourneyEngine', () => {
   describe('computeJourneySegments', () => {
     const mockCharacter = { id: 'char1', name: 'Test Character' };
     const mockEvents = [
-      { id: 'event1', description: 'Event at 7 mins', date: 7 },
-      { id: 'event2', description: 'Event spanning 10-15 mins', date: '10-15 minutes' },
-      { id: 'event3', description: 'Event with no specific timing in description', date: 'Some time early' },
+      { id: 'event1', name: 'Event at 7 mins', date: 7, character_ids: JSON.stringify(['char1']) },
+      { id: 'event2', name: 'Event spanning 10-15 mins', date: '10-15 minutes', character_ids: JSON.stringify(['char1']) },
+      { id: 'event3', name: 'Event with no specific timing in description', date: 'Some time early', character_ids: JSON.stringify(['char1']) },
     ];
     const mockPuzzles = [
-      { id: 'puzzle1', name: 'Puzzle in Mid Game', timing: 'Mid Game' }, // 30-60
-      { id: 'puzzle2', name: 'Puzzle from 5-10', timing: '5-10' },
+      { id: 'puzzle1', name: 'Puzzle in Mid Game', timing: 'Mid Game', owner_id: 'char1' }, // 30-60
+      { id: 'puzzle2', name: 'Puzzle from 5-10', timing: '5-10', owner_id: 'char1' },
     ];
     const mockElements = [
       { id: 'elem1', name: 'Key Element', description: 'Found early' },
@@ -48,7 +53,7 @@ describe('JourneyEngine', () => {
     });
 
     it('should place events into correct segment activities', async () => {
-      const segments = await journeyEngine.computeJourneySegments(mockCharacter, mockEvents);
+      const segments = await journeyEngine.computeJourneySegments(mockCharacter, mockEvents, [], []);
       // Event at 7 mins (segment 5-10 min)
       const segmentForEvent1 = segments.find(s => s.start_minute === 5 && s.end_minute === 10);
       expect(segmentForEvent1.activities).toEqual(expect.arrayContaining([
@@ -56,6 +61,7 @@ describe('JourneyEngine', () => {
       ]));
 
       // Event spanning 10-15 mins (segment 10-15 min)
+      // The current regex only captures the start time.
       const segmentForEvent2 = segments.find(s => s.start_minute === 10 && s.end_minute === 15);
       expect(segmentForEvent2.activities).toEqual(expect.arrayContaining([
         expect.stringContaining('Event spanning 10-15 mins')
@@ -63,7 +69,7 @@ describe('JourneyEngine', () => {
     });
 
     it('should place puzzles into correct segment activities based on timing', async () => {
-      const segments = await journeyEngine.computeJourneySegments(mockCharacter, [], mockPuzzles);
+      const segments = await journeyEngine.computeJourneySegments(mockCharacter, [], mockPuzzles, []);
 
       // Puzzle from 5-10 (segment 5-10)
       const segmentForPuzzle2 = segments.find(s => s.start_minute === 5 && s.end_minute === 10);
@@ -104,6 +110,22 @@ describe('JourneyEngine', () => {
       // This is not a strong assertion due to randomness, but confirms the code path exists.
       // A better test would involve mocking Math.random() or making element discovery deterministic.
       expect(typeof hasDiscovery === 'boolean').toBe(true);
+    });
+
+    it('should add discoveries from puzzle rewards', async () => {
+      const puzzleWithReward = [
+        { id: 'p_reward', name: 'Reward Puzzle', timing: '8-10', owner_id: 'char1', reward_ids: JSON.stringify(['elem_reward']) }
+      ];
+      const elementForReward = [
+        { id: 'elem_reward', name: 'The Reward' }
+      ];
+      const segments = await journeyEngine.computeJourneySegments(mockCharacter, [], puzzleWithReward, elementForReward);
+
+      // Puzzle ends at 10, so discovery should be in the 5-10 segment
+      const discoverySegment = segments.find(s => s.start_minute === 5 && s.end_minute === 10);
+      expect(discoverySegment.discoveries).toEqual(expect.arrayContaining([
+        expect.stringContaining('Discovered element via puzzle Reward Puzzle: The Reward')
+      ]));
     });
   });
 
@@ -216,73 +238,102 @@ describe('JourneyEngine', () => {
   describe('buildCharacterJourney', () => {
     const characterId = 'charBuildTest';
     const mockCharacterData = { id: characterId, name: 'Builder Test' };
-    const mockEvents = [{ id: 'e1', date: 1 }];
-    const mockPuzzles = [{ id: 'p1', timing: '5-10' }];
+    const mockEvents = [{ id: 'e1', date: 1, character_ids: JSON.stringify([characterId]) }];
+    const mockPuzzles = [{ id: 'p1', timing: '5-10', owner_id: characterId }];
     const mockElements = [{ id: 'el1', name: 'Element of Building' }];
 
-    // Spy on the other methods to ensure they are called
-    let computeSegmentsSpy;
-    let detectGapsSpy;
-
     beforeEach(() => {
-      computeSegmentsSpy = jest.spyOn(journeyEngine, 'computeJourneySegments');
-      detectGapsSpy = jest.spyOn(journeyEngine, 'detectGaps');
+      // Setup mock implementations for dbQueries
+      dbQueries.getCachedJourney.mockResolvedValue(null); // Assume no cache hit
+      dbQueries.isValidJourneyCache.mockReturnValue(false);
+      dbQueries.getCharacterById.mockResolvedValue(mockCharacterData);
+      dbQueries.getAllEvents.mockResolvedValue(mockEvents);
+      dbQueries.getAllPuzzles.mockResolvedValue(mockPuzzles);
+      dbQueries.getAllElements.mockResolvedValue(mockElements);
+      dbQueries.saveCachedJourney.mockResolvedValue(undefined);
     });
 
-    afterEach(() => {
-      computeSegmentsSpy.mockRestore();
-      detectGapsSpy.mockRestore();
+    it('should return null if character is not found', async () => {
+        dbQueries.getCharacterById.mockResolvedValue(null);
+        const journey = await journeyEngine.buildCharacterJourney('nonexistent-char');
+        expect(journey).toBeNull();
     });
 
-    it('should call computeJourneySegments and detectGaps', async () => {
-      await journeyEngine.buildCharacterJourney(characterId, mockCharacterData, mockEvents, mockPuzzles, mockElements);
-      expect(computeSegmentsSpy).toHaveBeenCalledWith(mockCharacterData, mockEvents, mockPuzzles, mockElements);
-      expect(detectGapsSpy).toHaveBeenCalled(); // Called with segments from computeJourneySegments and characterId
-    });
+    it('should return a fully computed journey object if character is found', async () => {
+      const journey = await journeyEngine.buildCharacterJourney(characterId);
 
-    it('should return a journey object with character_id, character_info, segments, and gaps', async () => {
-      // Let the original methods run to get their output structure
-      computeSegmentsSpy.mockRestore(); // Use original
-      detectGapsSpy.mockRestore(); // Use original
-
-      // Re-spy without mocking implementation to check call but get real results for structure
-      computeSegmentsSpy = jest.spyOn(journeyEngine, 'computeJourneySegments');
-      detectGapsSpy = jest.spyOn(journeyEngine, 'detectGaps');
-
-
-      const journey = await journeyEngine.buildCharacterJourney(characterId, mockCharacterData, mockEvents, mockPuzzles, mockElements);
-
-      expect(journey).toHaveProperty('character_id', characterId);
-      expect(journey).toHaveProperty('character_info', mockCharacterData);
-      expect(journey).toHaveProperty('segments');
+      expect(journey).not.toBeNull();
+      expect(journey.character_id).toBe(characterId);
+      expect(journey.character_info).toEqual(mockCharacterData);
       expect(Array.isArray(journey.segments)).toBe(true);
-      expect(journey).toHaveProperty('gaps');
       expect(Array.isArray(journey.gaps)).toBe(true);
 
-      // Ensure the spies were still called
-      expect(computeSegmentsSpy).toHaveBeenCalled();
-      expect(detectGapsSpy).toHaveBeenCalled();
+      // Check if data was propagated correctly
+      const activitySegment = journey.segments.find(s => s.start_minute === 5);
+      expect(activitySegment.activities).toEqual(expect.arrayContaining([
+        expect.stringContaining('Engaged with puzzle: p1')
+      ]));
     });
 
-    it('should correctly pass data through to segments and gaps', async () => {
-      // Mock return values for more controlled testing of buildCharacterJourney itself
-      const expectedSegments = [{ start_minute: 0, end_minute: 5, activities: ['Segment Activity'] }];
-      const expectedGaps = [{ start_minute: 10, end_minute: 15, severity: 'low' }];
-      computeSegmentsSpy.mockResolvedValue(expectedSegments);
-      detectGapsSpy.mockResolvedValue(expectedGaps);
+    it('should call to save the computed journey to the cache', async () => {
+        await journeyEngine.buildCharacterJourney(characterId);
+        expect(dbQueries.saveCachedJourney).toHaveBeenCalledTimes(1);
+        expect(dbQueries.saveCachedJourney).toHaveBeenCalledWith(characterId, expect.any(Object));
+    });
 
-      const journey = await journeyEngine.buildCharacterJourney(characterId, mockCharacterData, mockEvents, mockPuzzles, mockElements);
+    it('should return a valid cached journey if one exists', async () => {
+        const mockCachedJourney = {
+            character_id: characterId,
+            segments: [{ "mocked": true }],
+            gaps: [{ "mocked_gap": true }],
+            cached_at: new Date().toISOString(),
+        };
+        dbQueries.getCachedJourney.mockResolvedValue(mockCachedJourney);
+        dbQueries.isValidJourneyCache.mockReturnValue(true);
 
-      expect(journey.segments).toEqual(expectedSegments);
-      expect(journey.gaps).toEqual(expectedGaps);
-      expect(detectGapsSpy).toHaveBeenCalledWith(expectedSegments, characterId);
+        const journey = await journeyEngine.buildCharacterJourney(characterId);
+
+        expect(dbQueries.getAllEvents).not.toHaveBeenCalled();
+        expect(dbQueries.saveCachedJourney).not.toHaveBeenCalled();
+        expect(journey.segments[0].mocked).toBe(true);
+        expect(journey.character_info).toEqual(mockCharacterData); // Ensure character info is still attached
+    });
+
+    it('should compute journey even if character data is passed for testing', async () => {
+        const journey = await journeyEngine.buildCharacterJourney(characterId, {
+            eventsData: mockEvents,
+            puzzlesData: mockPuzzles,
+            elementsData: mockElements
+        });
+
+        // Should not use cache
+        expect(dbQueries.getCachedJourney).not.toHaveBeenCalled();
+        // Should not save to cache
+        expect(dbQueries.saveCachedJourney).not.toHaveBeenCalled();
+
+        expect(journey).not.toBeNull();
+        expect(journey.character_id).toBe(characterId);
     });
   });
 
   describe('Stubbed Methods', () => {
-    it('suggestGapSolutions should return an empty array (placeholder)', async () => {
-      const result = await journeyEngine.suggestGapSolutions({}, [], []);
-      expect(result).toEqual([]);
+    it('suggestGapSolutions should return suggestions based on severity', async () => {
+      const lowGap = { severity: 'low', start_minute: 0, end_minute: 5 };
+      const mediumGap = { severity: 'medium', start_minute: 0, end_minute: 10 };
+      const highGap = { severity: 'high', start_minute: 0, end_minute: 15 };
+
+      const lowSuggestions = await journeyEngine.suggestGapSolutions(lowGap, [], []);
+      expect(lowSuggestions.length).toBeGreaterThan(0);
+      expect(lowSuggestions[0].type).toBe('discovery');
+
+
+      const mediumSuggestions = await journeyEngine.suggestGapSolutions(mediumGap, [], []);
+      expect(mediumSuggestions.length).toBeGreaterThan(0);
+      expect(mediumSuggestions[0].type).toBe('element');
+
+      const highSuggestions = await journeyEngine.suggestGapSolutions(highGap, [], []);
+      expect(highSuggestions.length).toBeGreaterThan(0);
+      expect(highSuggestions[0].type).toBe('activity');
     });
 
     it('getInteractionWindows should return an empty array (placeholder)', async () => {

@@ -1,284 +1,254 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Divider, Alert, IconButton } from '@mui/material';
-import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, CenterFocusStrong as CenterFocusIcon } from '@mui/icons-material';
-import useJourneyStore from '../../stores/journeyStore'; // Adjusted path
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Paper, CircularProgress, Typography, Slider, IconButton, Tooltip, Alert, Divider } from '@mui/material';
+import useJourneyStore from '../../stores/journeyStore';
 import ActivityBlock from './ActivityBlock';
 import GapIndicator from './GapIndicator';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import { useTheme } from '@mui/material/styles';
 
-const GAME_DURATION_MINUTES = 90;
-const INTERVAL_MINUTES = 5;
+const TimelineRuler = ({ duration, zoom }) => {
+  const theme = useTheme();
+  const markers = [];
+  const interval = zoom < 1.5 ? 15 : (zoom < 3 ? 5 : 1);
 
-// TimelineControls Component
-const TimelineControls = ({ setZoom, setPan }) => {
-  return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
-      <IconButton onClick={() => setZoom(prevZoom => Math.min(prevZoom * 1.2, 5))} aria-label="zoom in">
-        <ZoomInIcon />
-      </IconButton>
-      <IconButton onClick={() => setZoom(prevZoom => Math.max(prevZoom / 1.2, 0.5))} aria-label="zoom out">
-        <ZoomOutIcon />
-      </IconButton>
-      <IconButton onClick={() => { setZoom(1); setPan(0); }} aria-label="reset view">
-        <CenterFocusIcon />
-      </IconButton>
-    </Box>
-  );
+  for (let minute = 0; minute <= duration; minute += interval) {
+    markers.push(
+      <Box
+        key={minute}
+        sx={{
+          position: 'absolute',
+          left: `${(minute / duration) * 100}%`,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          pr: '1px', 
+        }}
+      >
+        <Typography variant="caption" sx={{ userSelect: 'none', color: theme.palette.text.secondary }}>
+          {minute}'
+        </Typography>
+        <Box sx={{
+          width: '1px',
+          flexGrow: 1,
+          bgcolor: minute % 15 === 0 ? theme.palette.divider : theme.palette.action.hover,
+        }} />
+      </Box>
+    );
+  }
+  return <Box sx={{ position: 'relative', height: '30px', mb: 2 }}>{markers}</Box>;
 };
 
-const TimelineView = () => {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState(0); // Horizontal offset
-  const paperRef = useRef(null); // Ref for the Paper component
-  const zoomableBoxRef = useRef(null); // Ref for the zoomable content Box
+function TimelineView({ characterId }) {
+  const theme = useTheme();
+
+  // State for zoom and pan
+  const [zoom, setZoom] = useState(1); // 1 = 100%
+  const [pan, setPan] = useState(0); // 0 to 100
   const [isPanning, setIsPanning] = useState(false);
-  const lastPanX = useRef(0);
+  const [panStart, setPanStart] = useState(0);
+  const timelineContainerRef = useRef(null);
 
-  const activeCharacterId = useJourneyStore(state => state.activeCharacterId);
-  const journeyData = useJourneyStore(state => state.journeyData);
-  const gapsData = useJourneyStore(state => state.gaps);
-  const loadingJourneyCharacterId = useJourneyStore(state => state.loadingJourneyCharacterId);
-  const error = useJourneyStore(state => state.error);
-  const loadJourney = useJourneyStore(state => state.loadJourney);
-  const selectedTimeRange = useJourneyStore(state => state.selectedTimeRange); // Added
-
-  const activeJourney = activeCharacterId ? journeyData.get(activeCharacterId) : null;
-  const activeGaps = activeCharacterId ? gapsData.get(activeCharacterId) || [] : [];
-
+  // Get relevant data and actions from the store
+  const { 
+    journeyData, 
+    gaps, 
+    loadingJourneyCharacterId, 
+    error, 
+    loadJourney,
+    clearJourneyData,
+  } = useJourneyStore(state => ({
+    journeyData: state.journeyData,
+    gaps: state.gaps,
+    loadingJourneyCharacterId: state.loadingJourneyCharacterId,
+    error: state.error,
+    loadJourney: state.loadJourney,
+    clearJourneyData: state.clearJourneyData,
+  }));
+  
+  // Derived state
+  const isLoading = loadingJourneyCharacterId === characterId;
+  const journey = journeyData.get(characterId);
+  const journeyGaps = gaps.get(characterId) || [];
+  
+  // Effect to load journey data when the characterId prop changes
   useEffect(() => {
-    if (activeCharacterId && !activeJourney && loadingJourneyCharacterId !== activeCharacterId) {
-      loadJourney(activeCharacterId);
+    const isLoaded = journeyData.has(characterId);
+    const isLoading = loadingJourneyCharacterId === characterId;
+
+    if (characterId && !isLoaded && !isLoading) {
+      loadJourney(characterId);
     }
-  }, [activeCharacterId, activeJourney, loadingJourneyCharacterId, loadJourney]);
-
-  // Effect for Ctrl+Scroll zoom
-  useEffect(() => {
-    const timelinePaper = paperRef.current;
-    if (!timelinePaper) return;
-
-    const handleWheel = (event) => {
-      if (event.ctrlKey) {
-        event.preventDefault();
-        const zoomFactor = 1.1;
-        if (event.deltaY < 0) { // Zoom in
-          setZoom(prevZoom => Math.min(prevZoom * zoomFactor, 5));
-        } else { // Zoom out
-          setZoom(prevZoom => Math.max(prevZoom / zoomFactor, 0.5));
-        }
-      }
-    };
-
-    timelinePaper.addEventListener('wheel', handleWheel, { passive: false });
-
+    
+    // Cleanup function to clear data for this character when component unmounts or ID changes
     return () => {
-      timelinePaper.removeEventListener('wheel', handleWheel);
-    };
-  }, [setZoom]);
-
-  // Effect for handling panning mouse events globally
-  useEffect(() => {
-    const zoomableElement = zoomableBoxRef.current;
-
-    const handleMouseMoveGlobal = (event) => {
-      if (!isPanning) return;
-      const deltaX = event.clientX - lastPanX.current;
-      setPan(prevPan => prevPan + deltaX);
-      lastPanX.current = event.clientX;
-    };
-
-    const handleMouseUpGlobal = () => {
-      if (!isPanning) return;
-      setIsPanning(false);
-      if (zoomableElement) {
-        zoomableElement.style.cursor = 'grab';
+      if (characterId) {
+        // Optional: decide if you want to clear data on unmount.
+        // This could be useful if you want fresh data every time,
+        // but can be inefficient if the user toggles views frequently.
+        // clearJourneyData(characterId);
       }
-      document.body.style.userSelect = ''; // Re-enable text selection
     };
+  }, [characterId, journeyData, loadingJourneyCharacterId, loadJourney]);
 
+  // Zoom and Pan handlers
+  const handleZoom = (newZoom) => {
+    const clampedZoom = Math.max(1, Math.min(newZoom, 5));
+    setZoom(clampedZoom);
+  };
+  
+  const handlePan = (event) => {
+    if (isPanning && timelineContainerRef.current) {
+      const delta = event.clientX - panStart;
+      const newPan = pan + (delta / timelineContainerRef.current.clientWidth) * 100 * zoom;
+      setPan(Math.max(0, Math.min(newPan, 100 * (zoom - 1))));
+      setPanStart(event.clientX);
+    }
+  };
+
+  const startPanning = (event) => {
+    if (zoom > 1) {
+      setIsPanning(true);
+      setPanStart(event.clientX);
+      timelineContainerRef.current.style.cursor = 'grabbing';
+    }
+  };
+  
+  const stopPanning = () => {
     if (isPanning) {
-      document.addEventListener('mousemove', handleMouseMoveGlobal);
-      document.addEventListener('mouseup', handleMouseUpGlobal);
-      document.body.style.userSelect = 'none'; // Disable text selection during pan
-      if (zoomableElement) {
-        zoomableElement.style.cursor = 'grabbing';
-      }
-    } else {
-      if (zoomableElement) {
-        zoomableElement.style.cursor = 'grab';
+      setIsPanning(false);
+      if (timelineContainerRef.current) {
+          timelineContainerRef.current.style.cursor = 'grab';
       }
     }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMoveGlobal);
-      document.removeEventListener('mouseup', handleMouseUpGlobal);
-      document.body.style.userSelect = ''; // Ensure userSelect is reset
-      if (zoomableElement) {
-        zoomableElement.style.cursor = 'grab'; // Reset cursor on cleanup
-      }
-    };
-  }, [isPanning, setPan]);
-
-
+  };
+  
+  // Effect for mouse events for panning
   useEffect(() => {
-    // For testing purposes, let's set an active character if none is set.
-    // In a real app, this would be set by user interaction.
-    // if (!activeCharacterId) {
-    //   setActiveCharacterId('char_vivian_darkwood'); // Example character ID
-    // }
-
-    if (activeCharacterId && !activeJourney && loadingJourneyCharacterId !== activeCharacterId) {
-      loadJourney(activeCharacterId);
+    const container = timelineContainerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handlePan);
+      container.addEventListener('mouseup', stopPanning);
+      container.addEventListener('mouseleave', stopPanning);
+      return () => {
+        container.removeEventListener('mousemove', handlePan);
+        container.removeEventListener('mouseup', stopPanning);
+        container.removeEventListener('mouseleave', stopPanning);
+      };
     }
-  }, [activeCharacterId, activeJourney, loadingJourneyCharacterId, loadJourney]);
+  }, [isPanning, pan, panStart, zoom]);
 
-  if (!activeCharacterId) {
+  const resetView = () => {
+    setZoom(1);
+    setPan(0);
+  };
+  
+  if (isLoading) {
     return (
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6">Select a Character</Typography>
-        <Typography>Please select a character to view their journey timeline.</Typography>
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: '100%' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading Journey for {characterId}...</Typography>
+      </Box>
+    );
+  }
+  
+  if (error) {
+    return (
+        <Alert severity="error" sx={{m: 2}}>
+            Failed to load journey: {error}
+        </Alert>
     );
   }
 
-  if (loadingJourneyCharacterId === activeCharacterId) {
+  if (!journey) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Loading journey for {activeCharacterId}...</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: '100%' }}>
+        <Typography>No journey data available for this character.</Typography>
       </Box>
     );
   }
 
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        <Typography>Error loading journey: {error}</Typography>
-      </Alert>
-    );
-  }
-
-  if (!activeJourney) {
-    return (
-      <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-        <Typography>No journey data available for {activeCharacterId}.</Typography>
-        {/* Optionally, add a button to try loading again */}
-      </Paper>
-    );
-  }
-
-  const timeIntervals = [];
-  for (let i = 0; i < GAME_DURATION_MINUTES; i += INTERVAL_MINUTES) {
-    timeIntervals.push({ start: i, end: i + INTERVAL_MINUTES });
-  }
+  const { segments } = journey;
 
   return (
-    <Paper ref={paperRef} elevation={2} sx={{ p: 2, overflow: 'hidden' /* Prevent Paper itself from scrolling due to zoom */ }}>
-      <TimelineControls setZoom={setZoom} setPan={setPan} />
-      <Typography variant="h5" gutterBottom>
-        Timeline for {activeJourney.character_info?.name || activeCharacterId}
-      </Typography>
-      <Box sx={{ overflowX: 'auto' /* Enable horizontal scrolling for the content */ }}>
+    <Paper 
+      ref={timelineContainerRef}
+      onMouseDown={startPanning}
+      sx={{ 
+        p: 3, 
+        height: 'calc(100vh - 150px)', 
+        overflow: 'hidden',
+        position: 'relative',
+        userSelect: 'none',
+        cursor: zoom > 1 ? 'grab' : 'default'
+      }}
+      elevation={2}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="h5" component="h2">
+              {journey.character_info?.name || 'Player Journey'}
+          </Typography>
+          <Box>
+            <Tooltip title="Zoom In">
+              <IconButton onClick={() => handleZoom(zoom * 1.2)}><ZoomInIcon /></IconButton>
+            </Tooltip>
+            <Tooltip title="Zoom Out">
+              <IconButton onClick={() => handleZoom(zoom / 1.2)}><ZoomOutIcon /></IconButton>
+            </Tooltip>
+            <Tooltip title="Reset View">
+              <IconButton onClick={resetView}><CenterFocusStrongIcon /></IconButton>
+            </Tooltip>
+          </Box>
+      </Box>
+      <Divider sx={{mb: 2}} />
+      <Box sx={{ height: 'calc(100% - 80px)', overflowX: 'auto', overflowY: 'hidden' }}>
         <Box
-          ref={zoomableBoxRef}
-          onMouseDown={(event) => {
-            // Only pan with left click; and not if clicking on a button or interactive element within
-            if (event.button !== 0) return;
-            // Example: prevent starting pan if clicking on an interactive child (e.g. an action button on an activity)
-            // if (event.target.closest('button')) return;
+            sx={{
+              width: `${zoom * 100}%`,
+              height: '100%',
+              position: 'relative',
+              transform: `translateX(-${pan / zoom}%)`,
+              transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+            }}
+          >
+          <TimelineRuler duration={90} zoom={zoom} />
+          <Box sx={{ position: 'relative', height: 'calc(100% - 50px)' }}>
+            {/* Render Gaps */}
+            {journeyGaps.map((gap) => (
+              <GapIndicator key={gap.id} gap={gap} duration={90} />
+            ))}
+            
+            {/* Render Segments and Activities */}
+            {segments.map((segment) => {
+              const activities = [
+                ...(segment.activities || []),
+                ...(segment.interactions || []),
+                ...(segment.discoveries || []),
+              ];
 
-            setIsPanning(true);
-            lastPanX.current = event.clientX;
-            // Cursor style is handled by the useEffect watching isPanning
-          }}
-          sx={{
-            transform: `translateX(${pan}px) scaleX(${zoom})`,
-            transformOrigin: 'left top',
-            width: '100%',
-            cursor: 'grab', // Initial cursor
-            // transition: 'transform 0.05s ease-out', // Can make pan feel laggy, use with caution
-          }}
-        >
-          <List dense sx={{
-            // If content inside ListItem needs to maintain aspect ratio,
-            // you might apply inverse scale to children, but for text/blocks, stretching is often fine.
-            // display: 'table', // May help with width calculations if using percentage widths inside
-            // tableLayout: 'fixed', // If using table display
-          }}>
-            {timeIntervals.map((interval, index) => {
-              // Initial filtering by the 5-minute interval block
-          let segmentsInInterval = activeJourney.segments?.filter(
-            segment => segment.start_minute >= interval.start && segment.start_minute < interval.end
-          ) || [];
-
-          let gapsInInterval = activeGaps.filter(
-            gap => Math.max(gap.start_minute, interval.start) < Math.min(gap.end_minute, interval.end)
-          );
-
-          // Further filter by selectedTimeRange from the store
-          segmentsInInterval = segmentsInInterval.filter(
-            segment => segment.start_minute >= selectedTimeRange[0] && segment.start_minute < selectedTimeRange[1]
-          );
-
-          gapsInInterval = gapsInInterval.filter(
-            gap => Math.max(gap.start_minute, selectedTimeRange[0]) < Math.min(gap.end_minute, selectedTimeRange[1])
-          );
-
-          // If after global filtering, this interval is entirely outside the selectedTimeRange and has no items,
-          // we could potentially skip rendering it, or render it differently.
-          // For now, just filter contents. The interval itself will still show.
-          // We only render the list item if it's within the broad selectedTimeRange or to show empty state for it.
-          // This check ensures we don't render time intervals completely outside the selected range,
-          // unless those intervals are the ones that *would* contain items if not for the global filter.
-          // A simpler approach is to always render the interval row and let the filtering handle content.
-          // Let's stick to filtering content as requested first.
-
-          return (
-            <React.Fragment key={`interval-${interval.start}`}>
-              <ListItem sx={{
-                backgroundColor: index % 2 === 0 ? 'action.hover' : 'background.paper',
-                py: 1,
-                borderBottom: '1px solid #eee',
-                display: 'flex',
-                flexDirection: 'row', // Changed to row
-                alignItems: 'flex-start' // Align items to the top
-              }}>
-                <ListItemText
-                  primary={`${interval.start}-${interval.end} min`}
-                  primaryTypographyProps={{ fontWeight: 'bold', width: '100px', flexShrink: 0, fontSize: '0.9rem' }} // Fixed width for time
-                />
-                <Box sx={{ flexGrow: 1, ml: 2 }}> {/* Box for activities and gaps */}
-                  {segmentsInInterval.length === 0 && gapsInInterval.length === 0 && (
-                     // Check if the interval itself is outside the selected range to hide "No recorded activity"
-                    (interval.end > selectedTimeRange[0] && interval.start < selectedTimeRange[1]) ?
-                      <Typography variant="caption" color="textSecondary">No recorded activity or gaps in selected range.</Typography>
-                      : <Typography variant="caption" color="textSecondary">-</Typography> // Interval outside selection
-                  )}
-                  {segmentsInInterval.map(segment => (
-                    <React.Fragment key={`segment-${segment.id}`}>
-                      {segment.activities?.map((activity, actIndex) => (
-                        <ActivityBlock key={`act-${segment.id}-${actIndex}`} activity={activity} type="activity" />
-                      ))}
-                      {segment.interactions?.map((interaction, intIndex) => (
-                        <ActivityBlock key={`int-${segment.id}-${intIndex}`} activity={interaction} type="interaction" />
-                      ))}
-                      {segment.discoveries?.map((discovery, discIndex) => (
-                        <ActivityBlock key={`disc-${segment.id}-${discIndex}`} activity={discovery} type="discovery" />
-                      ))}
-                    </React.Fragment>
-                  ))}
-                  {gapsInInterval.map(gap => (
-                    <GapIndicator key={`gap-${gap.id}`} gap={gap} />
+              return (
+                <Box key={`segment-${segment.start_minute}`} sx={{
+                  position: 'absolute',
+                  left: `${(segment.start_minute / 90) * 100}%`,
+                  width: `${((segment.end_minute - segment.start_minute) / 90) * 100}%`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                }}>
+                  {activities.map((activity, activityIndex) => (
+                    <ActivityBlock key={`${activity}-${activityIndex}`} activity={{ description: activity }} />
                   ))}
                 </Box>
-              </ListItem>
-              {index < timeIntervals.length -1 && <Divider component="li" />}
-            </React.Fragment>
-          );
-        })}
-          </List>
+              );
+            })}
+          </Box>
         </Box>
       </Box>
     </Paper>
   );
-};
+}
 
 export default TimelineView;

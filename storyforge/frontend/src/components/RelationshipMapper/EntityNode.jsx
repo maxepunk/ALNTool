@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { Handle, Position, useViewport } from '@xyflow/react'; // Added useViewport
-import { Paper, Typography, Box, Chip, Tooltip, Divider } from '@mui/material';
+import { Paper, Typography, Box, Chip, Tooltip, Divider, useTheme } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import EventIcon from '@mui/icons-material/Event';
@@ -311,6 +311,7 @@ const NORMAL_LABEL_MIN_ZOOM = 1.0; // Default truncation applies at this zoom or
 // Main Node Component
 const EntityNode = ({ data, isConnectable = true, selected = false, centralEntityType, isFullScreen = false }) => { 
   const { zoom } = useViewport();
+  const theme = useTheme();
   const { id, label, type, isCenter = false, timelineEvents, properties = {}, isActualParentGroup = false } = data;
   
   // Use the main 'type' for presentation, but 'properties.type' if available for more specific data.

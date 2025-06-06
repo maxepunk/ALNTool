@@ -1,114 +1,33 @@
-# Quick Status Check
-## Where Are You Right Now?
+# Quick Status & Handoff Notes
 
-**Last Updated**: 2024-07-28
-**Current Task**: P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
-**File You Should Be In**: Review Player Journey Timeline in the application. Key file: `storyforge/frontend/src/components/PlayerJourney/TimelineView.jsx`
-**Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
+**Last Updated**: [Current Date]
+**Focus**: **Technical Debt Repayment & Architectural Solidification**
 
----
+## 🚀 Key Accomplishments
 
-## 🎯 Your Current Focus
+- **Comprehensive Technical Debt Review Completed**: A systematic review of the codebase has been conducted, identifying critical, medium, and low-risk technical debt. This provides a clear, actionable roadmap for strengthening our foundation before proceeding with new features.
+- **Architectural Integrity Achieved**: The application's core data pipeline has been refactored into a robust, transactional, and observable system. All data flows from Notion to a single-source-of-truth SQLite database, serving all API endpoints.
+- **Player Journey Re-envisioned as a Narrative Graph**: The journey is now correctly modeled as a narrative dependency graph, visualizing the causal "blow-by-blow" experience for each character.
+- **New Journey Graph View Implemented**: The backend `journeyEngine` generates graph data, and the frontend's `JourneyGraphView` renders it, providing an architecturally consistent UI.
 
-### What You're Building
-Review the completed Player Journey Timeline (P2.M1). Verify visual accuracy, interactivity (zoom, pan, selection), gap highlighting (including hover previews and animations), and overall functionality as per the P2.M1.X review goals in DEVELOPMENT_PLAYBOOK.md.
+## 🎯 Current Status
 
-### Acceptance Criteria Checklist (from DEVELOPMENT_PLAYBOOK.md for P2.M1.4)
-- [x] Visual gap indicators with severity colors (in GapIndicator.jsx)
-- [x] Click gap to select in store (in GapIndicator.jsx)
-- [x] Hover to preview gap details (detailed pop-up)
-- [x] Animated attention indicators for gaps
+- **System Stability**: HIGH. The application is stable.
+- **Development Status**: **PAUSED**. All new feature development is on hold. The current and sole priority is to address the technical debt identified in the recent review.
+- **Next Steps**: Execute the three-phase technical debt repayment plan outlined in the `DEVELOPMENT_PLAYBOOK.md`.
 
-### Code You Need
-<!--
-```javascript
-// In storyforge/frontend/src/components/PlayerJourney/TimelineView.jsx (Conceptual)
-// {journey.gaps.map(gap => (
-//   <GapIndicator
-//     key={gap.id}
-//     gap={gap}
-//     onSelect={() => journeyStore.selectGap(gap)}
-//     // TODO: Add hover handlers for detailed preview
-//     // TODO: Add animation based on gap properties
-//   />
-// ))}
+## 🧑‍💻 Next Steps & Priorities
 
-// In storyforge/frontend/src/components/PlayerJourney/GapIndicator.jsx (Conceptual)
-// function GapIndicator({ gap, onSelect }) {
-//   // ... existing logic for color based on severity ...
-//   // const [isHovering, setIsHovering] = useState(false);
-//   return (
-//     <Box onClick={onSelect}
-//       // onMouseEnter={() => setIsHovering(true)}
-//       // onMouseLeave={() => setIsHovering(false)}
-//       // sx={{ animation: gap.isNew ? 'pulse 2s infinite' : 'none' }}
-//     >
-//       {/* {isHovering && <GapDetailPopup gap={gap} />} */}
-//     </Box>
-//   );
-// }
-```
--->
+Our immediate roadmap is the sequential execution of the Technical Debt Repayment Plan.
 
----
+1.  **🔴 Priority 1: Critical Risk Cleanup (IMMEDIATE FOCUS)**
+    -   **Action**: Eradicate all "zombie code"—obsolete functions, queries, and database tables from the legacy timeline/gap model.
+    -   **Goal**: Eliminate the risk of developers building on a rotten foundation. Make the codebase accurately reflect the new architecture.
 
-## ✅ What's Done
+2.  **🟡 Priority 2: Architectural & Performance Polish**
+    -   **Action**: Refactor the API response to be consistent, re-implement performance caching, and break down monolithic services.
+    -   **Goal**: Improve maintainability, performance, and developer experience.
 
-### Phase 1: Foundation ✅ (Complete)
-- ✅ P1.M1: SQLite Database Layer (P1.M1.1 Dependencies ✅, P1.M1.2 Schema ✅, P1.M1.3 Robust Migrations ✅)
-- ✅ P1.M2: Journey Engine (P1.M2.1 Core Structure ✅, P1.M2.2 Segment Computation ✅, P1.M2.3 Gap Detection ✅, P1.M2.4 Caching ✅)
-- ✅ P1.M3: API Endpoints (P1.M3.1 Journey Routes ✅, P1.M3.2 POST /resolve ✅)
-- ✅ P1.M4: Frontend State Foundation
-
-### Phase 2: Core Views 🚧 (Partially Started)
-- ✅ P2.M1.1: Basic Timeline Structure
-- ✅ P2.M1.2: Segment Visualization (with notes on implementation differences)
-- ✅ P2.M1.3: Timeline Interactivity
-- ✅ P2.M1.4: Gap Highlighting & Selection
-*(Work on P2.M1.4 may proceed but Phase 1 foundational tasks are primary focus.)*
-
----
-
-## 📍 Navigation
-
-**Detailed Implementation** → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#p2m1-player-journey-timeline-component-%F0%9F%9B%A7%EF%B8%8F)
-**Stuck?** → [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)  
-**UI Specs** → [PRD Section relevant to Gap Resolution API if any, else general Backend sections](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)
-
----
-
-## 🚀 Quick Commands
-
-```bash
-# Test your current work (example for journey engine)
-cd storyforge/backend
-npm test -- journeyEngine
-
-# Run the app
-# (from /app/storyforge/backend)
-# npm run dev
-# (from /app/storyforge/frontend)
-# npm run dev
-
-# Commit when done
-git add .
-git commit -m "Begin P1.M2.4 - Journey Caching: Setup and initial logic"
-```
-
----
-
-## 🔄 When Task Is Complete
-
-1. Check all acceptance criteria ✓
-2. Run tests
-3. Update `DEVELOPMENT_PLAYBOOK.md` & this file.
-4. Commit with proper message.
-5. Move to next task as per playbook.
-
----
-
-## 📊 Progress Bar
-Phase 1: ✅ Complete (All Phase 1 Milestones: P1.M1, P1.M2, P1.M3, P1.M4 are complete. ~100% of Phase 1 milestones)
-Phase 2: 🚧 In Progress (P2.M1 is ✅ complete. P2.M2-M4 pending)
-Phase 3: 📅 Planned (0% complete)
-Overall: ~45% (5/11 total P1-P3 milestones fully complete: P1.M1, P1.M2, P1.M3, P1.M4, P2.M1)
+3.  **🟢 Priority 3: Documentation & Minor Cleanup**
+    -   **Action**: Update all project documentation to align with the narrative graph model and improve logging consistency.
+    -   **Goal**: Ensure our documentation is a reliable source of truth.

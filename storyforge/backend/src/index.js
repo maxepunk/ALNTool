@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -8,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 // Import routes
 const notionRoutes = require('./routes/notion');
 const journeyRoutes = require('./routes/journeyRoutes');
+const syncRoutes = require('./routes/syncRoutes');
 
 // Import database migration function
 const { initializeDatabase } = require('./db/database');
@@ -22,18 +24,30 @@ app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Log HTTP requests
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+// Rate limiting - DISABLED FOR DEVELOPMENT to prevent 429 errors
+// TODO: Re-enable with appropriate limits for production
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many requests, please try again later.',
+    skip: (req) => {
+      // Skip rate limiting for health checks
+      return req.path === '/health';
+    }
+  });
+  app.use(limiter);
+  console.log('Rate limiting enabled for production');
+} else {
+  console.log('Rate limiting DISABLED for development');
+}
 
 // Routes
 app.use('/api', notionRoutes); // Existing Notion routes
 app.use('/api', journeyRoutes); // New Journey Engine routes (e.g. /api/journeys/:characterId)
+app.use('/api/sync', syncRoutes); // Data sync routes (e.g. /api/sync/data, /api/sync/status)
 
 // Health check endpoint
 app.get('/health', (req, res) => {

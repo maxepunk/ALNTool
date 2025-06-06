@@ -88,10 +88,10 @@ export default function useGraphTransform({
   memorySetFilter = "All",
 }) {
   const { nodes, edges, error } = useMemo(() => {
-    console.log('[useGraphTransform DEBUG] ALL parentId assignments ENABLED (Dagre rank error testing - default state).');
+    // console.log('[useGraphTransform DEBUG] ALL parentId assignments ENABLED (Dagre rank error testing - default state).');
     // ADDED FOR DEBUGGING: General layout calculation log
-    console.log(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
-    console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
+    // console.log(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
+    // console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
 
 
     // console.log('[useGraphTransform] Memo Start. Entity:', entityName, 'ID:', entityId, 'Depth:', depth); // Original log
@@ -168,12 +168,12 @@ export default function useGraphTransform({
       const finalLayoutOptions = { ...layoutOptions }; // Ensure we pass a consistent copy
 
       // ADDED FOR DEBUGGING: Log inputs to getDagreLayout
-      console.log(`[useGraphTransform DEBUG] BEFORE getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. finalNodesForLayout count: ${finalNodesForLayout?.length}.`);
+      // console.log(`[useGraphTransform DEBUG] BEFORE getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. finalNodesForLayout count: ${finalNodesForLayout?.length}.`);
       if (finalNodesForLayout && finalNodesForLayout.length > 0) {
         const sampleNode = finalNodesForLayout.find(n => n.id === entityId) || finalNodesForLayout[0];
-        console.log(`[useGraphTransform DEBUG] Sample node for Dagre (ID: ${sampleNode.id}, Name: ${sampleNode.data?.label}, parentId: ${sampleNode.data?.parentId})`);
+        // console.log(`[useGraphTransform DEBUG] Sample node for Dagre (ID: ${sampleNode.id}, Name: ${sampleNode.data?.label}, parentId: ${sampleNode.data?.parentId})`);
       }
-      console.log(`[useGraphTransform DEBUG] filteredEdges count: ${filteredEdges?.length}. finalLayoutOptions for Dagre:`, JSON.stringify(finalLayoutOptions));
+      // console.log(`[useGraphTransform DEBUG] filteredEdges count: ${filteredEdges?.length}. finalLayoutOptions for Dagre:`, JSON.stringify(finalLayoutOptions));
       // console.log('[useGraphTransform] Step 4: About to call getDagreLayout.'); // Original Log
       // console.log('[useGraphTransform] Nodes for Dagre:', finalNodesForLayout?.length, 'Edges for Dagre:', filteredEdges?.length); // Original Log
       // if (finalNodesForLayout && finalNodesForLayout.length > 0) { // Original Log
@@ -185,10 +185,10 @@ export default function useGraphTransform({
       ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
       
       // ADDED FOR DEBUGGING: Log outputs from getDagreLayout
-      console.log(`[useGraphTransform DEBUG] AFTER getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. layoutedNodes count: ${layoutedNodes?.length}.`);
+      // console.log(`[useGraphTransform DEBUG] AFTER getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. layoutedNodes count: ${layoutedNodes?.length}.`);
       if (layoutedNodes && layoutedNodes.length > 0) {
         const sampleLayoutedNode = layoutedNodes.find(n => n.id === entityId) || layoutedNodes[0];
-        console.log(`[useGraphTransform DEBUG] Sample layouted node (ID: ${sampleLayoutedNode.id}, Name: ${sampleLayoutedNode.data?.label}) position (x,y):`, sampleLayoutedNode.position?.x, sampleLayoutedNode.position?.y);
+        // console.log(`[useGraphTransform DEBUG] Sample layouted node (ID: ${sampleLayoutedNode.id}, Name: ${sampleLayoutedNode.data?.label}) position (x,y):`, sampleLayoutedNode.position?.x, sampleLayoutedNode.position?.y);
       }
       // console.log('[useGraphTransform] getDagreLayout call completed. Layouted nodes:', layoutedNodes?.length); // Original log
       
@@ -203,7 +203,7 @@ export default function useGraphTransform({
 
       return { nodes: finalReactFlowNodes, edges: layoutedEdges, error: null };
     } catch (err) {
-      console.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
+      // console.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
       return { nodes: [], edges: [], error: err };
     }
   }, [

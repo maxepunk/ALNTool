@@ -40,6 +40,7 @@ function connect(dbPathOverride) {
 
   db = new Database(pathToUse, { verbose: process.env.NODE_ENV !== 'test' ? console.log : undefined });
   db.exec('PRAGMA foreign_keys = ON;');
+
   return db;
 }
 

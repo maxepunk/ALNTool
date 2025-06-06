@@ -30,7 +30,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PageHeader from '../components/PageHeader';
 import RelationshipMapper from '../components/RelationshipMapper';
 import { api } from '../services/api';
-import useJourneyStore from '../../stores/journeyStore'; // Added
+import useJourneyStore from '../stores/journeyStore'; // Added
 import { Link as RouterLink } from 'react-router-dom';
 
 const DetailItem = ({ label, value, chipColor, chipIcon, fullWidth = false, children }) => (
@@ -114,13 +114,17 @@ function CharacterDetail() {
     { 
       enabled: !!id,
       keepPreviousData: true,
+      refetchOnWindowFocus: false,
     }
   );
   
   const { data: characterGraph, isLoading: isGraphLoading } = useQuery(
     ['characterGraph', id],
     () => api.getCharacterGraph(id, 2),
-    { enabled: !!id }
+    { 
+      enabled: !!id,
+      refetchOnWindowFocus: false,
+    }
   );
   
   const handleTabChange = (event, newValue) => setActiveTab(newValue);

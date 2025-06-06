@@ -72,19 +72,24 @@ const detectHierarchyCycles = (parentAssignments) => {
  * @returns {Object} Object containing positioned nodes and edges.
  */
 export const getDagreLayout = (nodes, edges, options = {}) => {
-  console.log('[DagreLayout] Applying hierarchical layout. Nodes:', nodes?.length || 0, 'Edges:', edges?.length || 0);
+  // console.log('[DagreLayout] Applying hierarchical layout. Nodes:', nodes?.length || 0, 'Edges:', edges?.length || 0);
   
   if (!nodes || nodes.length === 0) {
-    console.warn('[DagreLayout] No nodes provided. Returning empty layout.');
+    // console.warn('[DagreLayout] No nodes provided. Returning empty layout.');
     return { nodes: [], edges: [] };
   }
 
   let g; 
   let parentAssignmentsLog = []; // Define here to be accessible in catch block
+  let disableCompoundMode = false; // Flag to disable compound mode if issues detected
 
   try {
-    g = new dagre.graphlib.Graph({ compound: true, multigraph: true }); 
-    console.log('[DagreLayout] Initialized Dagre graph with compound: true, multigraph: true.');
+    // Initial check if we should disable compound mode due to parent-child issues
+    const hasParentChildRelationships = nodes.some(node => node?.data?.parentId);
+    let useCompound = hasParentChildRelationships; // Start with compound mode if hierarchies exist
+    
+    g = new dagre.graphlib.Graph({ compound: useCompound, multigraph: true }); 
+    // console.log(`[DagreLayout] Initially initialized Dagre graph with compound: ${useCompound}, multigraph: true.`);
 
     const defaultOptions = {
       rankdir: 'LR',
@@ -103,15 +108,15 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     const config = { ...defaultOptions, ...options };
 
     g.setGraph(config);
-    console.log('[DagreLayout] Graph options set:', JSON.stringify(g.graph()));
-    console.log('[DagreLayout DEBUG] Graph options MODIFIED for testing (rankdir: LR, adjusted spacing). New options:', JSON.stringify(g.graph()));
+    // console.log('[DagreLayout] Graph options set:', JSON.stringify(g.graph()));
+    // console.log('[DagreLayout DEBUG] Graph options MODIFIED for testing (rankdir: LR, adjusted spacing). New options:', JSON.stringify(g.graph()));
     g.setDefaultEdgeLabel(() => ({}));
 
     const dagreNodeIds = new Set(); 
-    console.log('[DagreLayout] Processing input nodes for Dagre graph...');
+    // console.log('[DagreLayout] Processing input nodes for Dagre graph...');
     nodes.forEach((node) => {
       if (!node || !node.id) {
-        console.warn('[DagreLayout] Invalid node object encountered during setNode:', node);
+        // console.warn('[DagreLayout] Invalid node object encountered during setNode:', node);
         return; 
       }
       const visualWidth = node.data?.isCenter ? config.centerNodeWidth : config.nodeWidth;
@@ -127,12 +132,17 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
       });
       dagreNodeIds.add(node.id); 
     });
-    console.log(`[DagreLayout] Added ${g.nodeCount()} nodes to Dagre graph. Node IDs:`, Array.from(dagreNodeIds));
+    // console.log(`[DagreLayout] Added ${g.nodeCount()} nodes to Dagre graph. Node IDs:`, Array.from(dagreNodeIds));
 
     
     // Populate parentAssignmentsLog first
     nodes.forEach((node) => {
       if (node && node.id && node.data && node.data.parentId) {
+        // Skip self-referencing nodes
+        if (node.id === node.data.parentId) {
+          // console.error(`[DagreLayout] Node ${node.id} has itself as parent! Skipping this parent assignment.`);
+          return;
+        }
         parentAssignmentsLog.push({ 
           child: node.id, 
           parent: node.data.parentId,
@@ -144,60 +154,89 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     });
 
     if (parentAssignmentsLog.length > 0) {
-        console.log('[DagreLayout] Parent assignment data collected (based on input node.data.parentId):', JSON.stringify(parentAssignmentsLog, null, 2));
+        // console.log('[DagreLayout] Parent assignment data collected (based on input node.data.parentId):', JSON.stringify(parentAssignmentsLog, null, 2));
         
-        // --- CYCLE DETECTION ---
-        console.log('[DagreLayout] Running cycle detection on parent assignments...');
-        const detectedCycles = detectHierarchyCycles(parentAssignmentsLog);
-        if (detectedCycles.length > 0) {
-            console.error(`[DagreLayout CRITICAL HIERARCHY ISSUE] ${detectedCycles.length} CYCLE(S) DETECTED IN PARENT-CHILD RELATIONSHIPS:`);
-            detectedCycles.forEach((cycle, index) => {
-                console.error(`  Cycle ${index + 1}: ${cycle.join(' -> ')}`);
-            });
-            console.error("[DagreLayout] These cycles are highly likely to cause the Dagre 'rank' error.");
-        } else {
-            console.log("[DagreLayout] No cycles detected in parent-child relationships.");
-        }
-        // --- END CYCLE DETECTION ---
+            // --- CYCLE DETECTION ---
+    // console.log('[DagreLayout] Running cycle detection on parent assignments...');
+    const detectedCycles = detectHierarchyCycles(parentAssignmentsLog);
+    if (detectedCycles.length > 0) {
+        // console.error(`[DagreLayout CRITICAL HIERARCHY ISSUE] ${detectedCycles.length} CYCLE(S) DETECTED IN PARENT-CHILD RELATIONSHIPS:`);
+        detectedCycles.forEach((cycle, index) => {
+            // console.error(`  Cycle ${index + 1}: ${cycle.join(' -> ')}`);
+        });
+        // console.error("[DagreLayout] These cycles are highly likely to cause the Dagre 'rank' error. DISABLING COMPOUND MODE AND RECREATING GRAPH.");
+        // Clear parent assignments and disable compound mode
+        parentAssignmentsLog = [];
+        disableCompoundMode = true;
+        
+        // Recreate graph without compound mode
+        g = new dagre.graphlib.Graph({ compound: false, multigraph: true });
+        g.setGraph(config);
+        g.setDefaultEdgeLabel(() => ({}));
+        
+        // Re-add all nodes without parent relationships
+        nodes.forEach((node) => {
+          if (!node || !node.id) return;
+          const visualWidth = node.data?.isCenter ? config.centerNodeWidth : config.nodeWidth;
+          const visualHeight = node.data?.isCenter ? config.centerNodeHeight : config.nodeHeight;
+          g.setNode(node.id, {
+            label: node.data?.label || node.id.substring(0,10),
+            width: visualWidth,
+            height: visualHeight,
+            visualWidth: visualWidth,
+            visualHeight: visualHeight,
+            originalNodeDataForDebug: { id: node.id, data: node.data }
+          });
+        });
+        // console.log('[DagreLayout] Recreated graph without compound mode due to cycles.');
     } else {
-        console.log('[DagreLayout] No parentId assignments found in input nodes to drive g.setParent calls.');
+        // console.log("[DagreLayout] No cycles detected in parent-child relationships.");
+    }
+    // --- END CYCLE DETECTION ---
+    } else {
+        // console.log('[DagreLayout] No parentId assignments found in input nodes to drive g.setParent calls.');
     }
 
-    console.log('[DagreLayout] Attempting to set parent relationships on Dagre graph instance...');
+    // console.log('[DagreLayout] Attempting to set parent relationships on Dagre graph instance...');
     // Iterate based on parentAssignmentsLog to ensure consistency with cycle detection input
+    // Skip if parentAssignmentsLog was cleared due to cycles or compound mode disabled
+    if (parentAssignmentsLog.length === 0 || disableCompoundMode) {
+        // console.log('[DagreLayout] Skipping parent assignments (empty parentAssignmentsLog or compound mode disabled).');
+    } else {
     parentAssignmentsLog.forEach((assignment) => {
         const { child: childId, parent: parentId, childExistsOnGraph, parentExistsOnGraph } = assignment;
         
         // Log detailed info for this specific assignment attempt
         const childNodeInput = nodes.find(n => n.id === childId);
         const parentNodeInput = nodes.find(n => n.id === parentId);
-        console.log(`[DagreLayout SetParent Attempt] Child ID: ${childId} (Exists on Graph: ${childExistsOnGraph}), Parent ID: ${parentId} (Exists on Graph: ${parentExistsOnGraph}), Child Node Input Data: ${JSON.stringify(childNodeInput?.data)}, Parent Node Input Data: ${JSON.stringify(parentNodeInput?.data)}`);
+        // console.log(`[DagreLayout SetParent Attempt] Child ID: ${childId} (Exists on Graph: ${childExistsOnGraph}), Parent ID: ${parentId} (Exists on Graph: ${parentExistsOnGraph}), Child Node Input Data: ${JSON.stringify(childNodeInput?.data)}, Parent Node Input Data: ${JSON.stringify(parentNodeInput?.data)}`);
                 
         if (childExistsOnGraph && parentExistsOnGraph) {
           if (childId === parentId) {
-            console.error(`[DagreLayout CRITICAL] Attempting to set node ${childId} as its own parent. Skipping setParent.`);
+            // console.error(`[DagreLayout CRITICAL] Attempting to set node ${childId} as its own parent. Skipping setParent.`);
           } else {
             try {
                 g.setParent(childId, parentId);
-                console.log(`[DagreLayout SetParent SUCCESS] Successfully set parent for ${childId} to ${parentId}`);
+                // console.log(`[DagreLayout SetParent SUCCESS] Successfully set parent for ${childId} to ${parentId}`);
             } catch (e) {
-                console.error(`[DagreLayout SetParent FAILED INDIVIDUAL CALL] Child ID: ${childId}, Parent ID: ${parentId}, Error: ${e.message}`, e);
+                // console.error(`[DagreLayout SetParent FAILED INDIVIDUAL CALL] Child ID: ${childId}, Parent ID: ${parentId}, Error: ${e.message}`, e);
             }
           }
         } else {
           // This logging is slightly different now as we rely on parentAssignmentsLog's existence checks primarily
           if (!parentExistsOnGraph) {
-            console.warn(`[DagreLayout] Parent node ${parentId} for child ${childId} was marked as NOT FOUND in Dagre graph during parentAssignmentsLog creation. Skipping setParent.`);
+            // console.warn(`[DagreLayout] Parent node ${parentId} for child ${childId} was marked as NOT FOUND in Dagre graph during parentAssignmentsLog creation. Skipping setParent.`);
           }
           if (!childExistsOnGraph) { // Should be rare if node was in original nodes array
-            console.warn(`[DagreLayout] Child node ${childId} (intended parent ${parentId}) was marked as NOT FOUND in Dagre graph during parentAssignmentsLog creation. Skipping setParent.`);
+            // console.warn(`[DagreLayout] Child node ${childId} (intended parent ${parentId}) was marked as NOT FOUND in Dagre graph during parentAssignmentsLog creation. Skipping setParent.`);
           }
         }
     });
+    } // Close the else block from the compound mode check
         
     const edgesForLayout = edges.filter(edge => {
       if (!edge || !edge.source || !edge.target) {
-        console.warn('[DagreLayout] Invalid edge object encountered:', edge);
+        // console.warn('[DagreLayout] Invalid edge object encountered:', edge);
         return false; 
       }
       const sourceExists = dagreNodeIds.has(edge.source);
@@ -206,9 +245,9 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     });
 
     if (edgesForLayout.length !== edges.length) {
-        console.warn(`[DagreLayout] Filtered out ${edges.length - edgesForLayout.length} edges due to missing source/target nodes.`);
+        // console.warn(`[DagreLayout] Filtered out ${edges.length - edgesForLayout.length} edges due to missing source/target nodes.`);
     }
-    console.log(`[DagreLayout] Number of valid edges for layout: ${edgesForLayout.length}`);
+    // console.log(`[DagreLayout] Number of valid edges for layout: ${edgesForLayout.length}`);
     
     edgesForLayout.forEach((edge) => {
       const edgeName = edge.id || `edge-${edge.source}-${edge.target}-${Math.random().toString(36).substring(2, 9)}`;
@@ -218,32 +257,32 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
         label: edge.data?.shortLabel || edge.label || '' 
       }, edgeName); 
     });
-    console.log(`[DagreLayout] Added ${g.edgeCount()} edges to Dagre graph.`);
+    // console.log(`[DagreLayout] Added ${g.edgeCount()} edges to Dagre graph.`);
 
-    console.log('[DagreLayout] Graph state BEFORE dagre.layout(g). Nodes:', JSON.stringify(g.nodes().map(id => g.node(id))), 'Edges:', JSON.stringify(g.edges().map(e => ({v: e.v, w: e.w, name: e.name, ...g.edge(e)}))));
+    // console.log('[DagreLayout] Graph state BEFORE dagre.layout(g). Nodes:', JSON.stringify(g.nodes().map(id => g.node(id))), 'Edges:', JSON.stringify(g.edges().map(e => ({v: e.v, w: e.w, name: e.name, ...g.edge(e)}))));
 
-    console.log('[DagreLayout] Running Dagre layout algorithm...');
+    // console.log('[DagreLayout] Running Dagre layout algorithm...');
     dagre.layout(g); 
-    console.log('[DagreLayout] Dagre layout algorithm complete.');
+    // console.log('[DagreLayout] Dagre layout algorithm complete.');
 
     g.nodes().forEach(nodeId => {
         const dagreInternalNode = g.node(nodeId);
         if (dagreInternalNode && (g.children(nodeId)?.length > 0 || dagreInternalNode._isCompound || typeof g.parent(nodeId) === 'string' )) { 
-            console.log(`[DagreLayout DEBUG Post-Layout] Node: ${nodeId}, X: ${dagreInternalNode.x?.toFixed(2)}, Y: ${dagreInternalNode.y?.toFixed(2)}, W: ${dagreInternalNode.width?.toFixed(2)}, H: ${dagreInternalNode.height?.toFixed(2)}, Parent: ${g.parent(nodeId) || 'none'}, Children: ${JSON.stringify(g.children(nodeId))}, IsCompound: ${dagreInternalNode._isCompound}`);
+            // console.log(`[DagreLayout DEBUG Post-Layout] Node: ${nodeId}, X: ${dagreInternalNode.x?.toFixed(2)}, Y: ${dagreInternalNode.y?.toFixed(2)}, W: ${dagreInternalNode.width?.toFixed(2)}, H: ${dagreInternalNode.height?.toFixed(2)}, Parent: ${g.parent(nodeId) || 'none'}, Children: ${JSON.stringify(g.children(nodeId))}, IsCompound: ${dagreInternalNode._isCompound}`);
         }
     });
 
     let fallbackIndex = 0;
     const layoutedNodes = nodes.map((originalInputNode) => {
       if (!originalInputNode || !originalInputNode.id) {
-        console.warn('[DagreLayout] Skipping invalid originalInputNode in final map stage.');
+        // console.warn('[DagreLayout] Skipping invalid originalInputNode in final map stage.');
         return null; 
       }
       const dagreNodeData = g.node(originalInputNode.id); 
 
       if (dagreNodeData && typeof dagreNodeData.x === 'number' && typeof dagreNodeData.y === 'number') {
         if (dagreNodeData.width === 0 || dagreNodeData.height === 0) {
-             console.warn(`[DagreLayout] Node ${originalInputNode.id} has zero width/height from Dagre:`, dagreNodeData);
+             // console.warn(`[DagreLayout] Node ${originalInputNode.id} has zero width/height from Dagre:`, dagreNodeData);
         }
         return {
           ...originalInputNode,
@@ -269,7 +308,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
           }
         };
       } else {
-        console.warn(`[DagreLayout FALLBACK APPLIED In-Try] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data missing or invalid:`, JSON.stringify(dagreNodeData));
+        // console.warn(`[DagreLayout FALLBACK APPLIED In-Try] Node ${originalInputNode.id} (label: ${originalInputNode.data?.label}) - Dagre data missing or invalid:`, JSON.stringify(dagreNodeData));
         fallbackIndex++;
         return { 
           ...originalInputNode, 
@@ -279,25 +318,25 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     }).filter(node => node !== null);
 
     if (fallbackIndex > 0) {
-        console.warn(`[DagreLayout] ${fallbackIndex} nodes used IN-TRY fallback positioning due to missing/invalid Dagre coordinates.`);
+        // console.warn(`[DagreLayout] ${fallbackIndex} nodes used IN-TRY fallback positioning due to missing/invalid Dagre coordinates.`);
     }
-    console.log('[DagreLayout] Node position mapping complete. Number of layoutedNodes:', layoutedNodes.length);
+    // console.log('[DagreLayout] Node position mapping complete. Number of layoutedNodes:', layoutedNodes.length);
     return { nodes: layoutedNodes, edges: edgesForLayout };
 
   } catch (error) {
-    console.error('[DagreLayout CRITICAL ERROR CAUGHT]', error, error.stack);
+    // console.error('[DagreLayout CRITICAL ERROR CAUGHT]', error, error.stack);
     if (g && typeof g.nodes === 'function') { 
         try {
-            console.error('[DagreLayout] Graph state AT TIME OF CRITICAL ERROR:');
-            console.error('[DagreLayout] Nodes:', JSON.stringify(g.nodes().map(id => g.node(id))));
-            console.error('[DagreLayout] Edges:', JSON.stringify(g.edges().map(e => ({v: e.v, w: e.w, name: e.name, ...g.edge(e)}))));
+            // console.error('[DagreLayout] Graph state AT TIME OF CRITICAL ERROR:');
+            // console.error('[DagreLayout] Nodes:', JSON.stringify(g.nodes().map(id => g.node(id))));
+            // console.error('[DagreLayout] Edges:', JSON.stringify(g.edges().map(e => ({v: e.v, w: e.w, name: e.name, ...g.edge(e)}))));
             // Log parentAssignmentsLog from the broader scope
-            console.error('[DagreLayout] Parent Assignments attempted (from input nodes leading up to error - as captured by parentAssignmentsLog variable):', JSON.stringify(parentAssignmentsLog, null, 2));
+            // console.error('[DagreLayout] Parent Assignments attempted (from input nodes leading up to error - as captured by parentAssignmentsLog variable):', JSON.stringify(parentAssignmentsLog, null, 2));
         } catch (loggingError) {
-            console.error('[DagreLayout] Error while logging graph state during critical error:', loggingError);
+            // console.error('[DagreLayout] Error while logging graph state during critical error:', loggingError);
         }
     } else {
-        console.error('[DagreLayout] Dagre graph object "g" was not initialized or available for full logging at time of critical error.');
+        // console.error('[DagreLayout] Dagre graph object "g" was not initialized or available for full logging at time of critical error.');
     }
     
     let catchFallbackIndex = 0;
@@ -312,7 +351,7 @@ export const getDagreLayout = (nodes, edges, options = {}) => {
     }).filter(Boolean);
     
     if(fallbackNodes.length > 0) {
-        console.warn(`[DagreLayout CATCH BLOCK FALLBACK] Generated ${fallbackNodes.length} fallback nodes.`);
+        // console.warn(`[DagreLayout CATCH BLOCK FALLBACK] Generated ${fallbackNodes.length} fallback nodes.`);
     }
     return { nodes: fallbackNodes, edges: edges || [] };
   }

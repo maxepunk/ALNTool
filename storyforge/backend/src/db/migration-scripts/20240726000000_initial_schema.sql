@@ -73,3 +73,25 @@ CREATE TABLE IF NOT EXISTS path_metrics (
   detective_progress INTEGER,
   third_path_engagement INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS cached_journey_segments (
+  character_id TEXT NOT NULL,
+  start_minute INTEGER NOT NULL,
+  end_minute INTEGER NOT NULL,
+  activities TEXT,
+  interactions TEXT,
+  discoveries TEXT,
+  gap_status TEXT,
+  cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (character_id, start_minute)
+);
+
+CREATE TABLE IF NOT EXISTS cached_journey_gaps (
+    character_id TEXT NOT NULL,
+    start_minute INTEGER NOT NULL,
+    end_minute INTEGER NOT NULL,
+    severity TEXT,
+    suggested_solutions TEXT,
+    cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (character_id, start_minute, end_minute)
+);

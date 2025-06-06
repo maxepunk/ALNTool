@@ -34,7 +34,7 @@ const getRelationIds = (relationArray) => {
  * Maps Notion page properties to a Character object.
  * Assumes specific property names in Notion (e.g., 'Name', 'Tier', 'Events Relation', etc.)
  */
-export const mapCharacter = (notionPage) => {
+const mapCharacter = (notionPage) => {
   if (!notionPage || !notionPage.properties) return null;
   const props = notionPage.properties;
 
@@ -42,10 +42,10 @@ export const mapCharacter = (notionPage) => {
     id: notionPage.id,
     name: getPlainText(props['Name']?.title),
     tier: props['Tier']?.select?.name,
-    logline: getPlainText(props['Logline']?.rich_text),
+    logline: getPlainText(props['Character_Logline']?.rich_text),
     event_ids: getRelationIds(props['Events']?.relation), // Assuming 'Events' is the relation prop name
     puzzle_ids: getRelationIds(props['Character Puzzles']?.relation), // Assuming 'Character Puzzles'
-    owned_element_ids: getRelationIds(props['Owned Elements']?.relation), // Assuming 'Owned Elements'
+    owned_element_ids: getRelationIds(props['Owned_Elements']?.relation), // Assuming 'Owned Elements'
     associated_element_ids: getRelationIds(props['Associated Elements']?.relation), // Assuming 'Associated Elements'
     // Add other character-specific properties as needed
   };
@@ -54,7 +54,7 @@ export const mapCharacter = (notionPage) => {
 /**
  * Maps Notion page properties to a TimelineEvent object.
  */
-export const mapTimelineEvent = (notionPage) => {
+const mapTimelineEvent = (notionPage) => {
   if (!notionPage || !notionPage.properties) return null;
   const props = notionPage.properties;
 
@@ -65,11 +65,11 @@ export const mapTimelineEvent = (notionPage) => {
 
   return {
     id: notionPage.id,
-    name: getPlainText(props['Name']?.title), // Assuming events also have a name/title
+    name: getPlainText(props['Description']?.title), // Corrected from 'Name' to 'Description'
     description: getPlainText(props['Description']?.rich_text),
     date: dateValue, // Keep raw date string for now, parsing will be in journeyEngine or service
-    character_ids: getRelationIds(props['Characters']?.relation), // Relation to characters
-    element_ids: getRelationIds(props['Elements']?.relation), // Relation to elements
+    character_ids: getRelationIds(props['Characters_Involved']?.relation), // Relation to characters
+    element_ids: getRelationIds(props['Memory_Evidence']?.relation), // Relation to elements
     // Add other event-specific properties
   };
 };
@@ -77,18 +77,17 @@ export const mapTimelineEvent = (notionPage) => {
 /**
  * Maps Notion page properties to a Puzzle object.
  */
-export const mapPuzzle = (notionPage) => {
+const mapPuzzle = (notionPage) => {
   if (!notionPage || !notionPage.properties) return null;
   const props = notionPage.properties;
 
   return {
     id: notionPage.id,
-    name: getPlainText(props['Name']?.title),
+    name: getPlainText(props['Puzzle']?.title), // Corrected from 'Name' to 'Puzzle'
     description: getPlainText(props['Description']?.rich_text),
-    timing: getPlainText(props['Timing']?.rich_text), // e.g., "Minute 30", "Between Event A and B"
-                                                      // Needs robust parsing in journeyEngine
-    character_ids: getRelationIds(props['Characters']?.relation),
-    element_ids: getRelationIds(props['Elements Involved']?.relation), // Assuming 'Elements Involved'
+    timing: props['Timing']?.select?.name, // Corrected from rich_text to select
+    character_ids: getRelationIds(props['Owner']?.relation), // Corrected from 'Characters'
+    element_ids: getRelationIds(props['Rewards']?.relation), // Corrected from 'Elements Involved'
     sub_puzzle_ids: getRelationIds(props['Sub-Puzzles']?.relation), // Relation to other puzzles
     // Add other puzzle-specific properties
   };
@@ -97,16 +96,16 @@ export const mapPuzzle = (notionPage) => {
 /**
  * Maps Notion page properties to an Element object.
  */
-export const mapElement = (notionPage) => {
+const mapElement = (notionPage) => {
   if (!notionPage || !notionPage.properties) return null;
   const props = notionPage.properties;
 
   return {
     id: notionPage.id,
     name: getPlainText(props['Name']?.title),
-    type: props['Type']?.select?.name,
-    description: getPlainText(props['Description']?.rich_text),
-    character_ids: getRelationIds(props['Characters']?.relation), // If elements are linked to characters
+    type: props['Basic_Type']?.select?.name, // Corrected from 'Type'
+    description: getPlainText(props['Description_Text']?.rich_text), // Corrected from 'Description'
+    character_ids: getRelationIds(props['Owner']?.relation), // Corrected from 'Characters'
     // Add other element-specific properties
   };
 };
@@ -114,7 +113,7 @@ export const mapElement = (notionPage) => {
 /**
  * Simplified mapper for character overviews (e.g., for lists).
  */
-export const mapCharacterOverview = (notionPage) => {
+const mapCharacterOverview = (notionPage) => {
   if (!notionPage || !notionPage.properties) return null;
   const props = notionPage.properties;
   return {
@@ -122,4 +121,15 @@ export const mapCharacterOverview = (notionPage) => {
     name: getPlainText(props['Name']?.title),
     // tier: props['Tier']?.select?.name, // Optional: include if needed for overview
   };
+};
+
+module.exports = {
+    getPlainText,
+    getRelationId,
+    getRelationIds,
+    mapCharacter,
+    mapTimelineEvent,
+    mapPuzzle,
+    mapElement,
+    mapCharacterOverview
 };

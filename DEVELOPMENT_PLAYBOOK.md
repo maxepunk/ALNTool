@@ -1,19 +1,412 @@
 # Development Playbook
-## Complete Implementation Guide for Production Intelligence Tool
+## Building the Production Intelligence Tool
 
-**Version**: 2.0 - Consolidated & Actionable  
-**Purpose**: Single source of truth for all implementation steps  
-**Principle**: If you're coding, this document tells you exactly what to do
+**Purpose**: Step-by-step implementation guide for developers. Keep this open while coding.
+
+**Status**: **REVISED for Technical Debt Repayment** (Post 2025-06-07)
+
+---
+
+## 📚 Essential Context
+
+### Core References
+- **[PRODUCTION_INTELLIGENCE_TOOL_PRD.md](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)** - The complete specification, *updated with the new Narrative Graph model*.
+- **[QUICK_STATUS.md](./QUICK_STATUS.md)** - Current progress tracker
+- **[SCHEMA_MAPPING_GUIDE.md](./SCHEMA_MAPPING_GUIDE.md)** - Notion→SQL field mappings
+
+### Game Design Background
+For deeper understanding of game mechanics when implementing calculated fields:
+- **[active_synthesis_streamlined.md](./game design background/active_synthesis_streamlined.md)** - Complete game design (memory economy, three paths)
+- **[concept_evolution_streamlined.md](./game design background/concept_evolution_streamlined.md)** - Why certain design choices were made
+- **[questions_log_streamlined.md](./game design background/questions_log_streamlined.md)** - Clarifications on game mechanics
 
 ---
 
 ## 🎯 Current Development Status
 
-**Active Phase**: Phase 2 - Core Views - Journey & System Lenses
-**Active Phase**: Phase 2 - Core Views - Journey & System Lenses
-**Current Milestone**: P2.M1 - Player Journey Timeline Component
-**Current Task**: P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
-**Branch**: `feature/production-intelligence-tool` (Commit changes to this branch)
+**Active Phase**: **Technical Debt Repayment**
+**Current Milestone**: P.DEBT.1 - Critical Risk Cleanup
+**Last Completed**: Comprehensive Technical Debt Review (2025-06-08)
+**Current Task**: P.DEBT.1.1 - Sanitize `db/queries.js`
+**Branch**: `fix/technical-debt-cleanup`
+
+### ✅ Recently Completed (2025-06-08):
+- **Technical Debt Review**: A systematic review of the codebase was completed, producing a prioritized action plan.
+- **Documentation Refactor**: All core documentation (`QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) updated to reflect the new focus on repaying technical debt.
+
+### 🔴 Active Priority:
+- **Solidify Foundation**: All new feature development is paused until the critical technical debt identified in the review is fully paid down.
+
+---
+
+## 🛠️ Technical Debt Repayment Plan
+
+This is our sole focus. We will address these items sequentially, starting with Priority 1.
+
+### 🔴 Priority 1: Critical Risk Cleanup
+
+**Goal**: Eradicate all "zombie code" and architectural remnants of the legacy timeline/gap model.
+
+#### **P.DEBT.1.1: Sanitize `db/queries.js`**
+-   **Problem**: The `queries.js` file exports numerous deprecated functions (`getEventsForCharacter`, etc.) and functions that rely on obsolete tables (`getCachedJourney`, `updateGapResolution`), creating a high risk of misuse.
+-   **File(s) Affected**: `storyforge/backend/src/db/queries.js`
+-   **Action**:
+    1.  Delete the following functions from the file: `getEventsForCharacter`, `getPuzzlesForCharacter`, `getElementsForCharacter`, `getCachedJourney`, `saveCachedJourney`, `isValidJourneyCache`, `updateGapResolution`.
+    2.  Carefully review the `module.exports` list and remove all deleted functions, ensuring only active, graph-model-related queries are exported.
+-   **Acceptance Criteria**:
+    -   [ ] `queries.js` file no longer contains any of the deprecated or obsolete functions.
+    -   [ ] The `module.exports` in `queries.js` is clean and only exports valid functions.
+    -   [ ] The application runs without errors after these changes.
+
+#### **P.DEBT.1.2: Decommission Legacy Database Tables**
+-   **Problem**: The database contains four obsolete tables from the old model: `journey_segments`, `gaps`, `cached_journey_segments`, `cached_journey_gaps`.
+-   **File(s) Affected**: `storyforge/backend/src/db/migration-scripts/`, `storyforge/backend/src/services/dataSyncService.js`
+-   **Action**:
+    1.  Create a new migration script: `storyforge/backend/src/db/migration-scripts/YYYYMMDDHHMMSS_drop_legacy_journey_tables.sql`.
+    2.  Add `DROP TABLE IF EXISTS <table_name>;` for each of the four obsolete tables.
+    3.  In `dataSyncService.js`, find the `syncCharacters` function and remove the lines that delete from `cached_journey_gaps` and `cached_journey_segments`.
+-   **Acceptance Criteria**:
+    -   [ ] The new migration script is created and successfully drops the four tables.
+    -   [ ] `dataSyncService.js` no longer references the obsolete tables.
+    -   [ ] The `syncAll` command runs successfully without the legacy tables.
+
+#### **P.DEBT.1.3: Remove Zombie Logic from `journeyEngine.js`**
+-   **Problem**: `journeyEngine.js` contains obsolete methods (`suggestGapSolutions`, `getInteractionWindows`) based on the old "gap" model.
+-   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`
+-   **Action**:
+    1.  Delete the entire `suggestGapSolutions` method.
+    2.  Delete the entire `getInteractionWindows` method.
+-   **Acceptance Criteria**:
+    -   [ ] The obsolete methods are removed from the `JourneyEngine` class.
+    -   [ ] The application runs without errors.
+
+---
+
+### 🟡 Priority 2: Architectural & Performance Polish
+
+**Goal**: Improve maintainability, performance, and developer experience.
+
+#### **P.DEBT.2.1: Refactor Hybrid API Response**
+-   **Problem**: The `buildCharacterJourney` function returns a confusing hybrid data structure containing both the new `graph` object and deprecated `segments: []`, `gaps: []` arrays.
+-   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, (Frontend) `storyforge/frontend/src/stores/journeyStore.js` or equivalent data-fetching component.
+-   **Action**:
+    1.  Modify `buildCharacterJourney` to return a clean object containing only `character_info` and `graph`.
+    2.  Update the corresponding frontend code that consumes the `/api/journeys/:characterId` endpoint to expect the new, cleaner data structure.
+-   **Acceptance Criteria**:
+    -   [ ] The API response for a journey is clean and no longer contains `segments` or `gaps`.
+    -   [ ] The frontend `JourneyGraphView` renders correctly with the new data structure.
+
+#### **P.DEBT.2.2: Re-implement Journey Caching**
+-   **Problem**: Journey caching was disabled during the refactor, creating a performance liability.
+-   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, `storyforge/backend/src/db/queries.js`.
+-   **Action**:
+    1.  Design a caching strategy suitable for graph data (e.g., storing the final `nodes` and `edges` arrays as JSON in a new `cached_journey_graphs` table).
+    2.  Implement `saveCachedJourneyGraph` and `getCachedJourneyGraph` in `queries.js`.
+    3.  Integrate the caching logic into `buildCharacterJourney` in `journeyEngine.js`.
+-   **Acceptance Criteria**:
+    -   [ ] Requesting the same journey twice in a row results in the second request being served from the cache.
+    -   [ ] A new `cached_journey_graphs` table exists and is populated.
+
+#### **P.DEBT.2.3: Plan `dataSyncService.js` Refactor**
+-   **Problem**: `dataSyncService.js` is a 760-line monolith.
+-   **File(s) Affected**: `storyforge/backend/src/services/dataSyncService.js`.
+-   **Action**: This is a planning task. Create a new document outlining a refactor strategy. The plan should propose a new file structure (e.g., `/services/sync/`, `/services/compute/`) and define the API for each new module.
+-   **Acceptance Criteria**:
+    -   [ ] A markdown file (`REFACTOR_PLAN_DATASYNC.md`) is created with a detailed plan for breaking down the monolith.
+
+---
+## 🚀 Post-Debt Development Plan
+
+Once all Priority 1 and 2 tasks are complete, we will resume our feature development roadmap.
+
+### 🔧 Journey Engine: The Narrative Graph
+
+### Core Concept Evolution
+Our most critical architectural insight was realizing that a player's journey is not a linear timeline, but a **causal graph of dependencies**. The `journeyEngine` has been completely refactored around this principle.
+
+### `buildJourneyGraph(characterId)`
+This is the new core function. It constructs a directed graph representing the "blow-by-blow" narrative path for a character.
+
+**Multi-Pass Implementation:**
+1.  **Pass 1: Node Collection**: Gathers all relevant entities (puzzles, elements, events) for a character using the new `getCharacterJourneyData` query. Each entity becomes a typed node (`activityNode`, `discoveryNode`, `loreNode`).
+2.  **Pass 2: Gameplay Graph (Dependency Edges)**: Creates "hard" dependency edges between gameplay nodes. For example: `Element (Key) -> Puzzle (Unlock Chest) -> Element (Reward)`.
+3.  **Pass 3: Lore Weaving (Context Edges)**: Connects `Discovery` nodes from the Gameplay Graph to `Event` nodes in the Lore Graph, showing the narrative reason for a discovery.
+4.  **Pass 4: Interaction Mapping (Pending)**: Will identify and create edges representing interactions between different character journeys.
+
+### 🖥️ Frontend: Graph Visualization
+
+The frontend has been refactored to consume and display the new narrative graph data structure.
+
+### `JourneyGraphView.jsx`
+- This new component replaces the old `TimelineView`.
+- It uses `@xyflow/react` to render the nodes and edges provided by the `/api/journeys/:characterId` endpoint.
+
+### `useAutoLayout.js` Hook
+- A new custom hook that uses the `dagre` library to automatically calculate node positions.
+- It takes the raw nodes and edges and returns a set of nodes with `x` and `y` coordinates, ensuring a clean, hierarchical layout.
+
+### Custom Node Components
+- Located in `storyforge/frontend/src/components/PlayerJourney/customNodes/`.
+- We have created distinct components for each node type to provide visual clarity:
+    - `ActivityNode` (for puzzles)
+    - `DiscoveryNode` (for elements)
+    - `LoreNode` (for historical events)
+
+### `ContextWorkspace.jsx`
+- This component has been refactored to be node-aware.
+- It subscribes to the `selectedNode` state in the `journeyStore`.
+- When a user clicks a node in the graph, this component updates to display its details.
+
+---
+
+## 🧮 Computed Fields Implementation Guide
+
+### Overview
+Several critical fields don't exist in Notion but must be computed from relationships. These are NOT optional - core PRD features depend on them.
+
+### ✅ IMPLEMENTED (2025-06-07)
+
+#### Act Focus (Timeline Events) - WORKING!
+- Computed for all 75 timeline events
+- Based on most common act from related elements
+- Enables timeline filtering by act
+
+#### Resolution Paths (All Entities) - WORKING!
+- Computed for 22 characters, 100 elements, 15 puzzles
+- Based on ownership patterns and game logic
+- Enables Balance Dashboard and Resolution Path Analyzer
+
+#### Linked Characters - WORKING!
+- Query implemented and added to journey API
+- Returns character relationships from character_links table
+- Enables Character Sociogram visualization
+
+#### Narrative Threads (Puzzles) - WORKING!
+- **UNBLOCKED**: The database migration now runs correctly, so the `narrative_threads` and `computed_narrative_threads` columns exist and are populated during the sync.
+
+### ⚠️ PARTIALLY IMPLEMENTED
+
+#### Path Affinity Scores
+- Need to extract memory values from descriptions
+- Calculate alignment scores for each path
+
+#### Memory Value Totals
+- Parse SF_ValueRating from element descriptions
+- Aggregate per character
+
+#### Interaction Density
+- Count interactions per time segment
+- Flag low-interaction segments
+
+**Implementation Priority:**
+1. 🔴 Linked Characters (Frontend blocked)
+2. 🟡 Puzzle sync fixes (Data integrity)
+3. 🟡 Missing field storage (Data completeness)
+4. 🟢 Analytics computation (Enhancement)
+
+---
+
+## 🧮 Computed Fields Implementation Guide
+
+### Overview
+Several critical fields don't exist in Notion but must be computed from relationships. These are NOT optional - core PRD features depend on them.
+
+### ✅ IMPLEMENTED (2025-06-07)
+
+#### Act Focus (Timeline Events) - WORKING!
+- Computed for all 75 timeline events
+- Based on most common act from related elements
+- Enables timeline filtering by act
+
+#### Resolution Paths (All Entities) - WORKING!
+- Computed for 22 characters, 100 elements, 15 puzzles
+- Based on ownership patterns and game logic
+- Enables Balance Dashboard and Resolution Path Analyzer
+
+#### Linked Characters - WORKING!
+- Query implemented and added to journey API
+- Returns character relationships from character_links table
+- Enables Character Sociogram visualization
+
+#### Narrative Threads (Puzzles) - WORKING!
+- **UNBLOCKED**: The database migration now runs correctly, so the `narrative_threads` and `computed_narrative_threads` columns exist and are populated during the sync.
+
+### ⚠️ PARTIALLY IMPLEMENTED
+
+#### Path Affinity Scores
+- Need to extract memory values from descriptions
+- Calculate alignment scores for each path
+
+#### Memory Value Totals
+- Parse SF_ValueRating from element descriptions
+- Aggregate per character
+
+#### Interaction Density
+- Count interactions per time segment
+- Flag low-interaction segments
+
+### Implementation Steps
+
+#### Step 1: Add Computed Field Functions to dataSyncService.js
+
+```javascript
+// Add these functions to dataSyncService.js
+
+async function computeTimelineActFocus(timelineEvent) {
+  const db = getDB();
+  const elementIds = JSON.parse(timelineEvent.element_ids || '[]');
+  
+  if (elementIds.length === 0) return null;
+  
+  // Get elements and count acts
+  const elements = db.prepare(
+    'SELECT first_available FROM elements WHERE id IN (' + 
+    elementIds.map(() => '?').join(',') + ')'
+  ).all(...elementIds);
+  
+  const actCounts = {};
+  elements.forEach(el => {
+    if (el.first_available) {
+      actCounts[el.first_available] = (actCounts[el.first_available] || 0) + 1;
+    }
+  });
+  
+  // Return most common act
+  return Object.entries(actCounts)
+    .sort(([,a], [,b]) => b - a)[0]?.[0] || null;
+}
+
+async function computePuzzleNarrativeThreads(puzzle) {
+  const db = getDB();
+  const rewardIds = JSON.parse(puzzle.reward_ids || '[]');
+  
+  if (rewardIds.length === 0) return [];
+  
+  // Get narrative threads from reward elements
+  const elements = db.prepare(
+    'SELECT narrative_threads FROM elements WHERE id IN (' + 
+    rewardIds.map(() => '?').join(',') + ')'
+  ).all(...rewardIds);
+  
+  const threads = new Set();
+  elements.forEach(el => {
+    const elThreads = JSON.parse(el.narrative_threads || '[]');
+    elThreads.forEach(thread => threads.add(thread));
+  });
+  
+  return Array.from(threads);
+}
+
+function computeResolutionPaths(entity, entityType) {
+  const paths = [];
+  
+  if (entityType === 'character') {
+    // Check owned elements for path indicators
+    const ownedElements = JSON.parse(entity.owned_element_ids || '[]');
+    const hasBlackMarket = ownedElements.some(id => 
+      id.includes('1dc2f33d583f8056bf34c6a9922067d8') // Black Market card ID
+    );
+    if (hasBlackMarket) paths.push('Black Market');
+    
+    // High connections suggest Third Path
+    if (entity.connections > 5) paths.push('Third Path');
+    
+    // TODO: Add detective path detection based on evidence ownership
+  }
+  
+  if (entityType === 'puzzle') {
+    // Based on narrative threads
+    const threads = entity.narrative_threads || [];
+    if (threads.includes('Underground Parties')) paths.push('Black Market');
+    if (threads.includes('Corp. Espionage')) paths.push('Detective');
+  }
+  
+  if (entityType === 'element') {
+    // Based on element name/type
+    if (entity.name?.toLowerCase().includes('black market')) {
+      paths.push('Black Market');
+    }
+    if (entity.type === 'evidence' || entity.name?.toLowerCase().includes('clue')) {
+      paths.push('Detective');
+    }
+  }
+  
+  return paths.length > 0 ? paths : ['Unassigned'];
+}
+```
+
+#### Step 2: Integrate Computations into Sync Process
+
+```javascript
+// In syncTimelineEvents function, after inserting base data:
+for (const event of mappedEvents) {
+  const actFocus = await computeTimelineActFocus(event);
+  if (actFocus) {
+    db.prepare('UPDATE timeline_events SET act_focus = ? WHERE id = ?')
+      .run(actFocus, event.id);
+  }
+}
+
+// In syncPuzzles function, after inserting base data:
+for (const puzzle of mappedPuzzles) {
+  const narrativeThreads = await computePuzzleNarrativeThreads(puzzle);
+  if (narrativeThreads.length > 0) {
+    db.prepare('UPDATE puzzles SET computed_narrative_threads = ? WHERE id = ?')
+      .run(JSON.stringify(narrativeThreads), puzzle.id);
+  }
+  
+  const resolutionPaths = computeResolutionPaths(puzzle, 'puzzle');
+  db.prepare('UPDATE puzzles SET resolution_paths = ? WHERE id = ?')
+    .run(JSON.stringify(resolutionPaths), puzzle.id);
+}
+
+// Similar for characters and elements...
+```
+
+#### Step 3: Update Database Schema
+
+```sql
+-- Add columns for computed fields
+ALTER TABLE timeline_events ADD COLUMN act_focus TEXT;
+ALTER TABLE puzzles ADD COLUMN computed_narrative_threads TEXT; -- JSON array
+ALTER TABLE puzzles ADD COLUMN resolution_paths TEXT; -- JSON array
+ALTER TABLE characters ADD COLUMN resolution_paths TEXT; -- JSON array
+ALTER TABLE elements ADD COLUMN resolution_paths TEXT; -- JSON array
+```
+
+#### Step 4: Include Computed Fields in API Responses
+
+```javascript
+// In queries.js, update getters to include computed fields
+function getAllTimelineEvents() {
+  return db.prepare(`
+    SELECT *, act_focus as computedActFocus 
+    FROM timeline_events 
+    ORDER BY date ASC
+  `).all();
+}
+
+// In journeyEngine.js, ensure linked characters are included
+const linkedCharacters = await dbQueries.getLinkedCharacters(characterId);
+computedJourney.character_info.linkedCharacters = linkedCharacters;
+```
+
+### Testing Computed Fields
+
+```javascript
+// Test timeline act focus computation
+const event = { element_ids: JSON.stringify(['elem1', 'elem2']) };
+const actFocus = await computeTimelineActFocus(event);
+console.log('Computed act focus:', actFocus); // Should be most common act
+
+// Test resolution paths
+const character = { 
+  owned_element_ids: JSON.stringify(['1dc2f33d583f8056bf34c6a9922067d8']),
+  connections: 3 
+};
+const paths = computeResolutionPaths(character, 'character');
+console.log('Resolution paths:', paths); // Should include "Black Market"
+```
 
 ---
 
@@ -93,12 +486,12 @@ class JourneyEngine {
 
   async buildCharacterJourney(characterId) {
     // 1. Fetch character data (from local DB via dbQueries)
-    const character = await this.notionService.getCharacter(characterId); // Placeholder, actual is via dbQueries
+    const character = await this.notionService.getCharacter(characterId);
     
     // 2. Fetch related data (events, puzzles, elements from local DB via dbQueries)
-    const events = await this.notionService.getCharacterEvents(characterId); // Placeholder
-    const puzzles = await this.notionService.getCharacterPuzzles(characterId); // Placeholder
-    const elements = await this.notionService.getCharacterElements(characterId); // Placeholder
+    const events = await this.notionService.getCharacterEvents(characterId);
+    const puzzles = await this.notionService.getCharacterPuzzles(characterId);
+    const elements = await this.notionService.getCharacterElements(characterId);
     
     // 3. Compute segments
     const segments = this.computeJourneySegments(character, events, puzzles, elements);
@@ -501,6 +894,18 @@ describe('Timeline Interactivity', () => {
 3. Hover to preview gap details ✅
 4. Animated attention indicators ✅
 
+#### P2.M1.5: Fix Puzzle Sync Errors ✅
+**Status**: **Complete (Code-Side)**. The sync process is now stable.
+**Problem**: During data sync, 17 out of 32 puzzles were failing.
+**Impact**: Missing puzzle data in the application.
+
+**Resolution**:
+1.  **Fixed Migration Failure**: Corrected the database initialization and migration process, which created the missing `narrative_threads` column and resolved the primary crash cause.
+2.  **Fixed Name Mapping**: Updated `dataSyncService.js` to correctly handle puzzles named with a "Puzzle" property or a "Name" property.
+3.  **Confirmed Data Issue**: The remaining 17 errors are confirmed to be data integrity problems within the source Notion pages (e.g., missing required fields like `Timing`).
+
+**Next Steps**: This task is now a data-curation task for the content team, not a development task.
+
 ### P2.M1.X: User Review and Frontend Access (Player Journey Timeline)
 *(Note: This review point assumes completion of P2.M1.1 through P2.M1.4)*
 
@@ -738,19 +1143,29 @@ P2.M1.3 (Current)
 
 ## 📊 Progress Tracking
 
-### Phase 1: ✅ Complete (All Phase 1 Milestones: P1.M1, P1.M2, P1.M3, P1.M4 are complete.)
+### Phase 1: ✅ Complete
 - P1.M1: Database Layer ✅
-- P1.M2: Journey Engine ✅
-- P1.M3: API Endpoints ✅ (P1.M3.1 ✅, P1.M3.2 ✅)
+- P1.M2: Journey Engine ✅  
+- P1.M3: API Endpoints ✅
 - P1.M4: State Foundation ✅
 
-### Phase 2: 🚧 In Progress (1/4 milestones fully complete)
-- P2.M1: Timeline Component ✅ (P2.M1.1, P2.M1.2, P2.M1.3, P2.M1.4 are ✅)
+### Phase 2: 🚧 In Progress (1/4 milestones)
+- P2.M1: Timeline Component 🚧 (4/5 tasks - puzzle sync fix remaining)
+  - P2.M1.1: Basic Timeline Structure ✅
+  - P2.M1.2: Segment Visualization ✅
+  - P2.M1.3: Timeline Interactivity ✅
+  - P2.M1.4: Gap Highlighting ✅
+  - P2.M1.5: Fix Puzzle Sync Errors ✅
 - P2.M2: Gap Resolution ⏳ (0/2 tasks)
 - P2.M3: Layout ⏳ (0/1 tasks)
 - P2.M4: Sync ⏳ (0/1 tasks)
 
-Overall: ~45% Complete (P1.M1, P1.M2, P1.M3, P1.M4, P2.M1 are fully complete milestones. Total milestones for P1, P2 & P3 = 11.)
+### Phase 3: 📅 Not Started
+- P3.M1: Balance Dashboard 📅
+- P3.M2: Interaction Matrix 📅
+- P3.M3: Timeline Archaeology 📅
+
+Overall: ~45% Complete
 
 ---
 

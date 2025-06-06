@@ -1,4 +1,4 @@
-import { rest } from 'msw';
+import { http } from 'msw';
 import {
   DETAILED_MOCK_CHARACTER_GRAPH_DATA,
   DETAILED_MOCK_ELEMENT_GRAPH_DATA,
@@ -59,94 +59,155 @@ const mockGenericTimelineGraph = (id) => ({
 
 export const handlers = [
   // Generic list endpoints (can be expanded with mock data)
-  rest.get('/api/characters', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json([{ id: 'char1', name: 'Mock Character 1' }]));
+  http.get('/api/characters', () => {
+    return new Response(JSON.stringify([{ id: 'char1', name: 'Mock Character 1' }]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
-  rest.get('/api/elements', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json([{ id: 'elem1', name: 'Mock Element 1' }]));
+  http.get('/api/elements', () => {
+    return new Response(JSON.stringify([{ id: 'elem1', name: 'Mock Element 1' }]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
-  rest.get('/api/puzzles', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json([{ id: 'puzz1', name: 'Mock Puzzle 1' }]));
+  http.get('/api/puzzles', () => {
+    return new Response(JSON.stringify([{ id: 'puzz1', name: 'Mock Puzzle 1' }]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
-  rest.get('/api/timeline', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json([{ id: 'time1', name: 'Mock Timeline 1' }]));
+  http.get('/api/timeline', () => {
+    return new Response(JSON.stringify([{ id: 'time1', name: 'Mock Timeline 1' }]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
   // Specific ID endpoints (can be expanded)
-  rest.get('/api/characters/:id', (req, res, ctx) => {
-    const { id } = req.params;
-    return res(ctx.status(200), ctx.json({ id, name: `Mock Character ${id}` }));
+  http.get('/api/characters/:id', ({ params }) => {
+    const { id } = params;
+    return new Response(JSON.stringify({ id, name: `Mock Character ${id}` }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
   // ... other /api/:entity/:id endpoints
 
   // Graph Data Endpoints
-  rest.get('/api/characters/:id/graph', (req, res, ctx) => {
-    const { id } = req.params;
+  http.get('/api/characters/:id/graph', ({ params }) => {
+    const { id } = params;
     if (id === DETAILED_MOCK_CHARACTER_GRAPH_DATA.center.id) {
-      return res(ctx.status(200), ctx.json(DETAILED_MOCK_CHARACTER_GRAPH_DATA));
+      return new Response(JSON.stringify(DETAILED_MOCK_CHARACTER_GRAPH_DATA), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     if (id === 'char-notfound') {
-        return res(ctx.status(404), ctx.json({ error: 'Not found' }));
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     // Fallback for other character IDs
-    return res(ctx.status(200), ctx.json(mockGenericCharacterGraph(id)));
+    return new Response(JSON.stringify(mockGenericCharacterGraph(id)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
-  rest.get('/api/elements/:id/graph', (req, res, ctx) => {
-    const { id } = req.params;
+  http.get('/api/elements/:id/graph', ({ params }) => {
+    const { id } = params;
     if (id === DETAILED_MOCK_ELEMENT_GRAPH_DATA.center.id) {
-      return res(ctx.status(200), ctx.json(DETAILED_MOCK_ELEMENT_GRAPH_DATA));
+      return new Response(JSON.stringify(DETAILED_MOCK_ELEMENT_GRAPH_DATA), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     if (id === 'elem-notfound') {
-        return res(ctx.status(404), ctx.json({ error: 'Not found' }));
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     // Fallback for other element IDs
-    return res(ctx.status(200), ctx.json(mockGenericElementGraph(id)));
+    return new Response(JSON.stringify(mockGenericElementGraph(id)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
-  rest.get('/api/puzzles/:id/graph', (req, res, ctx) => {
-    const { id } = req.params;
+  http.get('/api/puzzles/:id/graph', ({ params }) => {
+    const { id } = params;
     if (id === DETAILED_MOCK_PUZZLE_GRAPH_DATA.center.id) {
-      return res(ctx.status(200), ctx.json(DETAILED_MOCK_PUZZLE_GRAPH_DATA));
+      return new Response(JSON.stringify(DETAILED_MOCK_PUZZLE_GRAPH_DATA), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     if (id === 'puzz-notfound') {
-        return res(ctx.status(404), ctx.json({ error: 'Not found' }));
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     // Fallback for other puzzle IDs
-    return res(ctx.status(200), ctx.json(mockGenericPuzzleGraph(id)));
+    return new Response(JSON.stringify(mockGenericPuzzleGraph(id)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
-  rest.get('/api/timeline/:id/graph', (req, res, ctx) => {
-    const { id } = req.params;
+  http.get('/api/timeline/:id/graph', ({ params }) => {
+    const { id } = params;
     if (id === DETAILED_MOCK_TIMELINE_GRAPH_DATA.center.id) {
-      return res(ctx.status(200), ctx.json(DETAILED_MOCK_TIMELINE_GRAPH_DATA));
+      return new Response(JSON.stringify(DETAILED_MOCK_TIMELINE_GRAPH_DATA), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     if (id === 'time-notfound') {
-        return res(ctx.status(404), ctx.json({ error: 'Not found' }));
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     // Fallback for other timeline IDs
-    return res(ctx.status(200), ctx.json(mockGenericTimelineGraph(id)));
+    return new Response(JSON.stringify(mockGenericTimelineGraph(id)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
   
   // Mock for /api/metadata endpoint
-  rest.get('/api/metadata', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json({ /* mock metadata object */ }));
+  http.get('/api/metadata', () => {
+    return new Response(JSON.stringify({ /* mock metadata object */ }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
   // Mock for /api/cache/clear endpoint
-  rest.post('/api/cache/clear', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json({ message: 'Cache cleared (mocked)' }));
+  http.post('/api/cache/clear', () => {
+    return new Response(JSON.stringify({ message: 'Cache cleared (mocked)' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 
   // Mock for /search endpoint
-  rest.get('/api/search', (req, res, ctx) => {
-    const query = req.url.searchParams.get('q');
+  http.get('/api/search', ({ request }) => {
+    const url = new URL(request.url);
+    const query = url.searchParams.get('q');
     // Return some generic search results based on the query or fixed data
-    return res(ctx.status(200), ctx.json({ 
+    return new Response(JSON.stringify({ 
         characters: [{id: 'char-search', name: `Search result for ${query} in Characters`}],
         elements: [],
         puzzles: [],
         timeline: []
-    }));
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }),
 ]; 

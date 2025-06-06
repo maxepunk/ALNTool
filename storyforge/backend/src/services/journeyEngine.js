@@ -1,6 +1,7 @@
 // This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
 const { getDB } = require('../db/database'); // Adjust path as needed
 const dbQueries = require('../db/queries'); // Adjust path
+const { parseTimingToMinutes } = require('../utils/timingParser');
 
 class JourneyEngine {
   /**
@@ -13,259 +14,142 @@ class JourneyEngine {
   }
 
   /**
-   * Computes journey segments for a character based on events, puzzles, and elements.
-   * @param {object} character - The character object.
-   * @param {Array<object>} eventsData - Array of event objects.
-   * @param {Array<object>} puzzlesData - Array of puzzle objects.
-   * @param {Array<object>} elementsData - Array of element objects.
-   * @returns {Promise<Array<object>>} - An array of journey segment objects.
+   * Builds a directed graph representing the character's narrative journey.
+   * @param {string} characterId - The ID of the character.
+   * @returns {Promise<object>} - A graph object with 'nodes' and 'edges' arrays.
    */
-  async computeJourneySegments(character, eventsData = [], puzzlesData = [], elementsData = []) {
-    const segments = [];
-    // For phase 1, we assume events might have a 'minute' or 'date' (parsable to minute) property.
-    // Puzzles might have a 'timing' string (e.g., "Early Game", "Mid Game", "Late Game", or specific minutes).
-    // Elements might be discovered through events or puzzles.
+  async buildJourneyGraph(characterId) {
+    const nodes = [];
+    const edges = [];
+    const position = { x: 0, y: 0 }; // Initial position for layout
 
-    for (let currentTime = 0; currentTime < this.GAME_DURATION_MINUTES; currentTime += this.INTERVAL_MINUTES) {
-      const segment = {
-        character_id: character.id, // Assuming character object has an id
-        start_minute: currentTime,
-        end_minute: currentTime + this.INTERVAL_MINUTES,
-        activities: [], // Things the character does
-        discoveries: [], // Things the character learns or finds
-        interactions: [], // Interactions with other characters (placeholder for now)
-        gap_status: 'pending_analysis', // Will be updated by detectGaps
-      };
+    // Pass 1: Node Collection - Get all relevant entities for the journey
+    const journeyData = await dbQueries.getCharacterJourneyData(characterId);
 
-      // Placeholder logic for associating events, puzzles, elements with the current time segment.
-      // This will need refinement based on actual data structures from Notion/DB.
-
-      // Example: Check events that fall into this time segment
-      // Filter events for the current character
-      const characterEvents = eventsData.filter(event => {
-        try {
-          const charIds = JSON.parse(event.character_ids || '[]');
-          return charIds.includes(character.id);
-        } catch (e) {
-          // console.warn(`Could not parse character_ids for event ${event.id}: ${event.character_ids}`);
-          return false;
-        }
+    // Create nodes for each entity type
+    journeyData.puzzles.forEach(puzzle => {
+      nodes.push({
+        id: `puzzle-${puzzle.id}`,
+        type: 'activityNode', // Custom node type for styling
+        data: { label: `Puzzle: ${puzzle.name}`, ...puzzle },
+        position, // Position will be calculated by the frontend layout algorithm
       });
+    });
 
-      characterEvents.forEach(event => {
-        // Assuming event.minute is the specific minute it occurs
-        // Or event.date could be a timestamp or a string like "0-15 minutes"
-        let eventMinute = -1;
-        if (typeof event.date === 'number') { // Direct minute provided
-            eventMinute = event.date;
-        } else if (typeof event.date === 'string') {
-            // Attempt to parse "X minutes" or "X-Y minutes" (takes start of range)
-            const simpleMinuteMatch = event.date.match(/^(\d+)(-(\d+))?\s*minutes$/i);
-            if (simpleMinuteMatch && simpleMinuteMatch[1]) {
-                eventMinute = parseInt(simpleMinuteMatch[1], 10);
-            }
-            // Placeholder for ISO date string parsing (e.g., "2023-10-26T12:00:00.000Z")
-            // This would require a reference game start time and date-fns or similar.
-            // Example:
-            // else if (event.date.includes('T')) { /* try parsing as ISO */ eventMinute = parseAndConvertDateToGameMinute(event.date); }
-            // For now, this engine primarily expects a direct minute or simple "X minutes" string.
-            // The propertyMapper should ideally prioritize a direct "Game Minute" field from Notion.
-            else {
-                // console.warn(`Event ${event.id} has unparsable date string: ${event.date}. Needs specific 'Game Minute' property or enhanced parsing.`);
-            }
-        }
-
-        if (eventMinute !== -1 && eventMinute >= segment.start_minute && eventMinute < segment.end_minute) {
-          segment.activities.push(`Participated in event: ${event.name || event.description || event.id}`);
-        }
+    journeyData.elements.forEach(element => {
+      nodes.push({
+        id: `element-${element.id}`,
+        type: 'discoveryNode', // Custom node type
+        data: { label: `Element: ${element.name}`, ...element },
+        position,
       });
+    });
 
-      // Example: Check puzzles active in this segment
-      // Filter puzzles for the current character
-      const characterPuzzles = puzzlesData.filter(p => p.owner_id === character.id);
-
-      characterPuzzles.forEach(puzzle => {
-        let puzzleStart = -1, puzzleEnd = -1;
-        if (typeof puzzle.timing === 'string') {
-            const rangeMatch = puzzle.timing.match(/^(\d+)\s*-\s*(\d+)$/);
-            const minuteMatch = puzzle.timing.match(/^minute\s+(\d+)$/i);
-
-            if (rangeMatch) {
-                [puzzleStart, puzzleEnd] = [parseInt(rangeMatch[1], 10), parseInt(rangeMatch[2], 10)];
-            } else if (minuteMatch) {
-                puzzleStart = parseInt(minuteMatch[1], 10);
-                puzzleEnd = puzzleStart + this.INTERVAL_MINUTES; // Assume puzzle duration is one interval if single minute given
-            } else if (puzzle.timing.toLowerCase() === 'early game') {
-                [puzzleStart, puzzleEnd] = [0, 30];
-            } else if (puzzle.timing.toLowerCase() === 'mid game') {
-                [puzzleStart, puzzleEnd] = [30, 60];
-            } else if (puzzle.timing.toLowerCase() === 'late game') {
-                [puzzleStart, puzzleEnd] = [60, 90];
-            }
-            // Relational timings like "Between Event A and B" are not handled here and would require more complex logic.
-            else {
-                // console.warn(`Puzzle ${puzzle.id} has unparsable timing string: ${puzzle.timing}`);
-            }
-        }
-
-        if (puzzleStart !== -1 && puzzleEnd !== -1 &&
-            segment.start_minute < puzzleEnd && segment.end_minute > puzzleStart) {
-          segment.activities.push(`Engaged with puzzle: ${puzzle.name || puzzle.id}`);
-        }
-      });
-
-      // Example: Check elements discovered (highly dependent on how elements are linked to events/puzzles)
-      // For now, let's assume an element might be linked to an event that happens in this segment.
-      // elements.forEach(element => { // Old logic
-      //     // This is very simplified. In reality, element discovery would be tied to
-      //     // completing a puzzle, a specific outcome of an event, or a character interaction.
-      //     // We might need to check if an event/puzzle in *this segment* leads to discovering this element.
-      //     if(segment.activities.length > 0 && Math.random() < 0.1) { // Randomly discover an element if active
-      //       segment.discoveries.push(`Discovered element: ${element.name || element.id}`);
-      //     }
-      // });
-
-      // Improved Element Discovery Logic
-      characterPuzzles.forEach(puzzle => {
-        // Re-evaluate puzzle timing for this specific check, or ensure it's already calculated
-        let puzzleStart = -1, puzzleEnd = -1;
-        if (typeof puzzle.timing === 'string') {
-            const rangeMatch = puzzle.timing.match(/^(\d+)\s*-\s*(\d+)$/);
-            const minuteMatch = puzzle.timing.match(/^minute\s+(\d+)$/i);
-            if (rangeMatch) {
-                [puzzleStart, puzzleEnd] = [parseInt(rangeMatch[1], 10), parseInt(rangeMatch[2], 10)];
-            } else if (minuteMatch) {
-                puzzleStart = parseInt(minuteMatch[1], 10);
-                puzzleEnd = puzzleStart + this.INTERVAL_MINUTES;
-            } else if (puzzle.timing.toLowerCase() === 'early game') {
-                [puzzleStart, puzzleEnd] = [0, 30];
-            } else if (puzzle.timing.toLowerCase() === 'mid game') {
-                [puzzleStart, puzzleEnd] = [30, 60];
-            } else if (puzzle.timing.toLowerCase() === 'late game') {
-                [puzzleStart, puzzleEnd] = [60, 90];
-            }
-        }
-        // Check if puzzle ends in this segment
-        if (puzzleStart !== -1 && puzzleEnd !== -1 &&
-            segment.start_minute < puzzleEnd && segment.end_minute >= puzzleEnd) {
-
-            if (puzzle.reward_ids) {
-                try {
-                    const rewardIds = JSON.parse(puzzle.reward_ids);
-                    rewardIds.forEach(elementId => {
-                        const element = elementsData.find(el => el.id === elementId);
-                        segment.discoveries.push(`Discovered element via puzzle ${puzzle.name || puzzle.id}: ${element ? element.name : elementId}`);
-                    });
-                } catch (e) {
-                    console.warn(`Could not parse reward_ids for puzzle ${puzzle.id}: ${puzzle.reward_ids}`);
-                }
-            }
-        }
-      });
-
-      segments.push(segment);
-    }
-    return segments;
-  }
-
-  /**
-   * Detects gaps in character journey based on segments.
-   * @param {Array<object>} segments - Array of journey segment objects.
-   * @param {string} characterId - The ID of the character for whom gaps are being detected.
-   * @returns {Promise<Array<object>>} - An array of gap objects.
-   */
-  async detectGaps(segments, characterId) {
-    const gaps = [];
-    let currentGapStart = -1;
-
-    segments.forEach((segment, index) => {
-      const isSignificant = segment.activities.length > 0 || segment.discoveries.length > 0 || segment.interactions.length > 0;
-      segment.gap_status = isSignificant ? 'no_gap' : 'gap_detected';
-
-      if (!isSignificant && currentGapStart === -1) {
-        // Start of a new potential gap
-        currentGapStart = segment.start_minute;
-      } else if (isSignificant && currentGapStart !== -1) {
-        // End of the current gap
-        gaps.push({
-          id: `gap_${characterId}_${currentGapStart}_${segment.start_minute}`, // Generate a unique ID for the gap
-          character_id: characterId,
-          start_minute: currentGapStart,
-          end_minute: segment.start_minute, // Gap ends when significant activity resumes
-          severity: (segment.start_minute - currentGapStart > 15) ? "high" : ((segment.start_minute - currentGapStart > 10) ? "medium" : "low"),
-          suggested_solutions: "[]", // Placeholder
+    journeyData.events.forEach(event => {
+        nodes.push({
+            id: `event-${event.id}`,
+            type: 'loreNode', // Custom node type for historical events
+            data: { label: `Event: ${event.description}`, ...event },
+            position,
         });
-        currentGapStart = -1;
+    });
+
+
+    // Pass 2: Dependency Edge Creation (Gameplay Graph)
+    journeyData.puzzles.forEach(puzzle => {
+      const puzzleNodeId = `puzzle-${puzzle.id}`;
+
+      // Edge from required lock item to the puzzle
+      if (puzzle.locked_item_id) {
+        edges.push({
+          id: `e-${puzzle.locked_item_id}-to-${puzzle.id}`,
+          source: `element-${puzzle.locked_item_id}`,
+          target: puzzleNodeId,
+          label: 'unlocks',
+        });
+      }
+
+      // Edges from the puzzle to its rewards
+      try {
+        const rewardIds = JSON.parse(puzzle.reward_ids || '[]');
+        rewardIds.forEach(rewardId => {
+          edges.push({
+            id: `e-${puzzle.id}-to-${rewardId}`,
+            source: puzzleNodeId,
+            target: `element-${rewardId}`,
+            label: 'rewards',
+          });
+        });
+      } catch (e) {
+        console.warn(`Could not parse reward_ids for puzzle ${puzzle.id}`);
       }
     });
 
-    // If the journey ends with a gap
-    if (currentGapStart !== -1) {
-      gaps.push({
-        id: `gap_${characterId}_${currentGapStart}_${this.GAME_DURATION_MINUTES}`,
-        character_id: characterId,
-        start_minute: currentGapStart,
-        end_minute: this.GAME_DURATION_MINUTES,
-        severity: (this.GAME_DURATION_MINUTES - currentGapStart > 15) ? "high" : ((this.GAME_DURATION_MINUTES - currentGapStart > 10) ? "medium" : "low"),
-        suggested_solutions: "[]",
-      });
-    }
-    return gaps;
+    // Pass 3: Weaving the Lore and Gameplay Graphs
+    journeyData.elements.forEach(element => {
+      if (element.timeline_event_id) {
+        edges.push({
+          id: `context-e-${element.id}-to-event-${element.timeline_event_id}`,
+          source: `element-${element.id}`,
+          target: `event-${element.timeline_event_id}`,
+          label: 'provides context for',
+          type: 'contextEdge', // For special styling on the frontend
+        });
+      }
+    });
+
+    // TODO: Pass 4 (Interactions)
+
+    return { nodes, edges };
   }
 
   /**
    * Builds the complete journey for a character, including segments and gaps.
    * @param {string} characterId - The ID of the character.
+   * @param {object} [journeyData={}] - Optional data for journey computation, used for testing or what-if scenarios.
+   * @param {Array<object>} [journeyData.eventsData] - Optional override for events data.
+   * @param {Array<object>} [journeyData.puzzlesData] - Optional override for puzzles data.
+   * @param {Array<object>} [journeyData.elementsData] - Optional override for elements data.
    * @returns {Promise<object|null>} - The character's journey object, or null if character not found.
    */
-  async buildCharacterJourney(characterId) {
+  async buildCharacterJourney(characterId, { eventsData: eventsDataOverride, puzzlesData: puzzlesDataOverride, elementsData: elementsDataOverride } = {}) {
+    const isTestingWithOverride = eventsDataOverride || puzzlesDataOverride || elementsDataOverride;
+
+    // TODO: This function needs to be re-evaluated.
+    // It currently returns segments and gaps, but the new model is a graph.
+    // For now, we will adapt it to call the new graph builder.
+
     // 1. Attempt to retrieve a cached journey
-    const cachedJourney = await dbQueries.getCachedJourney(characterId);
-
-    // 2. Validate the cached journey
-    if (cachedJourney && dbQueries.isValidJourneyCache(cachedJourney)) {
-      // console.log(`Returning valid cached journey for character ${characterId}`);
-      // Ensure character_info is present, as getCachedJourney might not populate it fully
-      // to avoid storing redundant character details with every segment/gap.
-      // The original buildCharacterJourney structure included character_info.
-      const characterData = await dbQueries.getCharacterById(characterId);
-      if (!characterData) {
-          console.error(`Character with ID ${characterId} not found even for cached journey. This shouldn't happen.`);
-          // Proceed to compute, as something is inconsistent.
-      } else {
-          return {
-              ...cachedJourney, // contains character_id, segments, gaps, cached_at
-              character_info: characterData,
-          };
-      }
-    }
-
-    // 3. If no valid cached journey, compute it
-    // console.log(`No valid cached journey found for character ${characterId}. Computing...`);
+    // Caching needs to be adapted for graph data. For now, we skip it.
+    
+    // 2. Compute the journey graph
     const characterData = await dbQueries.getCharacterById(characterId);
     if (!characterData) {
       console.error(`Character with ID ${characterId} not found.`);
-      return null; // Or throw error
+      return null;
     }
 
-    const eventsData = await dbQueries.getAllEvents();
-    const puzzlesData = await dbQueries.getAllPuzzles();
-    const elementsData = await dbQueries.getAllElements();
-
-    const segments = await this.computeJourneySegments(characterData, eventsData, puzzlesData, elementsData);
-    const gaps = await this.detectGaps(segments, characterId);
+    const journeyGraph = await this.buildJourneyGraph(characterId);
+    
+    // Fetch linked characters for this character
+    const linkedCharacters = await dbQueries.getLinkedCharacters(characterId);
 
     const computedJourney = {
       character_id: characterId,
-      character_info: characterData,
-      segments: segments,
-      gaps: gaps,
-      // No need to add cached_at here, saveCachedJourney handles its own timestamp
+      character_info: {
+        ...characterData,
+        linkedCharacters: linkedCharacters
+      },
+      // The frontend will now expect a 'graph' property instead of 'segments' and 'gaps'
+      graph: journeyGraph, 
+      segments: [], // Deprecated - send empty array for now
+      gaps: [],     // Deprecated - send empty array for now
     };
 
-    // 4. Save the newly computed journey to the cache
-    await dbQueries.saveCachedJourney(characterId, computedJourney);
-    // console.log(`Saved newly computed journey to cache for character ${characterId}`);
+    // 3. Caching logic will need to be updated to store graph data.
+    // if (!isTestingWithOverride) {
+    //   await dbQueries.saveCachedJourney(characterId, computedJourney);
+    // }
 
     return computedJourney;
   }

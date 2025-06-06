@@ -2,7 +2,43 @@
 ## Stop Getting Lost - Start Building
 
 ### The Problem We Solved
-Too many documents = confusion. We've consolidated everything into 3 focused documents that follow the DRY principle.
+Too many documents = confusion. We've consolidated everything into a clear hierarchy that follows the DRY principle.
+
+---
+
+## 🎯 The Documentation Hierarchy
+
+### Layer 1: Core Development Docs (Daily Use)
+
+These 3 documents contain everything needed for active development:
+
+1. **QUICK_STATUS.md** 
+   - **Purpose**: Where you are right now  
+   - **When**: Every morning (30 seconds)
+   - **Content**: Current task, progress, next steps
+
+2. **DEVELOPMENT_PLAYBOOK.md** ⭐
+   - **Purpose**: How to build it (your main guide)  
+   - **When**: ALWAYS OPEN WHILE CODING
+   - **Content**: Implementation details, code snippets, acceptance criteria
+
+3. **PRODUCTION_INTELLIGENCE_TOOL_PRD.md**
+   - **Purpose**: What you're building (specifications)  
+   - **When**: Need UI/UX reference or architecture questions
+   - **Content**: Complete requirements, mockups, system design
+
+### Layer 2: Game Context (As Needed)
+
+For understanding the game mechanics when implementing features:
+
+- **active_synthesis_streamlined.md** - Complete game design
+- **concept_evolution_streamlined.md** - Design decisions explained  
+- **questions_log_streamlined.md** - Clarifications and open questions
+
+### Layer 3: Technical References (When Stuck)
+
+- **SCHEMA_MAPPING_GUIDE.md** - Notion→SQL field mappings
+- **TROUBLESHOOTING.md** - Common problems and solutions
 
 ---
 
@@ -74,8 +110,10 @@ That's it. No other documents needed.
 ## 📝 What About the Other Documents?
 
 ### Keep These:
+- **README.md** - Project setup and overview
 - **TROUBLESHOOTING.md** - Only when stuck
-- **README.md** - Project setup
+- **SCHEMA_MAPPING_GUIDE.md** - Field mapping reference
+- **game design background/** folder - Deep game understanding
 
 ### Archive/Delete These:
 - PHASE_MILESTONES.md ❌
@@ -131,6 +169,8 @@ Tab 4: Running application
 3. **Open DEVELOPMENT_PLAYBOOK.md** to your current task
 
 4. **Start coding**
+
+**⚡ Current Priority**: Implementing computed fields (Act Focus, Resolution Paths, etc.) - see SCHEMA_MAPPING_GUIDE.md for details. These unlock core PRD features.
 
 ---
 

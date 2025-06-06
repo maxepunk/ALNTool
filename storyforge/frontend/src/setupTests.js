@@ -4,6 +4,13 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Polyfills for MSW v2 compatibility
+import { TextEncoder, TextDecoder } from 'util';
+
+// Make TextEncoder and TextDecoder available globally for MSW
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
 // MSW setup for API mocking in tests
 import { server } from './mocks/server.js'; // Assuming mocks are in src/mocks/
 

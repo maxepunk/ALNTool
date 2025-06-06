@@ -20,7 +20,7 @@ import CharacterSociogramPage from './pages/CharacterSociogramPage';
 import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
 import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // Import ResolutionPathAnalyzerPage
 import NotFound from './pages/NotFound';
-import TimelineView from './components/PlayerJourney/TimelineView'; // Import TimelineView
+import PlayerJourneyPage from './pages/PlayerJourneyPage'; // Import the new page
 import DualLensLayout from './components/Layout/DualLensLayout'; // Import DualLensLayout
 import { api } from './services/api';
 
@@ -32,10 +32,23 @@ function App() {
     'metadata',
     () => api.getDatabasesMetadata(),
     {
-      retry: 2,
+      retry: (failureCount, error) => {
+        // Don't retry on 429 rate limit errors or 404/403 client errors
+        if (error?.status === 429 || error?.status === 404 || error?.status === 403) {
+          return false;
+        }
+        // Only retry once for other errors (reduced from 2)
+        return failureCount < 1;
+      },
+      retryDelay: 2000, // Wait 2 seconds between retries
+      staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+      cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
       onSettled: () => {
         setInitialLoading(false);
       },
+      onError: (error) => {
+        console.error('Metadata fetch error:', error);
+      }
     }
   );
 
@@ -117,12 +130,7 @@ function App() {
         {/* Route using DualLensLayout */}
         <Route
           path="/player-journey"
-          element={
-            <DualLensLayout
-              journeySpaceContent={<TimelineView />}
-              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#fefefe', border: '1px dashed #ccc', borderRadius: '4px'}}>System Space Placeholder in App.jsx (Player Journey)</p>}
-            />
-          }
+          element={<PlayerJourneyPage />}
         />
 
         {/* Test route for DualLensLayout */}
