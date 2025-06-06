@@ -90,13 +90,14 @@ ALNTool/
 
 **Active Task**: **Technical Debt Repayment**. All new feature development is paused until the critical architectural issues identified in our recent code review are resolved.
 **Last Major Update**: Completed a comprehensive technical debt review and updated all project documentation to reflect the new, focused cleanup plan. (2025-06-08)
-**Progress**: Phase 1 ✅ (100%) | Phase 1.5 (Debt Repayment) 🚧 (0% complete) | Overall ~45%
+**Progress**: Phase 1 ✅ (100%) | Phase 1.5 (Debt Repayment) 🚧 (33% of Priority 1 complete) | Overall ~45%
 
-### Recent Victories (2025-06-08):
-- ✅ **Technical Debt Report Created**: A full review was conducted, producing a clear, prioritized action plan.
-- ✅ **Documentation Aligned**: All core project documents (`README`, `QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) have been updated to reflect our current focus on solidifying the architecture.
+### Recent Victories:
+- ✅ **Technical Debt Report Created (2025-06-08)**: A full review was conducted, producing a clear, prioritized action plan.
+- ✅ **Documentation Aligned (2025-06-08)**: All core project documents (`README`, `QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) have been updated to reflect our current focus on solidifying the architecture.
 - ✅ **Architectural Flaw FIXED**: All backend endpoints, including relationship graphs, now source data from SQLite.
 - ✅ **Single Source of Truth**: The backend now correctly uses SQLite as the single source of truth for all data, including computed fields.
+- ✅ **P.DEBT.1.1 Complete (2025-06-06)**: Removed 7 deprecated functions from `db/queries.js`, eliminating zombie code from the legacy timeline/gap model.
 
 ### What Works vs What Doesn't:
 - ✅ All core journey and graph logic is functional.

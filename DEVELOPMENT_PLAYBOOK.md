@@ -27,12 +27,13 @@ For deeper understanding of game mechanics when implementing calculated fields:
 **Active Phase**: **Technical Debt Repayment**
 **Current Milestone**: P.DEBT.1 - Critical Risk Cleanup
 **Last Completed**: Comprehensive Technical Debt Review (2025-06-08)
-**Current Task**: P.DEBT.1.1 - Sanitize `db/queries.js`
+**Current Task**: P.DEBT.1.2 - Decommission Legacy Database Tables (P.DEBT.1.1 ✅ Complete)
 **Branch**: `fix/technical-debt-cleanup`
 
-### ✅ Recently Completed (2025-06-08):
-- **Technical Debt Review**: A systematic review of the codebase was completed, producing a prioritized action plan.
-- **Documentation Refactor**: All core documentation (`QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) updated to reflect the new focus on repaying technical debt.
+### ✅ Recently Completed:
+- **Technical Debt Review (2025-06-08)**: A systematic review of the codebase was completed, producing a prioritized action plan.
+- **Documentation Refactor (2025-06-08)**: All core documentation (`QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) updated to reflect the new focus on repaying technical debt.
+- **P.DEBT.1.1 (2025-06-06)**: Sanitized `db/queries.js` - removed 7 deprecated functions and cleaned module.exports.
 
 ### 🔴 Active Priority:
 - **Solidify Foundation**: All new feature development is paused until the critical technical debt identified in the review is fully paid down.
@@ -54,9 +55,10 @@ This is our sole focus. We will address these items sequentially, starting with 
     1.  Delete the following functions from the file: `getEventsForCharacter`, `getPuzzlesForCharacter`, `getElementsForCharacter`, `getCachedJourney`, `saveCachedJourney`, `isValidJourneyCache`, `updateGapResolution`.
     2.  Carefully review the `module.exports` list and remove all deleted functions, ensuring only active, graph-model-related queries are exported.
 -   **Acceptance Criteria**:
-    -   [ ] `queries.js` file no longer contains any of the deprecated or obsolete functions.
-    -   [ ] The `module.exports` in `queries.js` is clean and only exports valid functions.
-    -   [ ] The application runs without errors after these changes.
+    -   [✅] `queries.js` file no longer contains any of the deprecated or obsolete functions.
+    -   [✅] The `module.exports` in `queries.js` is clean and only exports valid functions.
+    -   [✅] The application runs without errors after these changes.
+    -   **STATUS: COMPLETE (2025-06-06)** - All deprecated functions removed, module.exports cleaned, no breaking changes detected.
 
 #### **P.DEBT.1.2: Decommission Legacy Database Tables**
 -   **Problem**: The database contains four obsolete tables from the old model: `journey_segments`, `gaps`, `cached_journey_segments`, `cached_journey_gaps`.
