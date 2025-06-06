@@ -7,21 +7,42 @@ async function getCharacterById(characterId) {
   return db.prepare('SELECT * FROM characters WHERE id = ?').get(characterId);
 }
 
-// Events
-async function getEventsForCharacter(characterId) {
-  const db = getDB();
-  // Assuming direct link or through a join table not yet defined.
-  // For now, let's assume timeline_events stores character_ids as JSON array.
-  // This is a placeholder query and will need refinement based on actual data storage.
-  // It's also inefficient to fetch all and then filter in JS for many characters.
-  const allEvents = db.prepare('SELECT * FROM timeline_events').all();
-  return allEvents.filter(event => {
-      try {
-          const ids = JSON.parse(event.character_ids || '[]');
-          return ids.includes(characterId);
-      } catch (e) { return false; }
-  });
+// Efficiently get all related entities for a character graph
+async function getCharacterRelations(characterId) {
+    const db = getDB();
+
+    const events = db.prepare(`
+        SELECT te.*, 'timeline_event' as type FROM timeline_events te
+        JOIN character_timeline_events cte ON te.id = cte.timeline_event_id
+        WHERE cte.character_id = ?
+    `).all(characterId);
+
+    const puzzles = db.prepare(`
+        SELECT p.*, 'puzzle' as type FROM puzzles p
+        JOIN character_puzzles cp ON p.id = cp.puzzle_id
+        WHERE cp.character_id = ?
+    `).all(characterId);
+
+    const ownedElements = db.prepare(`
+        SELECT e.*, 'element' as type, 'owned' as relationship_type FROM elements e
+        JOIN character_owned_elements coe ON e.id = coe.element_id
+        WHERE coe.character_id = ?
+    `).all(characterId);
+
+    const associatedElements = db.prepare(`
+        SELECT e.*, 'element' as type, 'associated' as relationship_type FROM elements e
+        JOIN character_associated_elements cae ON e.id = cae.element_id
+        WHERE cae.character_id = ?
+    `).all(characterId);
+    
+    return {
+        events,
+        puzzles,
+        elements: [...ownedElements, ...associatedElements]
+    };
 }
+
+// Events
 
 async function getAllEvents() {
    const db = getDB();
@@ -29,13 +50,6 @@ async function getAllEvents() {
 }
 
 // Puzzles
-async function getPuzzlesForCharacter(characterId) {
-  const db = getDB();
-  // Assuming puzzles have an owner_id or similar linking.
-  // Or, if linked via character_puzzles join table (not defined yet).
-  // For now, uses owner_id directly from puzzles table.
-  return db.prepare('SELECT * FROM puzzles WHERE owner_id = ?').all(characterId);
-}
 
 async function getAllPuzzles() {
    const db = getDB();
@@ -43,14 +57,6 @@ async function getAllPuzzles() {
 }
 
 // Elements
-async function getElementsForCharacter(characterId) {
-  const db = getDB();
-  // This is highly dependent on how elements are linked to characters.
-  // (e.g., owned_elements, associated_elements, via puzzles, via events).
-  // For now, this is a placeholder - returning all elements.
-  // A more realistic query would join through relevant tables.
-  return db.prepare('SELECT * FROM elements').all();
-}
 
 async function getAllElements() {
    const db = getDB();
@@ -63,133 +69,136 @@ async function getAllCharacterIdsAndNames() {
   return db.prepare('SELECT id, name FROM characters').all();
 }
 
+// Get linked characters for a specific character
+async function getLinkedCharacters(characterId) {
+  const db = getDB();
+  const links = db.prepare(`
+    SELECT DISTINCT 
+      CASE 
+        WHEN character_a_id = ? THEN character_b_id 
+        ELSE character_a_id 
+      END as linked_character_id,
+      c.name as linked_character_name,
+      cl.link_type,
+      COUNT(*) as link_count
+    FROM character_links cl
+    JOIN characters c ON (
+      CASE 
+        WHEN cl.character_a_id = ? THEN cl.character_b_id 
+        ELSE cl.character_a_id 
+      END = c.id
+    )
+    WHERE character_a_id = ? OR character_b_id = ?
+    GROUP BY linked_character_id, link_type
+    ORDER BY link_count DESC
+  `).all(characterId, characterId, characterId, characterId);
+  
+  return links;
+}
+
+async function getFullEntityDetails(entityIds) {
+    const db = getDB();
+    if (!entityIds || entityIds.length === 0) {
+        return { characters: [], elements: [], puzzles: [], timeline_events: [] };
+    }
+    const placeholders = entityIds.map(() => '?').join(',');
+    
+    const characters = db.prepare(`SELECT *, 'character' as type FROM characters WHERE id IN (${placeholders})`).all(...entityIds);
+    const elements = db.prepare(`SELECT *, 'element' as type FROM elements WHERE id IN (${placeholders})`).all(...entityIds);
+    const puzzles = db.prepare(`SELECT *, 'puzzle' as type FROM puzzles WHERE id IN (${placeholders})`).all(...entityIds);
+    const timeline_events = db.prepare(`SELECT *, 'timeline_event' as type FROM timeline_events WHERE id IN (${placeholders})`).all(...entityIds);
+
+    return { characters, elements, puzzles, timeline_events };
+}
+
+/**
+ * Gathers all data relevant to a character's journey for graph construction.
+ * This includes directly related items and items linked through puzzles and rewards.
+ * @param {string} characterId - The ID of the character.
+ * @returns {Promise<{events: Array, puzzles: Array, elements: Array}>}
+ */
+async function getCharacterJourneyData(characterId) {
+  const db = getDB();
+  
+  // 1. Get direct relationships
+  const directRelations = await getCharacterRelations(characterId);
+  const allEvents = new Map(directRelations.events.map(e => [e.id, e]));
+  const allPuzzles = new Map(directRelations.puzzles.map(p => [p.id, p]));
+  const allElements = new Map(directRelations.elements.map(el => [el.id, el]));
+
+  // 2. Find puzzles that reward this character's elements (upstream dependencies)
+  const elementIds = Array.from(allElements.keys());
+  if (elementIds.length > 0) {
+    const rewardingPuzzlesStmt = db.prepare(`
+      SELECT * FROM puzzles
+      WHERE json_valid(reward_ids) AND EXISTS (
+        SELECT 1 FROM json_each(reward_ids)
+        WHERE json_each.value IN (${elementIds.map(() => '?').join(',')})
+      )
+    `);
+    const rewardingPuzzles = rewardingPuzzlesStmt.all(...elementIds);
+    rewardingPuzzles.forEach(p => allPuzzles.set(p.id, p));
+  }
+
+  // 3. Find elements rewarded by this character's puzzles (downstream discoveries)
+  const puzzleIds = Array.from(allPuzzles.keys());
+  if (puzzleIds.length > 0) {
+    const puzzlesWithRewards = db.prepare(`SELECT reward_ids FROM puzzles WHERE id IN (${puzzleIds.map(() => '?').join(',')})`).all(...puzzleIds);
+    const rewardElementIds = new Set();
+    puzzlesWithRewards.forEach(p => {
+      try {
+        const ids = JSON.parse(p.reward_ids || '[]');
+        ids.forEach(id => rewardElementIds.add(id));
+      } catch (e) { /* ignore malformed JSON */ }
+    });
+    
+    if (rewardElementIds.size > 0) {
+      const rewardedElements = db.prepare(`SELECT * FROM elements WHERE id IN (${Array.from(rewardElementIds).map(() => '?').join(',')})`).all(...rewardElementIds);
+      rewardedElements.forEach(el => allElements.set(el.id, el));
+    }
+  }
+
+  return {
+    events: Array.from(allEvents.values()),
+    puzzles: Array.from(allPuzzles.values()),
+    elements: Array.from(allElements.values()),
+  };
+}
+
+// Get element by ID
+function getElementById(id) {
+  return getDB().prepare('SELECT * FROM elements WHERE id = ?').get(id);
+}
+
+// Get characters for list view
+function getCharactersForList() {
+  const db = getDB();
+  // This query fetches only the essential fields for the character list view.
+  return db.prepare(`
+    SELECT 
+      id, 
+      name, 
+      type, 
+      tier,
+      logline,
+      resolution_paths
+    FROM characters 
+    ORDER BY name ASC
+  `).all();
+}
+
 module.exports = {
   getCharacterById,
-  getEventsForCharacter, // Or a more generic getAllEvents if filtering happens in JS
-  getPuzzlesForCharacter, // Or getAllPuzzles
-  getElementsForCharacter, // Or getAllElements
+  getCharacterRelations,
   getAllEvents,
   getAllPuzzles,
   getAllElements,
   getAllCharacterIdsAndNames,
-  getCachedJourney,
-  saveCachedJourney,
-  isValidJourneyCache,
-  updateGapResolution,
+  getLinkedCharacters,
+  getFullEntityDetails,
+  getCharacterJourneyData,
+  getElementById,
+  getCharactersForList,
 };
 
-// Cached Journeys
-// Assume tables: cached_journey_segments, cached_journey_gaps
-// cached_journey_segments: id, character_id, start_minute, end_minute, activities (JSON), interactions (JSON), discoveries (JSON), gap_status, cached_at
-// cached_journey_gaps: id, character_id, start_minute, end_minute, severity, suggested_solutions (JSON), cached_at
 
-async function getCachedJourney(characterId) {
-  const db = getDB();
-  try {
-    const segments = db.prepare('SELECT * FROM cached_journey_segments WHERE character_id = ? ORDER BY start_minute ASC').all(characterId);
-    const gaps = db.prepare('SELECT * FROM cached_journey_gaps WHERE character_id = ? ORDER BY start_minute ASC').all(characterId);
-
-    if (!segments || segments.length === 0) {
-      return null; // No cached journey found
-    }
-
-    // Assuming character_info is not stored directly with segments/gaps but can be fetched if needed
-    // For now, the cached journey will primarily consist of segments, gaps, and the cached_at timestamp (from the first segment).
-    // The full character_info can be re-fetched by buildCharacterJourney if a valid cache is found.
-    return {
-      character_id: characterId,
-      segments: segments.map(s => ({ ...s, activities: JSON.parse(s.activities || '[]'), interactions: JSON.parse(s.interactions || '[]'), discoveries: JSON.parse(s.discoveries || '[]') })),
-      gaps: gaps.map(g => ({ ...g, suggested_solutions: JSON.parse(g.suggested_solutions || '[]') })),
-      // Use cached_at from the first segment as the overall cache time for the journey
-      cached_at: segments[0].cached_at
-    };
-  } catch (error) {
-    console.error(`Error getting cached journey for character ${characterId}:`, error);
-    // In case of schema issues (tables not existing), this will likely throw an error.
-    // For this subtask, we assume tables exist. If not, it correctly returns null or an error state.
-    return null;
-  }
-}
-
-async function saveCachedJourney(characterId, journeyData) {
-  const db = getDB();
-  const now = new Date().toISOString();
-
-  // Start a transaction
-  db.exec('BEGIN');
-  try {
-    // Clear old cache for this character
-    db.prepare('DELETE FROM cached_journey_segments WHERE character_id = ?').run(characterId);
-    db.prepare('DELETE FROM cached_journey_gaps WHERE character_id = ?').run(characterId);
-
-    // Save segments
-    const insertSegment = db.prepare(
-      'INSERT INTO cached_journey_segments (character_id, start_minute, end_minute, activities, interactions, discoveries, gap_status, cached_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    for (const segment of journeyData.segments) {
-      insertSegment.run(
-        characterId,
-        segment.start_minute,
-        segment.end_minute,
-        JSON.stringify(segment.activities || []),
-        JSON.stringify(segment.interactions || []),
-        JSON.stringify(segment.discoveries || []),
-        segment.gap_status,
-        now
-      );
-    }
-
-    // Save gaps
-    const insertGap = db.prepare(
-      'INSERT INTO cached_journey_gaps (character_id, start_minute, end_minute, severity, suggested_solutions, cached_at) VALUES (?, ?, ?, ?, ?, ?)'
-    );
-    for (const gap of journeyData.gaps) {
-      insertGap.run(
-        characterId,
-        gap.start_minute,
-        gap.end_minute,
-        gap.severity,
-        JSON.stringify(gap.suggested_solutions || []),
-        now
-      );
-    }
-    db.exec('COMMIT');
-    // console.log(`Cached journey for character ${characterId} successfully.`);
-  } catch (error) {
-    db.exec('ROLLBACK');
-    console.error(`Error saving cached journey for character ${characterId}:`, error);
-    // This will also catch errors if tables don't exist.
-  }
-}
-
-function isValidJourneyCache(cachedJourney) {
-  if (!cachedJourney || !cachedJourney.cached_at) {
-    return false;
-  }
-  const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-  const cacheTime = new Date(cachedJourney.cached_at).getTime();
-  const now = new Date().getTime();
-  return (now - cacheTime) < CACHE_TTL_MS;
-}
-
-async function updateGapResolution(gapId, status, comment = '') {
-  const db = getDB();
-  // Assuming 'gaps' table with columns 'id', 'status', 'resolution_comment'
-  // RETURNING * is specific to PostgreSQL and SQLite 3.35.0+
-  // For older SQLite, you might need to do a SELECT after UPDATE.
-  // However, better-sqlite3 supports RETURNING * for versions that have it.
-  const stmt = db.prepare(`
-    UPDATE gaps
-    SET status = ?, resolution_comment = ?
-    WHERE id = ?
-    RETURNING *
-  `);
-  try {
-    // Ensure comment is not undefined, default to empty string if so.
-    const result = stmt.get(status, comment || '', gapId);
-    return result; // Returns the updated row or undefined if no row was updated
-  } catch (error) {
-    console.error('Error updating gap resolution in DB:', error);
-    throw error; // Re-throw to be caught by controller
-  }
-}
