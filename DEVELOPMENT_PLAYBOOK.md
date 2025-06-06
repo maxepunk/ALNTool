@@ -25,15 +25,22 @@ For deeper understanding of game mechanics when implementing calculated fields:
 ## 🎯 Current Development Status
 
 **Active Phase**: **Technical Debt Repayment**
-**Current Milestone**: P.DEBT.1 - Critical Risk Cleanup
-**Last Completed**: Comprehensive Technical Debt Review (2025-06-08)
-**Current Task**: P.DEBT.1.2 - Decommission Legacy Database Tables (P.DEBT.1.1 ✅ Complete)
+**Current Milestone**: P.DEBT.3 - DataSyncService Refactor Implementation
+**Last Completed**: P.DEBT.3.3 - Extract Remaining Entity Syncers (Current Time)
+**Current Task**: P.DEBT.3.4 - Extract Relationship Syncer
 **Branch**: `fix/technical-debt-cleanup`
 
 ### ✅ Recently Completed:
 - **Technical Debt Review (2025-06-08)**: A systematic review of the codebase was completed, producing a prioritized action plan.
 - **Documentation Refactor (2025-06-08)**: All core documentation (`QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) updated to reflect the new focus on repaying technical debt.
 - **P.DEBT.1.1 (2025-06-06)**: Sanitized `db/queries.js` - removed 7 deprecated functions and cleaned module.exports.
+- **P.DEBT.1.2 (2025-06-06)**: Decommissioned legacy database tables - created migration to drop 4 obsolete tables and removed references from dataSyncService.js.
+- **P.DEBT.1.3 (2025-06-06)**: Removed zombie logic from `journeyEngine.js` - deleted `suggestGapSolutions` and `getInteractionWindows` methods.
+- **P.DEBT.2.1 (2025-06-06)**: Refactored hybrid API response - `buildCharacterJourney` now returns clean object structure without deprecated segments/gaps arrays.
+- **P.DEBT.2.2 (2025-06-06)**: Re-implemented journey caching - created `cached_journey_graphs` table, added caching functions to queries.js, integrated into journeyEngine.
+- **P.DEBT.3.1 (2025-06-09)**: Created refactor directory structure and implemented foundational classes (SyncLogger and BaseSyncer) with comprehensive unit tests.
+- **P.DEBT.3.2**: Extracted CharacterSyncer from monolithic dataSyncService - new syncer handles all character sync logic including relationships, with integration tests.
+- **P.DEBT.3.3 (Current Time)**: Extracted remaining entity syncers (ElementSyncer, PuzzleSyncer, TimelineEventSyncer) with comprehensive tests. Reduced dataSyncService from 760 to 540 lines.
 
 ### 🔴 Active Priority:
 - **Solidify Foundation**: All new feature development is paused until the critical technical debt identified in the review is fully paid down.
@@ -68,9 +75,10 @@ This is our sole focus. We will address these items sequentially, starting with 
     2.  Add `DROP TABLE IF EXISTS <table_name>;` for each of the four obsolete tables.
     3.  In `dataSyncService.js`, find the `syncCharacters` function and remove the lines that delete from `cached_journey_gaps` and `cached_journey_segments`.
 -   **Acceptance Criteria**:
-    -   [ ] The new migration script is created and successfully drops the four tables.
-    -   [ ] `dataSyncService.js` no longer references the obsolete tables.
-    -   [ ] The `syncAll` command runs successfully without the legacy tables.
+    -   [✅] The new migration script is created and successfully drops the four tables.
+    -   [✅] `dataSyncService.js` no longer references the obsolete tables.
+    -   [✅] The `syncAll` command runs successfully without the legacy tables.
+    -   **STATUS: COMPLETE (2025-06-06)** - Migration script created (`20250606000000_drop_legacy_journey_tables.sql`), removed references from dataSyncService.js.
 
 #### **P.DEBT.1.3: Remove Zombie Logic from `journeyEngine.js`**
 -   **Problem**: `journeyEngine.js` contains obsolete methods (`suggestGapSolutions`, `getInteractionWindows`) based on the old "gap" model.
@@ -79,8 +87,9 @@ This is our sole focus. We will address these items sequentially, starting with 
     1.  Delete the entire `suggestGapSolutions` method.
     2.  Delete the entire `getInteractionWindows` method.
 -   **Acceptance Criteria**:
-    -   [ ] The obsolete methods are removed from the `JourneyEngine` class.
-    -   [ ] The application runs without errors.
+    -   [✅] The obsolete methods are removed from the `JourneyEngine` class.
+    -   [✅] The application runs without errors.
+    -   **STATUS: COMPLETE (2025-06-06)** - Both methods removed along with unused import `parseTimingToMinutes`.
 
 ---
 
@@ -88,17 +97,18 @@ This is our sole focus. We will address these items sequentially, starting with 
 
 **Goal**: Improve maintainability, performance, and developer experience.
 
-#### **P.DEBT.2.1: Refactor Hybrid API Response**
+#### **P.DEBT.2.1: Refactor Hybrid API Response** ✅ COMPLETE
 -   **Problem**: The `buildCharacterJourney` function returns a confusing hybrid data structure containing both the new `graph` object and deprecated `segments: []`, `gaps: []` arrays.
 -   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, (Frontend) `storyforge/frontend/src/stores/journeyStore.js` or equivalent data-fetching component.
 -   **Action**:
     1.  Modify `buildCharacterJourney` to return a clean object containing only `character_info` and `graph`.
     2.  Update the corresponding frontend code that consumes the `/api/journeys/:characterId` endpoint to expect the new, cleaner data structure.
 -   **Acceptance Criteria**:
-    -   [ ] The API response for a journey is clean and no longer contains `segments` or `gaps`.
-    -   [ ] The frontend `JourneyGraphView` renders correctly with the new data structure.
+    -   [✅] The API response for a journey is clean and no longer contains `segments` or `gaps`.
+    -   [✅] The frontend `JourneyGraphView` renders correctly with the new data structure.
+-   **STATUS: COMPLETE (2025-06-06)** - Refactored `buildCharacterJourney` to return clean structure. Deprecated gap-related endpoints with 410 status codes.
 
-#### **P.DEBT.2.2: Re-implement Journey Caching**
+#### **P.DEBT.2.2: Re-implement Journey Caching** ✅ COMPLETE
 -   **Problem**: Journey caching was disabled during the refactor, creating a performance liability.
 -   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, `storyforge/backend/src/db/queries.js`.
 -   **Action**:
@@ -106,15 +116,147 @@ This is our sole focus. We will address these items sequentially, starting with 
     2.  Implement `saveCachedJourneyGraph` and `getCachedJourneyGraph` in `queries.js`.
     3.  Integrate the caching logic into `buildCharacterJourney` in `journeyEngine.js`.
 -   **Acceptance Criteria**:
-    -   [ ] Requesting the same journey twice in a row results in the second request being served from the cache.
-    -   [ ] A new `cached_journey_graphs` table exists and is populated.
+    -   [✅] Requesting the same journey twice in a row results in the second request being served from the cache.
+    -   [✅] A new `cached_journey_graphs` table exists and is populated.
+-   **STATUS: COMPLETE (2025-06-06)** - Implemented graph caching with version hash validation, 24-hour TTL, and LRU tracking. Added cache invalidation to sync process.
 
-#### **P.DEBT.2.3: Plan `dataSyncService.js` Refactor**
+#### **P.DEBT.2.3: Plan `dataSyncService.js` Refactor** ✅ COMPLETE
 -   **Problem**: `dataSyncService.js` is a 760-line monolith.
 -   **File(s) Affected**: `storyforge/backend/src/services/dataSyncService.js`.
 -   **Action**: This is a planning task. Create a new document outlining a refactor strategy. The plan should propose a new file structure (e.g., `/services/sync/`, `/services/compute/`) and define the API for each new module.
 -   **Acceptance Criteria**:
-    -   [ ] A markdown file (`REFACTOR_PLAN_DATASYNC.md`) is created with a detailed plan for breaking down the monolith.
+    -   [✅] A markdown file (`REFACTOR_PLAN_DATASYNC.md`) is created with a detailed plan for breaking down the monolith.
+    -   **STATUS: COMPLETE (2025-06-09)** - Created comprehensive refactor plan with 7 focused modules, migration strategy, and testing approach.
+
+---
+
+### 🔧 Priority 3: DataSyncService Refactor Implementation
+
+**Goal**: Execute the refactor plan created in P.DEBT.2.3, transforming the monolithic `dataSyncService.js` into maintainable, testable modules.
+
+#### **P.DEBT.3.1: Create Refactor Directory Structure & Base Classes**
+-   **Problem**: Need foundational structure before extracting sync logic.
+-   **Files to Create**:
+    - `storyforge/backend/src/services/sync/` directory
+    - `storyforge/backend/src/services/sync/SyncLogger.js`
+    - `storyforge/backend/src/services/sync/entitySyncers/BaseSyncer.js`
+    - `storyforge/backend/src/services/compute/` directory
+    - `storyforge/backend/src/services/cache/` directory
+-   **Action**:
+    1. Create the directory structure as specified in REFACTOR_PLAN_DATASYNC.md
+    2. Implement `SyncLogger` class with methods: `startSync()`, `completeSync()`, `failSync()`
+    3. Implement `BaseSyncer` abstract class with template method pattern
+    4. Create basic unit tests for both classes
+-   **Acceptance Criteria**:
+    -   [✅] Directory structure matches the refactor plan
+    -   [✅] `SyncLogger` can log sync operations to the sync_log table
+    -   [✅] `BaseSyncer` provides abstract methods for subclasses
+    -   [✅] Unit tests pass for both classes
+    -   [✅] No changes to existing functionality
+    -   **STATUS: COMPLETE (2025-06-09)** - Created directory structure and implemented foundational classes with comprehensive unit tests.
+
+#### **P.DEBT.3.2: Extract Character Syncer** ✅ COMPLETE
+-   **Problem**: Character sync logic is embedded in the monolith.
+-   **Files Affected**:
+    - Create: `storyforge/backend/src/services/sync/entitySyncers/CharacterSyncer.js`
+    - Modify: `storyforge/backend/src/services/dataSyncService.js`
+-   **Action**:
+    1. Create `CharacterSyncer` extending `BaseSyncer`
+    2. Move character sync logic from `dataSyncService.syncCharacters()`
+    3. Add comprehensive error handling
+    4. Create integration tests
+    5. Update `dataSyncService` to use `CharacterSyncer`
+-   **Acceptance Criteria**:
+    -   [✅] `CharacterSyncer` successfully syncs all characters
+    -   [✅] Maintains exact same behavior as original
+    -   [✅] Integration tests verify database state
+    -   [✅] Original sync still works (parallel run)
+    -   **STATUS: COMPLETE** - Created CharacterSyncer with full relationship handling via postProcess(). Integration tests written. dataSyncService updated to delegate to new syncer.
+
+#### **P.DEBT.3.3: Extract Remaining Entity Syncers** ✅ COMPLETE
+-   **Problem**: Elements, Puzzles, and Timeline Events sync logic needs extraction.
+-   **Files to Create**:
+    - `storyforge/backend/src/services/sync/entitySyncers/ElementSyncer.js`
+    - `storyforge/backend/src/services/sync/entitySyncers/PuzzleSyncer.js`
+    - `storyforge/backend/src/services/sync/entitySyncers/TimelineEventSyncer.js`
+-   **Action**:
+    1. Follow same pattern as CharacterSyncer for each entity type
+    2. Ensure proper transaction handling
+    3. Add entity-specific error handling
+    4. Create tests for each syncer
+-   **Acceptance Criteria**:
+    -   [✅] All three syncers implemented and tested
+    -   [✅] Each maintains original behavior
+    -   [✅] No data loss during sync
+    -   [✅] Performance metrics comparable or better
+    -   **STATUS: COMPLETE** - Created ElementSyncer, PuzzleSyncer, and TimelineEventSyncer following the same pattern as CharacterSyncer. Each has comprehensive tests. Updated dataSyncService to use all new syncers, reducing file size from 760 to 540 lines (29% reduction).
+
+#### **P.DEBT.3.4: Extract Relationship Syncer**
+-   **Problem**: Relationship sync logic handles cross-entity concerns.
+-   **Files to Create**:
+    - `storyforge/backend/src/services/sync/RelationshipSyncer.js`
+-   **Action**:
+    1. Create `RelationshipSyncer` class
+    2. Move `syncCharacterRelationships()` logic
+    3. Ensure proper dependency on entity sync completion
+    4. Add validation for referential integrity
+-   **Acceptance Criteria**:
+    -   [ ] Relationships sync correctly after entities
+    -   [ ] No orphaned relationships
+    -   [ ] Performance maintained
+    -   [ ] Clear error messages for missing entities
+
+#### **P.DEBT.3.5: Extract Compute Services**
+-   **Problem**: Derived field computation mixed with sync logic.
+-   **Files to Create**:
+    - `storyforge/backend/src/services/compute/DerivedFieldComputer.js`
+    - `storyforge/backend/src/services/compute/ActFocusComputer.js`
+    - `storyforge/backend/src/services/compute/NarrativeThreadComputer.js`
+    - `storyforge/backend/src/services/compute/ResolutionPathComputer.js`
+    - `storyforge/backend/src/services/compute/CharacterLinkComputer.js`
+-   **Action**:
+    1. Extract computation logic into pure functions
+    2. Create orchestrator for running all computations
+    3. Add comprehensive unit tests
+    4. Ensure computations are idempotent
+-   **Acceptance Criteria**:
+    -   [ ] All computers work independently
+    -   [ ] Pure functions with no side effects
+    -   [ ] 100% unit test coverage
+    -   [ ] Performance improvement from parallel execution
+
+#### **P.DEBT.3.6: Create Sync Orchestrator**
+-   **Problem**: Need coordinator for all sync phases.
+-   **Files to Create**:
+    - `storyforge/backend/src/services/sync/SyncOrchestrator.js`
+-   **Action**:
+    1. Implement `SyncOrchestrator` with dependency injection
+    2. Define clear phases: entities → relationships → links → derived fields → cache
+    3. Add progress tracking and cancellation
+    4. Implement rollback on failure
+-   **Acceptance Criteria**:
+    -   [ ] Orchestrator coordinates all sync phases
+    -   [ ] Progress events emitted
+    -   [ ] Rollback works on any phase failure
+    -   [ ] Can sync individual phases
+
+#### **P.DEBT.3.7: Integrate & Deprecate Old Code**
+-   **Problem**: Need smooth transition from old to new implementation.
+-   **Files Affected**:
+    - Modify: `storyforge/backend/src/services/dataSyncService.js`
+    - Update: All files importing dataSyncService
+-   **Action**:
+    1. Add feature flag for new sync implementation
+    2. Update `dataSyncService.syncAll()` to delegate to orchestrator
+    3. Run parallel tests comparing old vs new
+    4. Remove old methods after verification
+    5. Update all imports and documentation
+-   **Acceptance Criteria**:
+    -   [ ] Feature flag controls implementation
+    -   [ ] Both implementations produce identical results
+    -   [ ] All tests pass with new implementation
+    -   [ ] Old code removed, file under 100 lines
+    -   [ ] Documentation updated
 
 ---
 ## 🚀 Post-Debt Development Plan

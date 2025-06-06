@@ -1,7 +1,7 @@
 // This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
 const { getDB } = require('../db/database'); // Adjust path as needed
 const dbQueries = require('../db/queries'); // Adjust path
-const { parseTimingToMinutes } = require('../utils/timingParser');
+
 
 class JourneyEngine {
   /**
@@ -104,23 +104,25 @@ class JourneyEngine {
   }
 
   /**
-   * Builds the complete journey for a character, including segments and gaps.
+   * Builds the complete journey for a character as a narrative graph.
    * @param {string} characterId - The ID of the character.
    * @param {object} [journeyData={}] - Optional data for journey computation, used for testing or what-if scenarios.
    * @param {Array<object>} [journeyData.eventsData] - Optional override for events data.
    * @param {Array<object>} [journeyData.puzzlesData] - Optional override for puzzles data.
    * @param {Array<object>} [journeyData.elementsData] - Optional override for elements data.
-   * @returns {Promise<object|null>} - The character's journey object, or null if character not found.
+   * @returns {Promise<object|null>} - The character's journey object with character_info and graph, or null if character not found.
    */
   async buildCharacterJourney(characterId, { eventsData: eventsDataOverride, puzzlesData: puzzlesDataOverride, elementsData: elementsDataOverride } = {}) {
     const isTestingWithOverride = eventsDataOverride || puzzlesDataOverride || elementsDataOverride;
 
-    // TODO: This function needs to be re-evaluated.
-    // It currently returns segments and gaps, but the new model is a graph.
-    // For now, we will adapt it to call the new graph builder.
-
-    // 1. Attempt to retrieve a cached journey
-    // Caching needs to be adapted for graph data. For now, we skip it.
+    // 1. Attempt to retrieve a cached journey (skip cache if testing with overrides)
+    if (!isTestingWithOverride) {
+      const cachedJourney = await dbQueries.getCachedJourneyGraph(characterId);
+      if (cachedJourney) {
+        console.log(`Serving cached journey for character ${characterId}`);
+        return cachedJourney;
+      }
+    }
     
     // 2. Compute the journey graph
     const characterData = await dbQueries.getCharacterById(characterId);
@@ -140,90 +142,18 @@ class JourneyEngine {
         ...characterData,
         linkedCharacters: linkedCharacters
       },
-      // The frontend will now expect a 'graph' property instead of 'segments' and 'gaps'
-      graph: journeyGraph, 
-      segments: [], // Deprecated - send empty array for now
-      gaps: [],     // Deprecated - send empty array for now
+      graph: journeyGraph
     };
 
-    // 3. Caching logic will need to be updated to store graph data.
-    // if (!isTestingWithOverride) {
-    //   await dbQueries.saveCachedJourney(characterId, computedJourney);
-    // }
+    // 3. Save to cache (skip if testing with overrides)
+    if (!isTestingWithOverride) {
+      await dbQueries.saveCachedJourneyGraph(characterId, computedJourney);
+    }
 
     return computedJourney;
   }
 
-  /**
-   * Stub for suggesting solutions to fill identified gaps.
-   * @param {object} gap - The gap object.
-   * @param {Array<object>} allElements - All available element objects.
-   * @param {Array<object>} allPuzzles - All available puzzle objects.
-   * @returns {Promise<Array<object>>} - Placeholder for suggested solutions.
-   */
-  async suggestGapSolutions(gap, allElements, allPuzzles) {
-    const suggestions = [];
-    const gapDuration = gap.end_minute - gap.start_minute;
 
-    if (gap.severity === 'low' || gapDuration <= 5) {
-      suggestions.push({
-        id: 'suggestion_low_1',
-        type: 'discovery',
-        description: 'Consider adding a small discovery or observation.',
-        details: { estimated_time: 5, related_elements: [] }
-      });
-      suggestions.push({
-        id: 'suggestion_low_2',
-        type: 'interaction',
-        description: 'Consider a brief interaction with another character or an element.',
-        details: { estimated_time: 5, related_characters: [], related_elements: [] }
-      });
-    } else if (gap.severity === 'medium' || (gapDuration > 5 && gapDuration <= 10)) {
-      suggestions.push({
-        id: 'suggestion_medium_1',
-        type: 'element',
-        description: 'Consider introducing a minor puzzle or a significant element.',
-        details: { estimated_time: 10, related_elements: [] }
-      });
-      suggestions.push({
-        id: 'suggestion_medium_2',
-        type: 'puzzle',
-        description: 'A simple puzzle could fit here.',
-        details: { estimated_time: 10, difficulty: 'easy' }
-      });
-    } else if (gap.severity === 'high' || gapDuration > 10) {
-      suggestions.push({
-        id: 'suggestion_high_1',
-        type: 'activity',
-        description: 'Consider a more complex activity or a multi-step element interaction.',
-        details: { estimated_time: 15, steps: 3 }
-      });
-      suggestions.push({
-        id: 'suggestion_high_2',
-        type: 'element_interaction',
-        description: 'A multi-step interaction with a key element could be engaging.',
-        details: { estimated_time: 15, related_elements: [], required_items: [] }
-      });
-    }
-
-    // console.log('Suggesting solutions for gap:', gap, 'Generated suggestions:', suggestions);
-    // Parameters allElements and allPuzzles are kept for future, more advanced implementations.
-    return suggestions;
-  }
-
-  /**
-   * Stub for identifying interaction windows between two characters.
-   * @param {object} characterAJourney - Journey object for character A.
-   * @param {object} characterBJourney - Journey object for character B.
-   * @returns {Promise<Array<object>>} - Placeholder for interaction windows.
-   */
-  async getInteractionWindows(characterAJourney, characterBJourney) {
-    // TODO: Implement logic to compare two character journeys and find overlapping segments
-    // where they might interact. This would involve looking at their locations (if available),
-    // common events, or puzzles they might both be involved in.
-    console.log('getInteractionWindows is a stub and needs implementation.', characterAJourney, characterBJourney);
-    return []; // Placeholder
-  }
 }
 
 module.exports = JourneyEngine;

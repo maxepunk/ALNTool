@@ -1,10 +1,46 @@
 const notionService = require('./notionService');
 const propertyMapper = require('../utils/notionPropertyMapper');
 const { getDB } = require('../db/database');
+const { invalidateJourneyCache, clearExpiredJourneyCache } = require('../db/queries');
+const SyncLogger = require('./sync/SyncLogger');
+const CharacterSyncer = require('./sync/entitySyncers/CharacterSyncer');
+const ElementSyncer = require('./sync/entitySyncers/ElementSyncer');
+const PuzzleSyncer = require('./sync/entitySyncers/PuzzleSyncer');
+const TimelineEventSyncer = require('./sync/entitySyncers/TimelineEventSyncer');
 
 class DataSyncService {
   constructor() {
     this.db = null;
+  }
+
+  /**
+   * Perform cache maintenance after sync
+   */
+  async performCacheMaintenance() {
+    try {
+      // Clear expired caches older than 7 days
+      clearExpiredJourneyCache(168);
+      
+      // Invalidate all journey caches since we've synced new data
+      // In a more sophisticated implementation, we could track which characters
+      // were affected and only invalidate those specific caches
+      const characters = this.db.prepare('SELECT id FROM characters').all();
+      let invalidated = 0;
+      
+      for (const char of characters) {
+        try {
+          invalidateJourneyCache(char.id);
+          invalidated++;
+        } catch (error) {
+          console.warn(`Failed to invalidate cache for character ${char.id}:`, error.message);
+        }
+      }
+      
+      console.log(`✅ Cache maintenance complete. Invalidated ${invalidated} journey caches.`);
+    } catch (error) {
+      console.error('❌ Error during cache maintenance:', error);
+      // Don't throw - cache maintenance failure shouldn't break sync
+    }
   }
 
   /**
@@ -72,6 +108,10 @@ class DataSyncService {
       console.log('\n--- PHASE 4: COMPUTING DERIVED FIELDS ---');
       await this.computeDerivedFields();
 
+      // PHASE 5: Clear expired caches and invalidate all journey caches
+      console.log('\n--- PHASE 5: CACHE MAINTENANCE ---');
+      await this.performCacheMaintenance();
+
       const duration = Date.now() - startTime;
       console.log(`\n🎉 MASTER SYNC COMPLETE! Duration: ${duration}ms`);
       this.logSyncSuccess(overallLogId, -1, -1, -1); // -1 indicates an aggregate log
@@ -85,284 +125,113 @@ class DataSyncService {
   }
 
   /**
-   * Sync all characters from Notion to SQLite in a single transaction.
-   * This function is now self-contained and manages its own logging and transaction.
+   * Sync all characters from Notion to SQLite using the new CharacterSyncer.
+   * This method now delegates to the modular syncer while maintaining backward compatibility.
    */
   async syncCharacters() {
-    this.initDB();
-    const logId = this.logSyncStart('characters');
     console.log('📝 Syncing characters...');
-
-    let stats = { fetched: 0, synced: 0, errors: 0 };
-    let notionCharacters = [];
-
+    
+    // Create a SyncLogger instance
+    const syncLogger = new SyncLogger();
+    
+    // Create and run the character syncer
+    const characterSyncer = new CharacterSyncer({
+      notionService,
+      propertyMapper,
+      logger: syncLogger
+    });
+    
     try {
-      notionCharacters = await notionService.getCharacters();
-      stats.fetched = notionCharacters.length;
-
-      if (stats.fetched === 0) {
-        console.log('⚠️  No characters found in Notion.');
-        this.logSyncSuccess(logId, 0, 0, 0);
-        return;
-      }
-
-      this.db.exec('BEGIN');
-
-      // Clear all tables that have a foreign key to characters, in the correct order.
-      this.db.prepare('DELETE FROM character_links').run();
-      this.db.prepare('DELETE FROM character_timeline_events').run();
-      this.db.prepare('DELETE FROM character_owned_elements').run();
-      this.db.prepare('DELETE FROM character_associated_elements').run();
-      this.db.prepare('DELETE FROM character_puzzles').run();
-      this.db.prepare('DELETE FROM cached_journey_gaps').run();
-      this.db.prepare('DELETE FROM cached_journey_segments').run();
-      // Defer deleting puzzles and interactions as they may be linked to multiple entities
-      // this.db.prepare('DELETE FROM puzzles').run();
-      // this.db.prepare('DELETE FROM interactions').run();
-      this.db.prepare('DELETE FROM characters').run();
-
-      const insertCharStmt = this.db.prepare(
-          'INSERT INTO characters (id, name, type, tier, logline, connections) VALUES (?, ?, ?, ?, ?, ?)'
-      );
-
-      for (const notionChar of notionCharacters) {
-        try {
-          const mappedChar = await propertyMapper.mapCharacterWithNames(notionChar, notionService);
-          if (mappedChar && !mappedChar.error) {
-            insertCharStmt.run(
-                mappedChar.id,
-                mappedChar.name || '',
-                mappedChar.type || '',
-                mappedChar.tier || '',
-                mappedChar.logline || '',
-                mappedChar.connections || 0
-            );
-            stats.synced++;
-          } else {
-            console.warn(`⚠️  Failed to map character ${notionChar.id}:`, mappedChar?.error);
-            stats.errors++;
-          }
-        } catch (charError) {
-          console.error(`❌ Error processing character ${notionChar.id}:`, charError.message);
-          stats.errors++;
-        }
-      }
-
-      this.db.exec('COMMIT');
-      console.log(`✅ Characters: ${stats.synced}/${stats.fetched} synced successfully.`);
-      this.logSyncSuccess(logId, stats.fetched, stats.synced, stats.errors);
-
+      const stats = await characterSyncer.sync();
+      
+      // Note: characterSyncer handles its own relationship syncing via postProcess()
+      // so we don't need to call syncCharacterRelationships() separately for characters
+      
+      return stats;
     } catch (error) {
-      console.error('❌ Character sync failed:', error);
-      if (this.db.inTransaction) {
-        this.db.exec('ROLLBACK');
-      }
-      this.logSyncFailure(logId, error, stats.fetched, stats.synced);
-      throw error; // Re-throw to halt the master sync process
-    }
-  }
-
-  /**
-   * Sync elements from Notion to SQLite
-   */
-  async syncElements() {
-    this.initDB();
-    const logId = this.logSyncStart('elements');
-    console.log('🚮 Clearing and syncing elements...');
-    let stats = { fetched: 0, synced: 0, errors: 0 };
-
-    try {
-      const notionElements = await notionService.getElements();
-      stats.fetched = notionElements.length;
-
-      if (stats.fetched === 0) {
-        console.log('⚠️ No elements found in Notion.');
-        this.logSyncSuccess(logId, 0, 0, 0);
-        return;
-      }
-
-      this.db.exec('BEGIN');
-
-      this.db.prepare('DELETE FROM elements').run();
-
-      const insertStmt = this.db.prepare(`
-        INSERT INTO elements (
-          id, name, type, description, status, owner_id, 
-          container_id, production_notes, first_available, timeline_event_id
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const notionElement of notionElements) {
-        try {
-          const mappedElement = await propertyMapper.mapElementWithNames(notionElement, notionService);
-          if (mappedElement && !mappedElement.error) {
-            const ownerId = mappedElement.owner && mappedElement.owner.length > 0 ? mappedElement.owner[0].id : null;
-            const containerId = mappedElement.container && mappedElement.container.length > 0 ? mappedElement.container[0].id : null;
-            const timelineEventId = mappedElement.timelineEvent && mappedElement.timelineEvent.length > 0 ? mappedElement.timelineEvent[0].id : null;
-            
-            insertStmt.run(
-              mappedElement.id, mappedElement.name || '', mappedElement.basicType || '',
-              mappedElement.description || '', mappedElement.status || '', ownerId,
-              containerId, mappedElement.productionNotes || '',
-              mappedElement.firstAvailable || '', timelineEventId
-            );
-            stats.synced++;
-          } else {
-            stats.errors++;
-            console.warn(`⚠️ Failed to map element ${notionElement.id}:`, mappedElement?.error);
-          }
-        } catch (elementError) {
-          stats.errors++;
-          console.error(`❌ Error processing element ${notionElement.id}:`, elementError.message);
-        }
-      }
-
-      this.db.exec('COMMIT');
-      console.log(`✅ Elements: ${stats.synced}/${stats.fetched} synced successfully.`);
-      this.logSyncSuccess(logId, stats.fetched, stats.synced, stats.errors);
-
-    } catch (error) {
-      console.error('❌ Element sync failed:', error);
-      if (this.db.inTransaction) {
-        this.db.exec('ROLLBACK');
-      }
-      this.logSyncFailure(logId, error, stats.fetched, stats.synced);
-      throw error; // Re-throw
-    }
-  }
-
-  /**
-   * Sync puzzles from Notion to SQLite
-   */
-  async syncPuzzles() {
-    this.initDB();
-    const logId = this.logSyncStart('puzzles');
-    console.log('🧩 Clearing and syncing puzzles...');
-    let stats = { fetched: 0, synced: 0, errors: 0 };
-
-    try {
-      const notionPuzzles = await notionService.getPuzzles();
-      stats.fetched = notionPuzzles.length;
-
-      if (stats.fetched === 0) {
-        console.log('⚠️ No puzzles found in Notion.');
-        this.logSyncSuccess(logId, 0, 0, 0);
-        return;
-      }
-
-      this.db.exec('BEGIN');
-      this.db.prepare('DELETE FROM puzzles').run();
-
-      const insertStmt = this.db.prepare(`
-        INSERT INTO puzzles (
-          id, name, timing, owner_id, locked_item_id, 
-          reward_ids, puzzle_element_ids, story_reveals, narrative_threads
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const notionPuzzle of notionPuzzles) {
-        try {
-          const mappedPuzzle = await propertyMapper.mapPuzzleWithNames(notionPuzzle, notionService);
-          if (mappedPuzzle && !mappedPuzzle.error) {
-            const puzzleName = mappedPuzzle.puzzle || mappedPuzzle.name || `Untitled Puzzle (${notionPuzzle.id.substring(0, 8)})`;
-            const ownerId = mappedPuzzle.owner && mappedPuzzle.owner.length > 0 ? mappedPuzzle.owner[0].id : null;
-            const lockedItemId = mappedPuzzle.lockedItem && mappedPuzzle.lockedItem.length > 0 ? mappedPuzzle.lockedItem[0].id : null;
-            const rewardIds = mappedPuzzle.rewards ? JSON.stringify(mappedPuzzle.rewards.map(r => r.id)) : '[]';
-            const puzzleElementIds = mappedPuzzle.puzzleElements ? JSON.stringify(mappedPuzzle.puzzleElements.map(pe => pe.id)) : '[]';
-            const narrativeThreads = mappedPuzzle.narrativeThreads ? JSON.stringify(mappedPuzzle.narrativeThreads) : '[]';
-
-            insertStmt.run(
-              mappedPuzzle.id, puzzleName, mappedPuzzle.timing || 'Unknown', ownerId,
-              lockedItemId, rewardIds, puzzleElementIds,
-              mappedPuzzle.storyReveals || '', narrativeThreads
-            );
-            stats.synced++;
-          } else {
-            stats.errors++;
-            console.warn(`⚠️ Failed to map puzzle ${notionPuzzle.id}:`, mappedPuzzle?.error);
-          }
-        } catch (puzzleError) {
-          stats.errors++;
-          console.error(`❌ Error processing puzzle ${notionPuzzle.id}:`, puzzleError.message);
-          console.error(`   Raw Notion data for failed puzzle:`, JSON.stringify(notionPuzzle.properties, null, 2));
-        }
-      }
-
-      this.db.exec('COMMIT');
-      console.log(`✅ Puzzles: ${stats.synced}/${stats.fetched} synced successfully.`);
-      this.logSyncSuccess(logId, stats.fetched, stats.synced, stats.errors);
-
-    } catch (error) {
-      console.error('❌ Puzzle sync failed:', error);
-      if (this.db.inTransaction) {
-        this.db.exec('ROLLBACK');
-      }
-      this.logSyncFailure(logId, error, stats.fetched, stats.synced);
+      // Error is already logged by the syncer
       throw error;
     }
   }
 
   /**
-   * Sync timeline events from Notion to SQLite
+   * Sync all elements from Notion to SQLite using the new ElementSyncer.
+   * This method now delegates to the modular syncer while maintaining backward compatibility.
+   */
+  async syncElements() {
+    console.log('🚮 Syncing elements...');
+    
+    // Create a SyncLogger instance
+    const syncLogger = new SyncLogger();
+    
+    // Create and run the element syncer
+    const elementSyncer = new ElementSyncer({
+      notionService,
+      propertyMapper,
+      logger: syncLogger
+    });
+    
+    try {
+      const stats = await elementSyncer.sync();
+      return stats;
+    } catch (error) {
+      // Error is already logged by the syncer
+      throw error;
+    }
+  }
+
+  /**
+   * Sync all puzzles from Notion to SQLite using the new PuzzleSyncer.
+   * This method now delegates to the modular syncer while maintaining backward compatibility.
+   */
+  async syncPuzzles() {
+    console.log('🧩 Syncing puzzles...');
+    
+    // Create a SyncLogger instance
+    const syncLogger = new SyncLogger();
+    
+    // Create and run the puzzle syncer
+    const puzzleSyncer = new PuzzleSyncer({
+      notionService,
+      propertyMapper,
+      logger: syncLogger
+    });
+    
+    try {
+      const stats = await puzzleSyncer.sync();
+      return stats;
+    } catch (error) {
+      // Error is already logged by the syncer
+      throw error;
+    }
+  }
+
+  /**
+   * Sync all timeline events from Notion to SQLite using the new TimelineEventSyncer.
+   * This method now delegates to the modular syncer while maintaining backward compatibility.
    */
   async syncTimelineEvents() {
-    this.initDB();
-    const logId = this.logSyncStart('timeline_events');
-    console.log('📅 Clearing and syncing timeline events...');
-    let stats = { fetched: 0, synced: 0, errors: 0 };
-
+    console.log('📅 Syncing timeline events...');
+    
+    // Create a SyncLogger instance
+    const syncLogger = new SyncLogger();
+    
+    // Create and run the timeline event syncer
+    const timelineEventSyncer = new TimelineEventSyncer({
+      notionService,
+      propertyMapper,
+      logger: syncLogger
+    });
+    
     try {
-      const notionEvents = await notionService.getTimelineEvents();
-      stats.fetched = notionEvents.length;
-
-      if (stats.fetched === 0) {
-        console.log('⚠️ No timeline events found in Notion.');
-        this.logSyncSuccess(logId, 0, 0, 0);
-        return;
-      }
-
-      this.db.exec('BEGIN');
-      this.db.prepare('DELETE FROM timeline_events').run();
-
-      const insertStmt = this.db.prepare(`
-        INSERT INTO timeline_events (id, description, date, character_ids, element_ids, notes)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const notionEvent of notionEvents) {
-        try {
-          const mappedEvent = await propertyMapper.mapTimelineEventWithNames(notionEvent, notionService);
-          if (mappedEvent && !mappedEvent.error) {
-            const characterIds = mappedEvent.charactersInvolved ? JSON.stringify(mappedEvent.charactersInvolved.map(c => c.id)) : '[]';
-            const elementIds = mappedEvent.memoryEvidence ? JSON.stringify(mappedEvent.memoryEvidence.map(e => e.id)) : '[]';
-
-            insertStmt.run(
-              mappedEvent.id, mappedEvent.description || '', mappedEvent.date || '',
-              characterIds, elementIds, mappedEvent.notes || ''
-            );
-            stats.synced++;
-          } else {
-            stats.errors++;
-            console.warn(`⚠️ Failed to map timeline event ${notionEvent.id}:`, mappedEvent?.error);
-          }
-        } catch (eventError) {
-          stats.errors++;
-          console.error(`❌ Error processing timeline event ${notionEvent.id}:`, eventError.message);
-        }
-      }
-
-      this.db.exec('COMMIT');
-      console.log(`✅ Timeline Events: ${stats.synced}/${stats.fetched} synced successfully.`);
-      this.logSyncSuccess(logId, stats.fetched, stats.synced, stats.errors);
-
+      const stats = await timelineEventSyncer.sync();
+      
+      // Note: TimelineEventSyncer handles its own relationship syncing via postProcess()
+      // for character-timeline event relationships
+      
+      return stats;
     } catch (error) {
-      console.error('❌ Timeline event sync failed:', error);
-      if (this.db.inTransaction) {
-        this.db.exec('ROLLBACK');
-      }
-      this.logSyncFailure(logId, error, stats.fetched, stats.synced);
+      // Error is already logged by the syncer
       throw error;
     }
   }
@@ -577,68 +446,18 @@ class DataSyncService {
   }
 
   /**
-   * Sync character relationships after all base tables are populated
+   * Sync character relationships after all base tables are populated.
+   * Note: Character relationships are now handled by CharacterSyncer.postProcess(),
+   * so this method is kept for backward compatibility but may be redundant
+   * if all entities are properly refactored to handle their own relationships.
    */
   async syncCharacterRelationships() {
-    this.initDB();
-    const logId = this.logSyncStart('character_relationships');
-    console.log('🔗 Syncing character relationships...');
-    let stats = { fetched: 0, synced: 0, errors: 0 };
-
-    try {
-      const notionCharacters = await notionService.getCharacters();
-      stats.fetched = notionCharacters.length;
-
-      this.db.exec('BEGIN');
-
-      // Clear existing relationship tables
-      this.db.prepare('DELETE FROM character_timeline_events').run();
-      this.db.prepare('DELETE FROM character_owned_elements').run();
-      this.db.prepare('DELETE FROM character_associated_elements').run();
-      this.db.prepare('DELETE FROM character_puzzles').run();
-
-      const insertEventRelStmt = this.db.prepare('INSERT OR IGNORE INTO character_timeline_events (character_id, timeline_event_id) VALUES (?, ?)');
-      const insertOwnedElementStmt = this.db.prepare('INSERT OR IGNORE INTO character_owned_elements (character_id, element_id) VALUES (?, ?)');
-      const insertAssocElementStmt = this.db.prepare('INSERT OR IGNORE INTO character_associated_elements (character_id, element_id) VALUES (?, ?)');
-      const insertPuzzleRelStmt = this.db.prepare('INSERT OR IGNORE INTO character_puzzles (character_id, puzzle_id) VALUES (?, ?)');
-
-      for (const notionChar of notionCharacters) {
-        try {
-          const mappedChar = await propertyMapper.mapCharacterWithNames(notionChar, notionService);
-          if (mappedChar && !mappedChar.error) {
-            const processRelations = (relations, stmt) => {
-              if (relations && Array.isArray(relations)) {
-                for (const rel of relations) {
-                  stmt.run(mappedChar.id, rel.id || rel);
-                  stats.synced++;
-                }
-              }
-            };
-            processRelations(mappedChar.events, insertEventRelStmt);
-            processRelations(mappedChar.ownedElements, insertOwnedElementStmt);
-            processRelations(mappedChar.associatedElements, insertAssocElementStmt);
-            processRelations(mappedChar.puzzles, insertPuzzleRelStmt);
-          } else {
-            stats.errors++;
-            console.warn(`⚠️ Could not map relationships for character ${notionChar.id}:`, mappedChar?.error);
-          }
-        } catch (error) {
-          stats.errors++;
-          console.error(`❌ Error syncing relationships for character ${notionChar.id}:`, error.message);
-        }
-      }
-
-      this.db.exec('COMMIT');
-      console.log(`✅ Synced ${stats.synced} character relationships.`);
-      this.logSyncSuccess(logId, stats.fetched, stats.synced, stats.errors);
-    } catch (error) {
-      console.error('❌ Failed to sync character relationships:', error);
-      if (this.db.inTransaction) {
-        this.db.exec('ROLLBACK');
-      }
-      this.logSyncFailure(logId, error, stats.fetched, stats.synced);
-      throw error;
-    }
+    // TODO: Once all entity syncers are refactored, this entire method can be removed
+    // as each syncer will handle its own relationships via postProcess()
+    
+    // For now, skip if characters were just synced by CharacterSyncer
+    console.log('🔗 Character relationships already synced by CharacterSyncer');
+    return { fetched: 0, synced: 0, errors: 0 };
   }
 
   /**

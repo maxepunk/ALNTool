@@ -25,75 +25,38 @@ async function getCharacterJourney(req, res) {
 
 /**
  * Get suggestions for a specific gap for a specific character.
+ * @deprecated Gaps are no longer part of the graph model. This endpoint returns an error.
  */
 async function getGapSuggestions(req, res) {
   const { characterId, gapId } = req.params;
-  try {
-    const journey = await journeyEngine.buildCharacterJourney(characterId);
-    if (!journey) {
-      return res.status(404).json({ error: 'Character not found or journey could not be built for gap suggestions.' });
-    }
-
-    const foundGap = journey.gaps.find(g => g.id === gapId);
-    if (!foundGap) {
-      return res.status(404).json({ error: `Gap with id ${gapId} not found for character ${characterId}.` });
-    }
-
-    const allElements = await dbQueries.getAllElements();
-    const allPuzzles = await dbQueries.getAllPuzzles();
-
-    const suggestions = await journeyEngine.suggestGapSolutions(foundGap, allElements, allPuzzles);
-    res.json(suggestions);
-
-  } catch (error) {
-    console.error(`Error fetching suggestions for gap ${gapId} of character ${characterId}:`, error);
-    res.status(500).json({ error: 'Failed to compute gap suggestions.' });
-  }
+  // This endpoint is deprecated as gaps are no longer part of the narrative graph model
+  return res.status(410).json({ 
+    error: 'Gap suggestions endpoint is deprecated. The journey model now uses a narrative graph instead of linear segments and gaps.',
+    migration: 'Please use the graph visualization to identify narrative flow issues.'
+  });
 }
 
 /**
  * Get only the gaps for a specific character.
+ * @deprecated Gaps are no longer part of the graph model. This endpoint returns an empty array for backward compatibility.
  */
 async function getCharacterGaps(req, res) {
   const { characterId } = req.params;
-  try {
-    const journey = await journeyEngine.buildCharacterJourney(characterId);
-    if (!journey) {
-      return res.status(404).json({ error: 'Character not found or journey could not be built for gap extraction.' });
-    }
-    res.json(journey.gaps || []);
-  } catch (error) {
-    console.error(`Error fetching gaps for character ${characterId}:`, error);
-    res.status(500).json({ error: 'Failed to compute character gaps.' });
-  }
+  // Return empty array for backward compatibility
+  // Gaps are no longer part of the narrative graph model
+  console.warn(`Deprecated endpoint accessed: /journeys/${characterId}/gaps`);
+  res.json([]);
 }
 
 /**
  * Get all gaps for all (or a subset of) characters.
+ * @deprecated Gaps are no longer part of the graph model. This endpoint returns an empty array for backward compatibility.
  */
 async function getAllGaps(req, res) {
-  try {
-    const allGapsCollected = [];
-    const characters = await dbQueries.getAllCharacterIdsAndNames(); // Fetch from local DB
-
-    if (!characters || characters.length === 0) {
-      console.log('No characters found in local DB to process for getAllGaps.');
-      return res.json([]);
-    }
-
-    for (const charInfo of characters) { // charInfo will have id and name
-      const journey = await journeyEngine.buildCharacterJourney(charInfo.id);
-      if (journey && journey.gaps && journey.gaps.length > 0) {
-        allGapsCollected.push(...journey.gaps.map(gap => ({...gap, characterId: charInfo.id, characterName: charInfo.name })));
-      } else if (!journey) {
-        console.warn(`Could not build journey for character ID ${charInfo.id} in getAllGaps.`);
-      }
-    }
-    res.json(allGapsCollected);
-  } catch (error) {
-    console.error('Error fetching all gaps:', error);
-    res.status(500).json({ error: 'Failed to compute all gaps.' });
-  }
+  // Return empty array for backward compatibility
+  // Gaps are no longer part of the narrative graph model
+  console.warn('Deprecated endpoint accessed: /gaps/all');
+  res.json([]);
 }
 
 /**
@@ -124,22 +87,15 @@ module.exports = {
   resolveGap,
 };
 
+/**
+ * Resolve a gap.
+ * @deprecated Gaps are no longer part of the graph model. This endpoint returns an error.
+ */
 async function resolveGap(req, res) {
   const { gapId } = req.params;
-  const { status, comment } = req.body; // Assuming status and comment are passed in the body
-
-  if (!status) {
-    return res.status(400).json({ error: 'Status is required to resolve a gap.' });
-  }
-
-  try {
-    const updatedGap = await dbQueries.updateGapResolution(gapId, status, comment);
-    if (!updatedGap) {
-      return res.status(404).json({ error: 'Gap not found or not updated.' });
-    }
-    res.json({ message: 'Gap resolved successfully', gap: updatedGap });
-  } catch (error) {
-    console.error('Error resolving gap:', error);
-    res.status(500).json({ error: 'Failed to resolve gap' });
-  }
+  // This endpoint is deprecated as gaps are no longer part of the narrative graph model
+  return res.status(410).json({ 
+    error: 'Gap resolution endpoint is deprecated. The journey model now uses a narrative graph instead of linear segments and gaps.',
+    migration: 'Please use the graph visualization to manage narrative flow.'
+  });
 }

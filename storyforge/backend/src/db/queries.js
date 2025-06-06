@@ -187,6 +187,163 @@ function getCharactersForList() {
   `).all();
 }
 
+// ======== Journey Graph Caching Functions ========
+
+/**
+ * Generates a hash for cache validation based on source data timestamps.
+ * @param {string} characterId - The character ID
+ * @returns {string} A hash representing the current state of source data
+ */
+function generateJourneyVersionHash(characterId) {
+  const db = getDB();
+  
+  // Get last modification times of related data
+  // In a real implementation, you might track actual modification timestamps
+  // For now, we'll use count and checksum of related entities
+  const counts = db.prepare(`
+    SELECT 
+      (SELECT COUNT(*) FROM character_timeline_events WHERE character_id = ?) as event_count,
+      (SELECT COUNT(*) FROM character_puzzles WHERE character_id = ?) as puzzle_count,
+      (SELECT COUNT(*) FROM character_owned_elements WHERE character_id = ?) as owned_element_count,
+      (SELECT COUNT(*) FROM character_associated_elements WHERE character_id = ?) as assoc_element_count,
+      (SELECT COUNT(*) FROM character_links WHERE character_a_id = ? OR character_b_id = ?) as link_count
+  `).get(characterId, characterId, characterId, characterId, characterId, characterId);
+  
+  // Create a simple hash from the counts
+  // In production, you might use actual checksums or modification timestamps
+  const hashSource = `${counts.event_count}-${counts.puzzle_count}-${counts.owned_element_count}-${counts.assoc_element_count}-${counts.link_count}`;
+  
+  // Simple hash function (in production, use crypto.createHash)
+  let hash = 0;
+  for (let i = 0; i < hashSource.length; i++) {
+    const char = hashSource.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  return hash.toString(16);
+}
+
+/**
+ * Retrieves a cached journey graph if valid.
+ * @param {string} characterId - The character ID
+ * @returns {object|null} The cached journey or null if not found/invalid
+ */
+function getCachedJourneyGraph(characterId) {
+  const db = getDB();
+  const CACHE_DURATION_HOURS = 24; // Configurable cache duration
+  
+  try {
+    const cached = db.prepare(`
+      SELECT * FROM cached_journey_graphs 
+      WHERE character_id = ? 
+      AND datetime(cached_at) > datetime('now', '-${CACHE_DURATION_HOURS} hours')
+    `).get(characterId);
+    
+    if (!cached) {
+      return null;
+    }
+    
+    // Check if cache is still valid by comparing version hash
+    const currentHash = generateJourneyVersionHash(characterId);
+    if (cached.version_hash !== currentHash) {
+      // Source data has changed, cache is stale
+      console.log(`Cache invalidated for character ${characterId}: hash mismatch`);
+      return null;
+    }
+    
+    // Update last accessed time
+    db.prepare(`
+      UPDATE cached_journey_graphs 
+      SET last_accessed = CURRENT_TIMESTAMP 
+      WHERE character_id = ?
+    `).run(characterId);
+    
+    // Parse and return the cached journey
+    return {
+      character_id: characterId,
+      character_info: JSON.parse(cached.character_info),
+      graph: {
+        nodes: JSON.parse(cached.graph_nodes),
+        edges: JSON.parse(cached.graph_edges)
+      }
+    };
+    
+  } catch (error) {
+    console.error(`Error retrieving cached journey for ${characterId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Saves a computed journey graph to the cache.
+ * @param {string} characterId - The character ID
+ * @param {object} journey - The computed journey object
+ */
+function saveCachedJourneyGraph(characterId, journey) {
+  const db = getDB();
+  
+  try {
+    const versionHash = generateJourneyVersionHash(characterId);
+    
+    // Use INSERT OR REPLACE to handle both new and existing cache entries
+    db.prepare(`
+      INSERT OR REPLACE INTO cached_journey_graphs 
+      (character_id, character_info, graph_nodes, graph_edges, version_hash, cached_at, last_accessed)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(
+      characterId,
+      JSON.stringify(journey.character_info),
+      JSON.stringify(journey.graph.nodes),
+      JSON.stringify(journey.graph.edges),
+      versionHash
+    );
+    
+    console.log(`Journey graph cached for character ${characterId}`);
+    
+  } catch (error) {
+    console.error(`Error caching journey for ${characterId}:`, error);
+    // Don't throw - caching failure shouldn't break the journey computation
+  }
+}
+
+/**
+ * Clears expired cache entries (optional maintenance function).
+ * @param {number} maxAgeHours - Maximum age of cache entries in hours
+ */
+function clearExpiredJourneyCache(maxAgeHours = 168) { // Default: 1 week
+  const db = getDB();
+  
+  try {
+    const result = db.prepare(`
+      DELETE FROM cached_journey_graphs 
+      WHERE datetime(cached_at) < datetime('now', '-${maxAgeHours} hours')
+    `).run();
+    
+    if (result.changes > 0) {
+      console.log(`Cleared ${result.changes} expired journey cache entries`);
+    }
+    
+  } catch (error) {
+    console.error('Error clearing expired cache:', error);
+  }
+}
+
+/**
+ * Invalidates cache for a specific character.
+ * @param {string} characterId - The character ID to invalidate
+ */
+function invalidateJourneyCache(characterId) {
+  const db = getDB();
+  
+  try {
+    db.prepare('DELETE FROM cached_journey_graphs WHERE character_id = ?').run(characterId);
+    console.log(`Journey cache invalidated for character ${characterId}`);
+  } catch (error) {
+    console.error(`Error invalidating cache for ${characterId}:`, error);
+  }
+}
+
 module.exports = {
   getCharacterById,
   getCharacterRelations,
@@ -199,6 +356,11 @@ module.exports = {
   getCharacterJourneyData,
   getElementById,
   getCharactersForList,
+  // Journey caching functions
+  getCachedJourneyGraph,
+  saveCachedJourneyGraph,
+  invalidateJourneyCache,
+  clearExpiredJourneyCache,
 };
 
 
