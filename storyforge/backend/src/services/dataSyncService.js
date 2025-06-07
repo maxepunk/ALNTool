@@ -68,23 +68,19 @@ class DataSyncService {
       }
     };
     
-    // Create orchestrator
-    this.orchestrator = new SyncOrchestrator({
-      entitySyncers: this.entitySyncers,
-      relationshipSyncer: this.relationshipSyncer,
-      computeServices: this.computeServices,
-      cacheManager: this.cacheManager,
-      logger: this.logger
-    });
+    // Create orchestrator (will be initialized when db is available)
+    this.orchestrator = null;
   }
 
   /**
-   * Initialize database connection
+   * Initialize database connection and orchestrator
    * @private
    */
   initDB() {
     if (!this.db) {
       this.db = getDB();
+      // Initialize orchestrator with database connection
+      this.orchestrator = new SyncOrchestrator(this.db);
     }
   }
 

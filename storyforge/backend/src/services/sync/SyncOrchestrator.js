@@ -132,24 +132,20 @@ class SyncOrchestrator {
     const results = {};
     
     try {
-      // Sync entities in parallel for better performance
-      const [
-        characterResults,
-        elementResults,
-        puzzleResults,
-        timelineResults
-      ] = await Promise.allSettled([
-        this.characterSyncer.sync(),
-        this.elementSyncer.sync(),
-        this.puzzleSyncer.sync(),
-        this.timelineEventSyncer.sync()
-      ]);
+      // Sync entities sequentially to avoid transaction conflicts
+      // Each syncer uses its own transaction, so they cannot run in parallel
       
-      // Process results
-      results.characters = this.processEntityResult('characters', characterResults);
-      results.elements = this.processEntityResult('elements', elementResults);
-      results.puzzles = this.processEntityResult('puzzles', puzzleResults);
-      results.timeline_events = this.processEntityResult('timeline_events', timelineResults);
+      console.log('🔄 Starting characters sync...');
+      results.characters = await this.characterSyncer.sync();
+      
+      console.log('🔄 Starting elements sync...');
+      results.elements = await this.elementSyncer.sync();
+      
+      console.log('🔄 Starting puzzles sync...');
+      results.puzzles = await this.puzzleSyncer.sync();
+      
+      console.log('🔄 Starting timeline events sync...');
+      results.timeline_events = await this.timelineEventSyncer.sync();
       
       // Calculate totals
       results.totalRecords = Object.values(results).reduce((sum, result) => {
@@ -269,6 +265,28 @@ class SyncOrchestrator {
   async syncRelationshipsOnly() {
     console.log('🔗 Running relationship sync only...');
     return await this.syncRelationships();
+  }
+
+  /**
+   * Get current sync status
+   * @returns {Object} Current sync status
+   */
+  getStatus() {
+    // For now, return a simple status
+    return {
+      isRunning: false,
+      progress: 0,
+      startTime: null
+    };
+  }
+
+  /**
+   * Cancel the current sync operation
+   * @returns {boolean} Whether cancellation was successful
+   */
+  cancel() {
+    // For now, return false since we don't have cancellation implemented
+    return false;
   }
 }
 
