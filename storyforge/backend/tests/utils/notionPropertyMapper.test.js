@@ -238,18 +238,6 @@ describe('Notion Property Mapper', () => {
     });
   });
 
-  describe('mapElement', () => {
-    it('should correctly map a raw Notion element object', () => {
-      const rawElement = MOCK_ELEMENTS[0]; // Memory Video 1
-      const mapped = propertyMapper.mapElement(rawElement);
-      expect(mapped.id).toBe(rawElement.id);
-      expect(mapped.name).toBe('Memory Video 1');
-      expect(mapped.basicType).toBe('Memory Token Video');
-      expect(mapped.owner).toEqual(['char-id-1']);
-      expect(mapped.description).toBe('A corrupted memory video');
-      // Check other properties based on PRD and MOCK_ELEMENTS[0] structure
-    });
-  });
 
   describe('mapPuzzle', () => {
     it('should correctly map a raw Notion puzzle object', () => {

@@ -33,6 +33,45 @@ describe('RelationshipSyncer Integration Tests', () => {
     // Get test database
     db = getDB();
     
+    // Setup mock responses
+    mockNotionService.getCharacters.mockResolvedValue([
+      { id: 'char1', properties: { Name: { title: [{ plain_text: 'Sarah' }] } } },
+      { id: 'char2', properties: { Name: { title: [{ plain_text: 'Alex' }] } } },
+      { id: 'char3', properties: { Name: { title: [{ plain_text: 'Marcus' }] } } }
+    ]);
+    
+    mockPropertyMapper.mapCharacterWithNames.mockImplementation(async (character) => {
+      // Return different relationships for different characters to test processing
+      if (character.id === 'char1') {
+        return {
+          id: character.id,
+          name: character.properties?.Name?.title?.[0]?.plain_text || 'Test Character',
+          events: [{ id: 'event1' }],
+          ownedElements: [{ id: 'elem1' }],
+          associatedElements: [],
+          puzzles: [{ id: 'puzzle1' }]
+        };
+      } else if (character.id === 'char2') {
+        return {
+          id: character.id,
+          name: character.properties?.Name?.title?.[0]?.plain_text || 'Test Character',
+          events: [{ id: 'event1' }],
+          ownedElements: [],
+          associatedElements: [],
+          puzzles: []
+        };
+      } else {
+        return {
+          id: character.id,
+          name: character.properties?.Name?.title?.[0]?.plain_text || 'Test Character',
+          events: [],
+          ownedElements: [],
+          associatedElements: [],
+          puzzles: []
+        };
+      }
+    });
+    
     // Create syncer instance
     syncer = new RelationshipSyncer({
       notionService: mockNotionService,
@@ -145,8 +184,8 @@ describe('RelationshipSyncer Integration Tests', () => {
       // Check computed links
       const links = db.prepare(`
         SELECT * FROM character_links 
-        WHERE (character1_id = 'char1' AND character2_id = 'char2')
-        OR (character1_id = 'char2' AND character2_id = 'char1')
+        WHERE (character_a_id = 'char1' AND character_b_id = 'char2')
+        OR (character_a_id = 'char2' AND character_b_id = 'char1')
       `).all();
 
       expect(links).toHaveLength(1);
@@ -157,7 +196,7 @@ describe('RelationshipSyncer Integration Tests', () => {
       // - 1 shared puzzle * 25 = 25
       // - 1 shared element * 15 = 15
       // Total = 100 (capped)
-      expect(link.strength).toBe(100);
+      expect(link.link_strength).toBe(100);
     });
 
     it('should handle characters with no shared experiences', async () => {
@@ -172,7 +211,7 @@ describe('RelationshipSyncer Integration Tests', () => {
       // Verify no links created for isolated character
       const links = db.prepare(`
         SELECT * FROM character_links 
-        WHERE character1_id = 'char4' OR character2_id = 'char4'
+        WHERE character_a_id = 'char4' OR character_b_id = 'char4'
       `).all();
 
       expect(links).toHaveLength(0);
@@ -203,8 +242,8 @@ describe('RelationshipSyncer Integration Tests', () => {
     it('should clear existing relationships before sync', async () => {
       // Insert some existing links
       db.prepare(`
-        INSERT INTO character_links (character1_id, character2_id, strength) VALUES 
-        ('char1', 'char3', 50)
+        INSERT INTO character_links (character_a_id, character_b_id, link_type, link_source_id, link_strength) VALUES 
+        ('char1', 'char3', 'computed', 'test', 50)
       `).run();
 
       await syncer.sync();
@@ -212,7 +251,7 @@ describe('RelationshipSyncer Integration Tests', () => {
       // Verify old links are gone
       const oldLinks = db.prepare(`
         SELECT * FROM character_links 
-        WHERE character1_id = 'char1' AND character2_id = 'char3'
+        WHERE character_a_id = 'char1' AND character_b_id = 'char3'
       `).all();
 
       expect(oldLinks).toHaveLength(0);

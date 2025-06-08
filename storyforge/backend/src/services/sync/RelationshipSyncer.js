@@ -13,6 +13,10 @@ const BaseSyncer = require('./entitySyncers/BaseSyncer');
 class RelationshipSyncer extends BaseSyncer {
   constructor(dependencies) {
     super({ ...dependencies, entityType: 'relationships' });
+    // If a database instance is provided, use it directly
+    if (dependencies.db) {
+      this.db = dependencies.db;
+    }
   }
 
   /**
@@ -228,8 +232,11 @@ class RelationshipSyncer extends BaseSyncer {
     let errors = 0;
 
     try {
-      // Start transaction
-      this.db.prepare('BEGIN TRANSACTION').run();
+      // Only start transaction if not already in one
+      const wasInTransaction = this.db.inTransaction;
+      if (!wasInTransaction) {
+        this.db.prepare('BEGIN TRANSACTION').run();
+      }
 
       // Clear existing links
       this.db.prepare('DELETE FROM character_links').run();
@@ -252,8 +259,8 @@ class RelationshipSyncer extends BaseSyncer {
             
             if (strength > 0) {
               this.db.prepare(
-                'INSERT INTO character_links (character1_id, character2_id, strength) VALUES (?, ?, ?)'
-              ).run(char1Id, char2Id, strength);
+                'INSERT INTO character_links (character_a_id, character_b_id, link_type, link_source_id, link_strength) VALUES (?, ?, ?, ?, ?)'
+              ).run(char1Id, char2Id, 'computed', 'sync_process', strength);
               processed++;
             }
           } catch (error) {
@@ -263,13 +270,17 @@ class RelationshipSyncer extends BaseSyncer {
         }
       }
 
-      // Commit transaction
-      this.db.prepare('COMMIT').run();
+      // Only commit if we started the transaction
+      if (!wasInTransaction) {
+        this.db.prepare('COMMIT').run();
+      }
       
       return { processed, errors };
     } catch (error) {
-      // Rollback on error
-      this.db.prepare('ROLLBACK').run();
+      // Only rollback if we started the transaction
+      if (!wasInTransaction && this.db.inTransaction) {
+        this.db.prepare('ROLLBACK').run();
+      }
       throw error;
     }
   }

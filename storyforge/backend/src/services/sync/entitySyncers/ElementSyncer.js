@@ -37,7 +37,6 @@ class ElementSyncer extends BaseSyncer {
   async clearExistingData() {
     // Clear tables that have foreign key to elements, in correct order
     this.db.prepare('UPDATE puzzles SET locked_item_id = NULL').run();
-    this.db.prepare('DELETE FROM interactions').run();
     this.db.prepare('DELETE FROM character_owned_elements').run();
     this.db.prepare('DELETE FROM character_associated_elements').run();
     
@@ -74,6 +73,9 @@ class ElementSyncer extends BaseSyncer {
         ? mapped.timelineEvent[0].id 
         : null;
 
+      // Extract memory values from properties object (if they exist)
+      const memoryProps = mapped.properties || {};
+      
       return {
         id: mapped.id,
         name: mapped.name || '',
@@ -84,7 +86,16 @@ class ElementSyncer extends BaseSyncer {
         container_id: containerId,
         production_notes: mapped.productionNotes || '',
         first_available: mapped.firstAvailable || '',
-        timeline_event_id: timelineEventId
+        timeline_event_id: timelineEventId,
+        // Memory value fields extracted from properties
+        rfid_tag: memoryProps.parsed_sf_rfid || null,
+        value_rating: memoryProps.sf_value_rating || null,
+        memory_type: memoryProps.sf_memory_type || null,
+        memory_group: memoryProps.sf_group || null,
+        group_multiplier: memoryProps.sf_group_multiplier || 1.0,
+        calculated_memory_value: (memoryProps.sf_value_rating && memoryProps.sf_group_multiplier) 
+          ? memoryProps.sf_value_rating * memoryProps.sf_group_multiplier 
+          : (memoryProps.sf_value_rating || 0)
       };
     } catch (error) {
       return { error: error.message };
@@ -100,9 +111,10 @@ class ElementSyncer extends BaseSyncer {
     const stmt = this.db.prepare(`
       INSERT INTO elements (
         id, name, type, description, status, owner_id, 
-        container_id, production_notes, first_available, timeline_event_id
+        container_id, production_notes, first_available, timeline_event_id,
+        rfid_tag, value_rating, memory_type, memory_group, group_multiplier, calculated_memory_value
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmt.run(
@@ -115,7 +127,13 @@ class ElementSyncer extends BaseSyncer {
       mappedData.container_id,
       mappedData.production_notes,
       mappedData.first_available,
-      mappedData.timeline_event_id
+      mappedData.timeline_event_id,
+      mappedData.rfid_tag || null,
+      mappedData.value_rating || null,
+      mappedData.memory_type || null,
+      mappedData.memory_group || null,
+      mappedData.group_multiplier || null,
+      mappedData.calculated_memory_value || null
     );
   }
 

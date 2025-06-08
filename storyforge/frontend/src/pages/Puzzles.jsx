@@ -2,13 +2,21 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import {
   Chip, Typography, Paper, CircularProgress, Alert, Box, FormControl, InputLabel, Select, MenuItem, Button,
-  Grid // Added Grid
+  Grid, Card, CardContent, LinearProgress, Tooltip, Avatar // Added for production intelligence
 } from '@mui/material';
 import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
 import { useState, useEffect, useMemo } from 'react'; // Added useEffect, useMemo
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ExtensionIcon from '@mui/icons-material/Extension';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AddIcon from '@mui/icons-material/Add';
 
 // Table column definitions
 const columns = [
@@ -98,6 +106,127 @@ function Puzzles() {
   };
   const handleNarrativeThreadChange = (event) => setSelectedNarrativeThread(event.target.value);
 
+  // Production Intelligence Analytics
+  const puzzleAnalytics = useMemo(() => {
+    if (!puzzles) return {
+      totalPuzzles: 0,
+      collaborativePuzzles: 0,
+      soloExperiences: 0,
+      actDistribution: { 'Act 1': 0, 'Act 2': 0, 'Act 3': 0 },
+      narrativeDistribution: {},
+      rewardAnalysis: { totalRewards: 0, avgRewardsPerPuzzle: 0 },
+      ownershipAnalysis: { assigned: 0, unassigned: 0 },
+      complexityDistribution: {},
+      issues: []
+    };
+
+    const totalPuzzles = puzzles.length;
+
+    // Collaborative vs solo analysis
+    const collaborativePuzzles = puzzles.filter(p => 
+      p.owner && p.owner.length > 1
+    ).length;
+    const soloExperiences = puzzles.filter(p => 
+      !p.owner || p.owner.length <= 1
+    ).length;
+
+    // Act distribution
+    const actDistribution = {
+      'Act 1': puzzles.filter(p => p.properties?.actFocus === 'Act 1' || p.timing === 'Act 1').length,
+      'Act 2': puzzles.filter(p => p.properties?.actFocus === 'Act 2' || p.timing === 'Act 2').length,
+      'Act 3': puzzles.filter(p => p.properties?.actFocus === 'Act 3' || p.timing === 'Act 3').length
+    };
+
+    // Narrative thread distribution
+    const narrativeDistribution = {};
+    puzzles.forEach(p => {
+      if (p.narrativeThreads && p.narrativeThreads.length > 0) {
+        p.narrativeThreads.forEach(thread => {
+          narrativeDistribution[thread] = (narrativeDistribution[thread] || 0) + 1;
+        });
+      }
+    });
+
+    // Reward analysis
+    const totalRewards = puzzles.reduce((sum, p) => sum + (p.rewards?.length || 0), 0);
+    const avgRewardsPerPuzzle = totalPuzzles > 0 ? (totalRewards / totalPuzzles).toFixed(1) : 0;
+
+    // Ownership analysis
+    const assigned = puzzles.filter(p => p.owner && p.owner.length > 0).length;
+    const unassigned = totalPuzzles - assigned;
+
+    // Complexity analysis (based on multiple factors)
+    const complexityDistribution = {
+      'High Complexity': puzzles.filter(p => 
+        (p.owner?.length > 1) && (p.rewards?.length > 2)
+      ).length,
+      'Medium Complexity': puzzles.filter(p => 
+        (p.owner?.length === 1 && p.rewards?.length > 1) || 
+        (p.owner?.length > 1 && p.rewards?.length <= 2)
+      ).length,
+      'Low Complexity': puzzles.filter(p => 
+        (!p.owner || p.owner.length === 0) || 
+        (!p.rewards || p.rewards.length <= 1)
+      ).length
+    };
+
+    // Identify production issues
+    const issues = [];
+    
+    const missingActFocus = puzzles.filter(p => 
+      !p.properties?.actFocus && !p.timing
+    ).length;
+    if (missingActFocus > 0) {
+      issues.push({
+        type: 'missing-timing',
+        severity: 'warning',
+        message: `${missingActFocus} puzzles missing act/timing assignment`,
+        action: 'Assign puzzles to specific acts for proper flow'
+      });
+    }
+
+    if (unassigned > totalPuzzles * 0.3) {
+      issues.push({
+        type: 'ownership-gaps',
+        severity: 'warning',
+        message: `${unassigned} puzzles have no assigned characters`,
+        action: 'Assign character owners to improve narrative integration'
+      });
+    }
+
+    const noRewards = puzzles.filter(p => !p.rewards || p.rewards.length === 0).length;
+    if (noRewards > totalPuzzles * 0.2) {
+      issues.push({
+        type: 'reward-economy',
+        severity: 'info',
+        message: `${noRewards} puzzles have no rewards defined`,
+        action: 'Add meaningful rewards to enhance player motivation'
+      });
+    }
+
+    const noNarrativeThreads = puzzles.filter(p => !p.narrativeThreads || p.narrativeThreads.length === 0).length;
+    if (noNarrativeThreads > totalPuzzles * 0.4) {
+      issues.push({
+        type: 'narrative-isolation',
+        severity: 'info',
+        message: `${noNarrativeThreads} puzzles not connected to narrative threads`,
+        action: 'Link puzzles to story elements for better coherence'
+      });
+    }
+
+    return {
+      totalPuzzles,
+      collaborativePuzzles,
+      soloExperiences,
+      actDistribution,
+      narrativeDistribution,
+      rewardAnalysis: { totalRewards, avgRewardsPerPuzzle },
+      ownershipAnalysis: { assigned, unassigned },
+      complexityDistribution,
+      issues
+    };
+  }, [puzzles]);
+
   const filteredPuzzles = useMemo(() => {
     if (!puzzles) return [];
     let currentPuzzles = [...puzzles];
@@ -131,11 +260,159 @@ function Puzzles() {
     ? "No puzzles match your current filter criteria."
     : "No puzzles found.";
 
+  const handleAddPuzzle = () => alert('This feature will be available in Phase 3 (Editing Capabilities)');
+
   return (
     <div>
-      <PageHeader title="Puzzles" />
+      <PageHeader 
+        title="Puzzle Design Hub" 
+        action={
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} > Refresh </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddPuzzle} > Add Puzzle </Button>
+          </Box>
+        }
+      />
+
+      {/* Production Intelligence Dashboard */}
+      {!isLoading && puzzles && (
+        <>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            {/* Puzzle Overview */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <ExtensionIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Puzzle Collection</Typography>
+                  </Box>
+                  <Typography variant="h3" color="primary">{puzzleAnalytics.totalPuzzles}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total game puzzles
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="caption" color="text.secondary">Complexity:</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                      <Chip label={`High: ${puzzleAnalytics.complexityDistribution['High Complexity'] || 0}`} size="small" color="error" />
+                      <Chip label={`Med: ${puzzleAnalytics.complexityDistribution['Medium Complexity'] || 0}`} size="small" color="warning" />
+                      <Chip label={`Low: ${puzzleAnalytics.complexityDistribution['Low Complexity'] || 0}`} size="small" color="success" />
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Collaboration Analysis */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <GroupWorkIcon color="secondary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Social Dynamics</Typography>
+                  </Box>
+                  <Typography variant="h3" color="secondary">{puzzleAnalytics.collaborativePuzzles}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Collaborative puzzles
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={puzzleAnalytics.totalPuzzles > 0 ? (puzzleAnalytics.collaborativePuzzles / puzzleAnalytics.totalPuzzles * 100) : 0}
+                    sx={{ mt: 1, mb: 1, height: 6, borderRadius: 3 }}
+                    color="secondary"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {puzzleAnalytics.soloExperiences} solo experiences
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Reward Economy */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <AccountTreeIcon color="warning" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Reward Economy</Typography>
+                  </Box>
+                  <Typography variant="h3" color="warning">{puzzleAnalytics.rewardAnalysis.totalRewards}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total puzzle rewards
+                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {puzzleAnalytics.rewardAnalysis.avgRewardsPerPuzzle} avg per puzzle
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Ownership: {puzzleAnalytics.ownershipAnalysis.assigned} assigned
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Act Distribution */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <TrendingUpIcon color="info" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Act Distribution</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 1</Typography>
+                      <Typography variant="h6" color="primary">{puzzleAnalytics.actDistribution['Act 1']}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 2</Typography>
+                      <Typography variant="h6" color="secondary">{puzzleAnalytics.actDistribution['Act 2']}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 3</Typography>
+                      <Typography variant="h6" color="info">{puzzleAnalytics.actDistribution['Act 3']}</Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Production Issues Alert */}
+          {puzzleAnalytics.issues.length > 0 && (
+            <Alert 
+              severity="warning" 
+              sx={{ mb: 3 }}
+              action={
+                <Button color="inherit" size="small" onClick={() => navigate('/puzzle-flow')}>
+                  View Puzzle Flow
+                </Button>
+              }
+            >
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {puzzleAnalytics.issues.length} design issue(s) detected:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                {puzzleAnalytics.issues.slice(0, 2).map((issue, index) => (
+                  <li key={index}>
+                    <Typography variant="body2">{issue.message}</Typography>
+                  </li>
+                ))}
+                {puzzleAnalytics.issues.length > 2 && (
+                  <li>
+                    <Typography variant="body2">+{puzzleAnalytics.issues.length - 2} more issues</Typography>
+                  </li>
+                )}
+              </Box>
+            </Alert>
+          )}
+        </>
+      )}
+
       <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
-        <Typography variant="subtitle1" gutterBottom sx={{fontWeight: 'medium'}}>Filter Options</Typography>
+        <Typography variant="subtitle1" gutterBottom sx={{fontWeight: 'medium'}}>Production Filters</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth size="small">
@@ -153,9 +430,6 @@ function Puzzles() {
                 {availableNarrativeThreads.map((thread) => (<MenuItem key={thread} value={thread}>{thread}</MenuItem>))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4} sx={{alignSelf: 'center'}}> {/* Refresh button aligned with other controls */}
-             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} fullWidth > Refresh </Button>
           </Grid>
           <Grid item xs={12}>
             <Typography variant="caption" display="block" sx={{mb:0.5, ml:0.5}}>Filter by Themes</Typography>

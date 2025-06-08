@@ -3,10 +3,20 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import {
   Chip, Button, Box, Select, MenuItem, FormControl, InputLabel, Grid, Paper, Alert, Skeleton,
-  Typography, List, ListItem, ListItemText, Checkbox, Collapse // Added for Theme filter
+  Typography, List, ListItem, ListItemText, Checkbox, Collapse, Card, CardContent, LinearProgress,
+  Tooltip, Avatar, Badge // Added for production intelligence
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import MemoryIcon from '@mui/icons-material/Memory';
+import ExtensionIcon from '@mui/icons-material/Extension';
+import BuildIcon from '@mui/icons-material/Build';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
@@ -187,6 +197,115 @@ function Elements() {
   };
   const handleMemorySetChange = (event) => setSelectedMemorySet(event.target.value);
 
+  // Production Intelligence Analytics
+  const elementAnalytics = useMemo(() => {
+    if (!elements) return {
+      totalElements: 0,
+      memoryTokens: { total: 0, ready: 0, inDevelopment: 0 },
+      productionStatus: { ready: 0, inProgress: 0, needsWork: 0 },
+      actDistribution: { 'Act 1': 0, 'Act 2': 0, 'Act 3': 0 },
+      typeDistribution: {},
+      issues: []
+    };
+
+    const totalElements = elements.length;
+
+    // Memory token analysis
+    const memoryElements = elements.filter(el => 
+      el.basicType?.toLowerCase().includes('memory') ||
+      el.name?.toLowerCase().includes('memory') ||
+      el.basicType?.toLowerCase().includes('token')
+    );
+    const memoryTokensReady = memoryElements.filter(el => 
+      el.status === 'Ready for Playtest' || el.status === 'Done'
+    ).length;
+    const memoryTokensInDev = memoryElements.filter(el => 
+      el.status === 'In development'
+    ).length;
+
+    // Production status analysis
+    const readyElements = elements.filter(el => 
+      el.status === 'Ready for Playtest' || el.status === 'Done'
+    ).length;
+    const inProgressElements = elements.filter(el => 
+      el.status === 'In development' || el.status === 'To Build'
+    ).length;
+    const needsWorkElements = elements.filter(el => 
+      el.status === 'Idea/Placeholder' || el.status === 'To Design'
+    ).length;
+
+    // Act distribution
+    const actDistribution = {
+      'Act 1': elements.filter(el => el.properties?.actFocus === 'Act 1').length,
+      'Act 2': elements.filter(el => el.properties?.actFocus === 'Act 2').length,
+      'Act 3': elements.filter(el => el.properties?.actFocus === 'Act 3').length
+    };
+
+    // Type distribution
+    const typeDistribution = {};
+    elements.forEach(el => {
+      const type = el.basicType || 'Unknown';
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1;
+    });
+
+    // Identify production issues
+    const issues = [];
+    
+    if (memoryElements.length < 45) {
+      issues.push({
+        type: 'memory-shortage',
+        severity: 'warning',
+        message: `Only ${memoryElements.length} memory tokens found (target: 55)`,
+        action: 'Add more memory tokens to reach target economy'
+      });
+    }
+
+    if (memoryTokensReady < memoryElements.length * 0.8) {
+      issues.push({
+        type: 'memory-production',
+        severity: 'warning',
+        message: `${memoryElements.length - memoryTokensReady} memory tokens not ready for production`,
+        action: 'Complete memory token production pipeline'
+      });
+    }
+
+    if (readyElements < totalElements * 0.7) {
+      issues.push({
+        type: 'production-readiness',
+        severity: 'info',
+        message: `${totalElements - readyElements} elements still in development`,
+        action: 'Focus on completing high-priority elements'
+      });
+    }
+
+    const missingActFocus = elements.filter(el => !el.properties?.actFocus).length;
+    if (missingActFocus > 0) {
+      issues.push({
+        type: 'missing-act-focus',
+        severity: 'info',
+        message: `${missingActFocus} elements missing act focus assignment`,
+        action: 'Assign elements to specific acts for better organization'
+      });
+    }
+
+    return {
+      totalElements,
+      memoryTokens: { 
+        total: memoryElements.length, 
+        ready: memoryTokensReady, 
+        inDevelopment: memoryTokensInDev 
+      },
+      productionStatus: { 
+        ready: readyElements, 
+        inProgress: inProgressElements, 
+        needsWork: needsWorkElements 
+      },
+      actDistribution,
+      typeDistribution,
+      issues
+    };
+  }, [elements]);
+
   const filteredElements = useMemo(() => {
     if (!elements) return [];
     let currentElements = [...elements];
@@ -228,7 +347,7 @@ function Elements() {
   return (
     <div>
       <PageHeader 
-        title="Elements & Memories" 
+        title="Element Production Hub" 
         action={
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} > Refresh </Button>
@@ -236,9 +355,148 @@ function Elements() {
           </Box>
         }
       />
+
+      {/* Production Intelligence Dashboard */}
+      {!isLoading && elements && (
+        <>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            {/* Element Overview */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <ExtensionIcon color="primary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Element Library</Typography>
+                  </Box>
+                  <Typography variant="h3" color="primary">{elementAnalytics.totalElements}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total game elements
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="caption" color="text.secondary">Type Breakdown:</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                      {Object.entries(elementAnalytics.typeDistribution).slice(0, 3).map(([type, count]) => (
+                        <Chip key={type} label={`${type}: ${count}`} size="small" color="default" />
+                      ))}
+                      {Object.keys(elementAnalytics.typeDistribution).length > 3 && (
+                        <Chip label={`+${Object.keys(elementAnalytics.typeDistribution).length - 3} more`} size="small" color="default" />
+                      )}
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Memory Economy */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <MemoryIcon color="secondary" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Memory Economy</Typography>
+                  </Box>
+                  <Typography variant="h3" color="secondary">{elementAnalytics.memoryTokens.total}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Memory tokens in game
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(elementAnalytics.memoryTokens.total / 55) * 100}
+                    sx={{ mt: 1, mb: 1, height: 6, borderRadius: 3 }}
+                    color={elementAnalytics.memoryTokens.total >= 50 ? 'success' : 'warning'}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Target: 55 tokens ({elementAnalytics.memoryTokens.ready} ready)
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Production Status */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <BuildIcon color="warning" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Production Status</Typography>
+                  </Box>
+                  <Typography variant="h3" color="success">{elementAnalytics.productionStatus.ready}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Elements ready for production
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={elementAnalytics.totalElements > 0 ? (elementAnalytics.productionStatus.ready / elementAnalytics.totalElements * 100) : 0}
+                    sx={{ mt: 1, mb: 1, height: 6, borderRadius: 3 }}
+                    color="success"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {elementAnalytics.productionStatus.inProgress} in progress, {elementAnalytics.productionStatus.needsWork} need work
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Act Distribution */}
+            <Grid item xs={12} md={3}>
+              <Card elevation={2}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <TrendingUpIcon color="info" sx={{ mr: 1 }} />
+                    <Typography variant="h6">Act Distribution</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 1</Typography>
+                      <Typography variant="h6" color="primary">{elementAnalytics.actDistribution['Act 1']}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 2</Typography>
+                      <Typography variant="h6" color="secondary">{elementAnalytics.actDistribution['Act 2']}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2">Act 3</Typography>
+                      <Typography variant="h6" color="info">{elementAnalytics.actDistribution['Act 3']}</Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Production Issues Alert */}
+          {elementAnalytics.issues.length > 0 && (
+            <Alert 
+              severity="warning" 
+              sx={{ mb: 3 }}
+              action={
+                <Button color="inherit" size="small" onClick={() => navigate('/memory-economy')}>
+                  View Memory Dashboard
+                </Button>
+              }
+            >
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {elementAnalytics.issues.length} production issue(s) detected:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                {elementAnalytics.issues.slice(0, 2).map((issue, index) => (
+                  <li key={index}>
+                    <Typography variant="body2">{issue.message}</Typography>
+                  </li>
+                ))}
+                {elementAnalytics.issues.length > 2 && (
+                  <li>
+                    <Typography variant="body2">+{elementAnalytics.issues.length - 2} more issues</Typography>
+                  </li>
+                )}
+              </Box>
+            </Alert>
+          )}
+        </>
+      )}
       
       <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
-        <Typography variant="subtitle1" gutterBottom sx={{fontWeight: 'medium'}}>Filter Options</Typography>
+        <Typography variant="subtitle1" gutterBottom sx={{fontWeight: 'medium'}}>Production Filters</Typography>
         <Grid container spacing={2}>
           {/* Existing Filters */}
           <Grid item xs={12} sm={6} md={3}>

@@ -129,7 +129,7 @@ const CharacterSociogramPage = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px - 32px)', m: -2 /* Offset AppLayout padding */ }}>
-      <PageHeader title="Character Relationship & Arc Mapper" />
+      <PageHeader title="Dependency Choreographer - Character Interactions" />
       <Box sx={{ flexGrow: 1, position: 'relative' }}>
         <ReactFlow
           nodes={nodes}

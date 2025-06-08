@@ -14,6 +14,7 @@ router.get('/characters/:id', notionController.getCharacterById);
 
 // Timeline routes
 router.get('/timeline', notionController.getTimelineEvents);
+router.get('/timeline/list', notionController.getTimelineEventsList); // Database-backed for dashboard
 router.get('/timeline/:id', notionController.getTimelineEventById);
 router.get('/timeline/:id/graph', notionController.getTimelineGraph);
 

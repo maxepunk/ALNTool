@@ -1,9 +1,18 @@
 #!/usr/bin/env node
 
-// IMPORTANT: Load environment variables FIRST, before any other requires
+// CRITICAL: Load environment variables BEFORE any other requires
 // This ensures process.env.NOTION_API_KEY is available when notionService initializes
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+
+// Verify API key was loaded before importing services
+if (!process.env.NOTION_API_KEY) {
+  console.error('❌ NOTION_API_KEY not found in environment variables');
+  console.error('Please check that .env file exists and contains NOTION_API_KEY');
+  process.exit(1);
+}
+
+console.log('✅ Environment loaded successfully');
 
 /**
  * Data Sync CLI

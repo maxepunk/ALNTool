@@ -110,11 +110,41 @@ class DataSyncService {
   }
 
   /**
-   * Get current sync status
-   * @returns {Object} Current sync status
+   * Get current sync status including database counts
+   * @returns {Promise<Object>} Current sync status with database statistics
    */
-  getSyncStatus() {
-    return this.orchestrator.getStatus();
+  async getSyncStatus() {
+    try {
+      this.initDB();
+      
+      // Get current database counts
+      const counts = {};
+      const tables = ['characters', 'elements', 'puzzles', 'timeline_events', 'character_links'];
+      
+      for (const table of tables) {
+        try {
+          const result = this.db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();
+          counts[table] = result.count;
+        } catch (error) {
+          console.warn(`Failed to count ${table}:`, error.message);
+          counts[table] = 0;
+        }
+      }
+      
+      return {
+        success: true,
+        counts,
+        lastSync: new Date().toISOString(),
+        orchestratorStatus: this.orchestrator.getStatus()
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        counts: {},
+        lastSync: null
+      };
+    }
   }
 
   /**
@@ -122,6 +152,7 @@ class DataSyncService {
    * @returns {boolean} Whether cancellation was successful
    */
   cancelSync() {
+    this.initDB();
     return this.orchestrator.cancel();
   }
 

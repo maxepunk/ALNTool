@@ -1,13 +1,33 @@
 const { Client } = require('@notionhq/client');
 const NodeCache = require('node-cache');
-const propertyMapper = require('../utils/propertyMapper'); // Added import
+const propertyMapper = require('../utils/notionPropertyMapper'); // Migrated from legacy propertyMapper
 const { getDB } = require('../db/database');
 const dbQueries = require('../db/queries');
 
-// Initialize Notion client
-const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
-});
+// Lazy Notion client initialization to handle environment loading
+let notion = null;
+
+function getNotionClient() {
+  if (!notion) {
+    // Load environment if not already loaded
+    if (!process.env.NOTION_API_KEY) {
+      try {
+        require('dotenv').config();
+      } catch (error) {
+        // Ignore dotenv errors - env might be loaded another way
+      }
+    }
+    
+    if (!process.env.NOTION_API_KEY) {
+      throw new Error('NOTION_API_KEY not found in environment variables. Please check your .env file.');
+    }
+    
+    notion = new Client({
+      auth: process.env.NOTION_API_KEY,
+    });
+  }
+  return notion;
+}
 
 // Database IDs
 const DB_IDS = {
@@ -48,7 +68,7 @@ async function queryDatabase(databaseId, filter = {}) {
     }
 
     // Query the database
-    const response = await notion.databases.query(params);
+    const response = await getNotionClient().databases.query(params);
     
     notionCache.set(cacheKey, response.results);
     console.log(`[CACHE MISS] ${cacheKey}`);
@@ -73,7 +93,7 @@ async function getPage(pageId) {
     return cached;
   }
   try {
-    const page = await notion.pages.retrieve({ page_id: pageId });
+    const page = await getNotionClient().pages.retrieve({ page_id: pageId });
     notionCache.set(cacheKey, page);
     console.log(`[CACHE MISS] ${cacheKey}`);
     return page;
@@ -173,6 +193,7 @@ module.exports = {
   getCharacterDetails,
   getAllCharacterOverviews,
   getCharactersForList,
+  getTimelineEventsForList,
 };
 
 // --- Start of new functions for journey computation ---
@@ -210,7 +231,7 @@ async function getCharacterDetails(characterId) {
   ];
   const uniqueElementIds = [...new Set(elementIds)]; // Ensure unique IDs
   const elementPages = uniqueElementIds.length > 0 ? await getPagesByIds(uniqueElementIds) : [];
-  const mappedElements = elementPages.map(propertyMapper.mapElement).filter(Boolean);
+  const mappedElements = await Promise.all(elementPages.map(element => propertyMapper.mapElementWithNames(element, { getPagesByIds })));
 
   return {
     character: mappedCharacter,
@@ -299,4 +320,9 @@ async function getAllCharacterOverviews() {
 async function getCharactersForList(filter) {
   // This is the new lightweight function.
   return dbQueries.getCharactersForList();
+}
+
+async function getTimelineEventsForList(filter) {
+  // Database-backed timeline events for dashboard
+  return dbQueries.getTimelineEventsForList();
 }

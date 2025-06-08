@@ -145,8 +145,22 @@ class TimelineEventSyncer extends BaseSyncer {
       // Process character relationships
       if (relationships.characters && Array.isArray(relationships.characters)) {
         for (const character of relationships.characters) {
-          const charId = character.id || character;
-          insertCharEventRel.run(charId, eventId);
+          let charId = character.id || character;
+          
+          // If no ID but we have a name, look up the character ID
+          if (!charId && character.name) {
+            const foundChar = this.db.prepare('SELECT id FROM characters WHERE name = ?').get(character.name);
+            if (foundChar) {
+              charId = foundChar.id;
+            } else {
+              this.logger.warn(`Character not found for name: ${character.name} in event ${eventId}`);
+              continue;
+            }
+          }
+          
+          if (charId) {
+            insertCharEventRel.run(charId, eventId);
+          }
         }
       }
       

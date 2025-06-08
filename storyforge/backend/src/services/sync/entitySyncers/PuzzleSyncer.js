@@ -48,27 +48,53 @@ class PuzzleSyncer extends BaseSyncer {
    */
   async mapData(notionPuzzle) {
     try {
+      const startTime = Date.now();
+      const puzzleName = notionPuzzle?.properties?.Puzzle ? 
+        this.propertyMapper.extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';
+      
+      console.log(`[PUZZLE SYNC] Mapping puzzle: "${puzzleName}"`);
+      
       const mapped = await this.propertyMapper.mapPuzzleWithNames(
         notionPuzzle, 
         this.notionService
       );
       
+      const duration = Date.now() - startTime;
+      console.log(`[PUZZLE SYNC] ✅ Mapped "${puzzleName}" in ${duration}ms`);
+      
       if (mapped.error) {
         return { error: mapped.error };
       }
 
-      // Handle puzzle name - puzzles can have either 'puzzle' or 'name' property
-      const puzzleName = mapped.puzzle || mapped.name || 
+      // Handle puzzle name - puzzles can have either 'puzzle' or 'name' property  
+      const finalPuzzleName = mapped.puzzle || mapped.name || 
         `Untitled Puzzle (${notionPuzzle.id.substring(0, 8)})`;
 
-      // Extract single IDs from relation arrays
-      const ownerId = mapped.owner && mapped.owner.length > 0 
+      // Extract single IDs from relation arrays with foreign key validation
+      let ownerId = mapped.owner && mapped.owner.length > 0 
         ? mapped.owner[0].id 
         : null;
       
-      const lockedItemId = mapped.lockedItem && mapped.lockedItem.length > 0 
+      let lockedItemId = mapped.lockedItem && mapped.lockedItem.length > 0 
         ? mapped.lockedItem[0].id 
         : null;
+      
+      // Validate foreign key references to prevent constraint violations
+      if (ownerId) {
+        const ownerExists = this.db.prepare('SELECT 1 FROM characters WHERE id = ?').get(ownerId);
+        if (!ownerExists) {
+          console.warn(`[PUZZLE SYNC] Warning: Owner ID ${ownerId} not found in characters table for puzzle "${finalPuzzleName}", setting to NULL`);
+          ownerId = null;
+        }
+      }
+      
+      if (lockedItemId) {
+        const elementExists = this.db.prepare('SELECT 1 FROM elements WHERE id = ?').get(lockedItemId);
+        if (!elementExists) {
+          console.warn(`[PUZZLE SYNC] Warning: Locked item ID ${lockedItemId} not found in elements table for puzzle "${finalPuzzleName}", setting to NULL`);
+          lockedItemId = null;
+        }
+      }
 
       // Convert arrays to JSON strings
       const rewardIds = mapped.rewards 
@@ -85,7 +111,7 @@ class PuzzleSyncer extends BaseSyncer {
 
       return {
         id: mapped.id,
-        name: puzzleName,
+        name: finalPuzzleName,
         timing: mapped.timing || 'Unknown',
         owner_id: ownerId,
         locked_item_id: lockedItemId,
@@ -95,6 +121,9 @@ class PuzzleSyncer extends BaseSyncer {
         narrative_threads: narrativeThreads
       };
     } catch (error) {
+      const puzzleName = notionPuzzle?.properties?.Puzzle ? 
+        this.propertyMapper.extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';
+      console.error(`[PUZZLE SYNC] ❌ Failed to map "${puzzleName}": ${error.message}`);
       return { error: error.message };
     }
   }

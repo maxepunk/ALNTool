@@ -166,35 +166,6 @@ function mapPuzzle(notionPuzzle) {
   };
 }
 
-/**
- * Maps a Notion element object to a simplified format
- * @param {Object} notionElement - Raw Notion element object
- * @returns {Object} Simplified element object
- */
-function mapElement(notionElement) {
-  const properties = notionElement.properties;
-  
-  return {
-    id: notionElement.id,
-    name: extractTitle(properties.Name),
-    owner: properties.Owner ? extractRelation(properties.Owner) : [],
-    basicType: extractSelect(properties.Basic_Type),
-    description: properties.Description_Text ? extractRichText(properties.Description_Text) : '',
-    container: properties.Container ? extractRelation(properties.Container) : [],
-    contents: properties.Contents ? extractRelation(properties.Contents) : [],
-    containerPuzzle: properties.Container_Puzzle ? extractRelation(properties.Container_Puzzle) : [],
-    requiredForPuzzle: properties.Required_For ? extractRelation(properties.Required_For) : [],
-    rewardedByPuzzle: properties.Rewarded_by ? extractRelation(properties.Rewarded_by) : [],
-    timelineEvent: properties.Timeline_Event ? extractRelation(properties.Timeline_Event) : [],
-    associatedCharacters: properties.Associated_Characters ? extractRelation(properties.Associated_Characters) : [],
-    narrativeThreads: properties.Narrative_Threads ? extractMultiSelect(properties.Narrative_Threads) : [],
-    firstAvailable: extractSelect(properties.First_Available),
-    status: extractSelect(properties.Status),
-    contentLink: extractUrl(properties.Content_Link),
-    productionNotes: properties.Production_Puzzle_Notes ? extractRichText(properties.Production_Puzzle_Notes) : '',
-    lastEdited: notionElement.last_edited_time,
-  };
-}
 
 /**
  * Helper function to get a property from a Notion object, trying various naming conventions
@@ -367,11 +338,29 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
 
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Description'] || { title: [] }) });
 
+    // Extract character mentions from description if Characters Involved is empty
+    let charactersInvolved = characters.map(page => toIdName(page, 'Name'));
+    
+    // If no characters in Notion relation, parse from description (@mentions)
+    if (charactersInvolved.length === 0) {
+      const description = extractTitle(properties.Description) || '';
+      // Improved regex to match @FirstName LastName (handles two-word names)
+      const characterMentions = description.match(/@([A-Za-z]+(?:\s+[A-Za-z]+)?)/g) || [];
+      
+      // For each mention, try to find matching character names
+      for (const mention of characterMentions) {
+        const characterName = mention.substring(1).trim(); // Remove @ symbol
+        // Note: We can't fetch character IDs here without making this function more complex
+        // Instead, we'll pass the names and resolve them later in the syncer
+        charactersInvolved.push({ id: null, name: characterName });
+      }
+    }
+
     const mappedEvent = {
       id: notionEvent.id,
       description: extractTitle(properties.Description),
       date: extractDate(properties.Date),
-      charactersInvolved: characters.map(page => toIdName(page, 'Name')),
+      charactersInvolved: charactersInvolved,
       memoryEvidence: memoryEvidence.map(page => toIdName(page, 'Name')),
       memType: extractRichTextByName(properties, 'mem type'),
       notes: extractRichTextByName(properties, 'Notes'),
@@ -380,7 +369,8 @@ async function mapTimelineEventWithNames(notionEvent, notionService) {
       // Act Focus is computed from related elements' acts, not stored in Notion
       // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed field
       // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // May or may not exist in Notion
-      narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep if it exists in Notion
+      // Note: Timeline events don't have Narrative Threads - this is computed from related elements
+      // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep if it exists in Notion
     };
     // Debug logging removed for commented fields
     // if (mappedEvent.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
@@ -415,31 +405,55 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
     const rewardIds = extractRelationByName(properties, 'Rewards');
     const parentItemIds = extractRelationByName(properties, 'Parent item');
     const subPuzzleIds = extractRelationByName(properties, 'Sub-Puzzles');
-    // New relations for narrative cohesion
-    const impactedCharacterIds = extractRelationByName(properties, 'Impacted Characters');
-    const relatedTimelineEventIds = extractRelationByName(properties, 'Related Timeline Events');
+    // Note: Impacted Characters and Related Timeline Events are computed relationships,
+    // not direct Notion properties. These will be computed after sync based on puzzle ownership.
 
 
-    // Fetch related entities in parallel
-    const [
-      owners,
-      lockedItems,
-      puzzleElements,
-      rewards,
-      parentItems,
-      subPuzzles,
-      impactedCharactersPages, // New
-      relatedTimelineEventPages // New
-    ] = await Promise.all([
-      notionService.getPagesByIds(ownerIds),
-      notionService.getPagesByIds(lockedItemIds),
-      notionService.getPagesByIds(puzzleElementIds),
-      notionService.getPagesByIds(rewardIds),
-      notionService.getPagesByIds(parentItemIds),
-      notionService.getPagesByIds(subPuzzleIds),
-      notionService.getPagesByIds(impactedCharacterIds), // New
-      notionService.getPagesByIds(relatedTimelineEventIds), // New
-    ]);
+    // Optimize API calls - only fetch non-empty relation arrays
+    // This prevents unnecessary API calls for empty relations, improving performance significantly
+    const apiCalls = [];
+    const callMap = {};
+    
+    if (ownerIds.length > 0) {
+      callMap.owners = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(ownerIds));
+    }
+    if (lockedItemIds.length > 0) {
+      callMap.lockedItems = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(lockedItemIds));
+    }
+    if (puzzleElementIds.length > 0) {
+      callMap.puzzleElements = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(puzzleElementIds));
+    }
+    if (rewardIds.length > 0) {
+      callMap.rewards = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(rewardIds));
+    }
+    if (parentItemIds.length > 0) {
+      callMap.parentItems = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(parentItemIds));
+    }
+    if (subPuzzleIds.length > 0) {
+      callMap.subPuzzles = apiCalls.length;
+      apiCalls.push(notionService.getPagesByIds(subPuzzleIds));
+    }
+    
+    // Execute only the needed API calls with timeout protection
+    const results = apiCalls.length > 0 ? await Promise.race([
+      Promise.all(apiCalls),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Puzzle mapping timeout after 10 seconds')), 10000)
+      )
+    ]) : [];
+    
+    // Map results back to expected variables (empty arrays for skipped calls)
+    const owners = callMap.owners !== undefined ? results[callMap.owners] : [];
+    const lockedItems = callMap.lockedItems !== undefined ? results[callMap.lockedItems] : [];
+    const puzzleElements = callMap.puzzleElements !== undefined ? results[callMap.puzzleElements] : [];
+    const rewards = callMap.rewards !== undefined ? results[callMap.rewards] : [];
+    const parentItems = callMap.parentItems !== undefined ? results[callMap.parentItems] : [];
+    const subPuzzles = callMap.subPuzzles !== undefined ? results[callMap.subPuzzles] : [];
 
     // Helper to map to {id, name}
     const toIdName = (page, titleProp = 'Name') => ({ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Puzzle'] || page.properties['Description'] || { title: [] }) });
@@ -464,23 +478,55 @@ async function mapPuzzleWithNames(notionPuzzle, notionService) {
       // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed from timeline events
       // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Duplicate of narrativeThreads
       // resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'), // Computed field
-      impactedCharacters: impactedCharactersPages.map(page => toIdName(page, 'Name')),
-      relatedTimelineEvents: relatedTimelineEventPages.map(page => toIdName(page, 'Description')),
+      // impactedCharacters: computed after sync based on ownership relationships
+      // relatedTimelineEvents: computed after sync based on story reveals and timing
     };
     // Debug logging removed since fields are commented out
     // if (mappedPuzzle.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
     // if (mappedPuzzle.themes && mappedPuzzle.themes.length > 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
     return mappedPuzzle;
   } catch (error) {
-    console.error(`Error mapping puzzle with ID ${notionPuzzle?.id || 'unknown'}:`, error);
+    const puzzleName = notionPuzzle?.properties?.Puzzle ? extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';
+    console.error(`[PUZZLE SYNC ERROR] Failed to map puzzle "${puzzleName}" (ID: ${notionPuzzle?.id || 'unknown'})`);
+    console.error(`[PUZZLE SYNC ERROR] Error type: ${error.name || 'Unknown'}`);
+    console.error(`[PUZZLE SYNC ERROR] Error message: ${error.message}`);
+    
+    // Log relation array sizes for debugging
+    if (notionPuzzle?.properties) {
+      const properties = notionPuzzle.properties;
+      const relationSizes = {
+        owners: extractRelationByName(properties, 'Owner').length,
+        lockedItems: extractRelationByName(properties, 'Locked Item').length,
+        puzzleElements: extractRelationByName(properties, 'Puzzle Elements').length,
+        rewards: extractRelationByName(properties, 'Rewards').length,
+        parentItems: extractRelationByName(properties, 'Parent item').length,
+        subPuzzles: extractRelationByName(properties, 'Sub-Puzzles').length
+      };
+      console.error(`[PUZZLE SYNC ERROR] Relation sizes:`, relationSizes);
+    }
     
     // Return a minimal object to avoid breaking the client
     return {
       id: notionPuzzle?.id || 'error',
-      puzzle: notionPuzzle?.properties?.Puzzle ? extractTitle(notionPuzzle.properties.Puzzle) : 'Error loading puzzle',
+      puzzle: puzzleName,
       error: error.message,
     };
   }
+}
+
+/**
+ * Maps a Notion character object to a simplified overview format (ID and name only)
+ * @param {Object} notionCharacter - Raw Notion character object
+ * @returns {Object} Simplified character overview object
+ */
+function mapCharacterOverview(notionCharacter) {
+  if (!notionCharacter || !notionCharacter.properties) return null;
+  const properties = notionCharacter.properties;
+  
+  return {
+    id: notionCharacter.id,
+    name: extractTitle(properties.Name),
+  };
 }
 
 /**
@@ -561,25 +607,45 @@ async function mapElementWithNames(notionElement, notionService) {
             mappedElement.properties = {};
         }
 
-        const rfidRegex = /^SF_RFID:\s*(\S+)/m;
+        // Updated regex patterns to handle [bracket] format
+        const rfidRegex = /^SF_RFID:\s*\[([^\]]+)\]/m;
         const rfidMatch = descriptionText.match(rfidRegex);
         if (rfidMatch && rfidMatch[1]) {
-          mappedElement.properties.parsed_sf_rfid = rfidMatch[1]; // Moved to properties
-          console.log('[RFID PARSE] Found RFID:', mappedElement.properties.parsed_sf_rfid, 'for Element:', mappedElement.name);
+          mappedElement.properties.parsed_sf_rfid = rfidMatch[1];
+          console.log('[MEMORY PARSE] Found RFID:', mappedElement.properties.parsed_sf_rfid, 'for Element:', mappedElement.name);
         }
 
-        const valueRatingRegex = /^SF_ValueRating:\s*([1-5])/m;
+        const valueRatingRegex = /^SF_ValueRating:\s*\[([1-5])\]/m;
         const valueRatingMatch = descriptionText.match(valueRatingRegex);
         if (valueRatingMatch && valueRatingMatch[1]) {
           mappedElement.properties.sf_value_rating = parseInt(valueRatingMatch[1], 10);
-          console.log('[RFID PARSE] Found SF_ValueRating:', mappedElement.properties.sf_value_rating, 'for Element:', mappedElement.name);
+          console.log('[MEMORY PARSE] Found SF_ValueRating:', mappedElement.properties.sf_value_rating, 'for Element:', mappedElement.name);
         }
 
-        const memoryTypeRegex = /^SF_MemoryType:\s*(Personal|Business|Technical)/im;
+        const memoryTypeRegex = /^SF_MemoryType:\s*\[([^\]]+)\]/im;
         const memoryTypeMatch = descriptionText.match(memoryTypeRegex);
         if (memoryTypeMatch && memoryTypeMatch[1]) {
           mappedElement.properties.sf_memory_type = memoryTypeMatch[1];
-          console.log('[RFID PARSE] Found SF_MemoryType:', mappedElement.properties.sf_memory_type, 'for Element:', mappedElement.name);
+          console.log('[MEMORY PARSE] Found SF_MemoryType:', mappedElement.properties.sf_memory_type, 'for Element:', mappedElement.name);
+        }
+
+        // NEW: Extract SF_Group with multiplier parsing
+        const groupRegex = /^SF_Group:\s*\[([^\]]+)\]/im;
+        const groupMatch = descriptionText.match(groupRegex);
+        if (groupMatch && groupMatch[1]) {
+          const groupValue = groupMatch[1];
+          mappedElement.properties.sf_group = groupValue;
+          
+          // Parse multiplier from patterns like "Ephemeral Echo (x10)"
+          const multiplierRegex = /\(x(\d+(?:\.\d+)?)\)/i;
+          const multiplierMatch = groupValue.match(multiplierRegex);
+          if (multiplierMatch && multiplierMatch[1]) {
+            mappedElement.properties.sf_group_multiplier = parseFloat(multiplierMatch[1]);
+            console.log('[MEMORY PARSE] Found SF_Group with multiplier:', groupValue, 'x' + mappedElement.properties.sf_group_multiplier, 'for Element:', mappedElement.name);
+          } else {
+            mappedElement.properties.sf_group_multiplier = 1.0; // Default multiplier
+            console.log('[MEMORY PARSE] Found SF_Group (no multiplier):', groupValue, 'for Element:', mappedElement.name);
+          }
         }
       }
     }
@@ -609,7 +675,7 @@ module.exports = {
   mapCharacter,
   mapTimelineEvent,
   mapPuzzle,
-  mapElement,
+  mapCharacterOverview,
   mapPuzzleWithNames,
   mapCharacterWithNames,
   mapTimelineEventWithNames,

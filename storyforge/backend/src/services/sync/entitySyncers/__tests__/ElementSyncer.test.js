@@ -68,6 +68,9 @@ describe('ElementSyncer Integration Tests', () => {
       error: jest.fn()
     };
 
+    // Mock getDB to return our mock database
+    getDB.mockReturnValue(mockDB);
+
     // Create syncer instance
     syncer = new ElementSyncer({
       notionService: mockNotionService,
@@ -121,7 +124,6 @@ describe('ElementSyncer Integration Tests', () => {
       // Mock database statements
       const mockStmts = {
         updatePuzzles: { run: jest.fn() },
-        deleteInteractions: { run: jest.fn() },
         deleteCharOwned: { run: jest.fn() },
         deleteCharAssoc: { run: jest.fn() },
         deleteElements: { run: jest.fn() },
@@ -155,7 +157,6 @@ describe('ElementSyncer Integration Tests', () => {
 
       // Verify data clearing
       expect(mockStmts.updatePuzzles.run).toHaveBeenCalled();
-      expect(mockStmts.deleteInteractions.run).toHaveBeenCalled();
       expect(mockStmts.deleteCharOwned.run).toHaveBeenCalled();
       expect(mockStmts.deleteCharAssoc.run).toHaveBeenCalled();
       expect(mockStmts.deleteElements.run).toHaveBeenCalled();
@@ -219,7 +220,6 @@ describe('ElementSyncer Integration Tests', () => {
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
         if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
-        if (sql.includes('DELETE FROM element_interactions')) return mockStmts.deleteInteractions;
         if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
         if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
         if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
@@ -238,8 +238,8 @@ describe('ElementSyncer Integration Tests', () => {
         errors: 1
       });
       expect(mockStmts.insertElement.run).toHaveBeenCalledTimes(2); // Only successful mappings
-      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem1', 'Knife', 'Item', null, null, null);
-      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem3', 'Gun', 'Item', null, null, null);
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem1', 'Knife', '', '', '', null, null, '', '', null);
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem3', 'Gun', '', '', '', null, null, '', '', null);
     });
 
     it('should handle null relationships gracefully', async () => {
@@ -309,7 +309,7 @@ describe('ElementSyncer Integration Tests', () => {
       mockDB.inTransaction = true;
       mockDB.exec = jest.fn();
 
-      await expect(syncer.sync({ continueOnError: false })).rejects.toThrow('Mapping failed');
+      await expect(syncer.sync({ continueOnError: false })).rejects.toThrow('Failed to sync elements item: elem2');
       expect(mockDB.exec).toHaveBeenCalledWith('ROLLBACK');
     });
   });

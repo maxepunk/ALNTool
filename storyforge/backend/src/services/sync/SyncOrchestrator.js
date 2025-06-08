@@ -141,11 +141,11 @@ class SyncOrchestrator {
       console.log('🔄 Starting elements sync...');
       results.elements = await this.elementSyncer.sync();
       
-      console.log('🔄 Starting puzzles sync...');
-      results.puzzles = await this.puzzleSyncer.sync();
-      
       console.log('🔄 Starting timeline events sync...');
       results.timeline_events = await this.timelineEventSyncer.sync();
+      
+      console.log('🔄 Starting puzzles sync...');
+      results.puzzles = await this.puzzleSyncer.sync();
       
       // Calculate totals
       results.totalRecords = Object.values(results).reduce((sum, result) => {
@@ -196,9 +196,11 @@ class SyncOrchestrator {
     try {
       const startTime = Date.now();
       
-      // Invalidate journey cache since data has changed
+      // Invalidate all journey cache entries since data has changed
       console.log('♻️  Invalidating journey cache...');
-      const invalidateResult = invalidateJourneyCache();
+      const db = this.db;
+      const invalidateResult = db.prepare('DELETE FROM cached_journey_graphs').run();
+      console.log(`Journey cache invalidated (${invalidateResult.changes} entries removed)`);
       
       // Clear expired cache entries
       console.log('🧹 Clearing expired cache entries...');
@@ -206,7 +208,7 @@ class SyncOrchestrator {
       
       return {
         cacheInvalidated: invalidateResult.changes,
-        expiredEntriesCleared: clearResult.changes,
+        expiredEntriesCleared: clearResult?.changes || 0,
         duration: Date.now() - startTime
       };
       

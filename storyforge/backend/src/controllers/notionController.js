@@ -109,6 +109,13 @@ const getTimelineEvents = catchAsync(async (req, res) => {
   res.json(events);
 });
 
+const getTimelineEventsList = catchAsync(async (req, res) => {
+  // Database-backed timeline events for dashboard
+  const events = await notionService.getTimelineEventsForList(req.query);
+  setCacheHeaders(res);
+  res.json(events);
+});
+
 const getTimelineEventById = catchAsync(async (req, res) => {
   const { id } = req.params;
   const cacheKey = makeCacheKey('mapped-timelineevent', { id });
@@ -860,6 +867,7 @@ module.exports = {
   getCharacterById,
   getCharacterGraph,
   getTimelineEvents,
+  getTimelineEventsList,
   getTimelineEventById,
   getTimelineGraph,
   getPuzzles,

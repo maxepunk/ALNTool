@@ -50,6 +50,12 @@ export const api = {
     return response.data;
   },
 
+  getTimelineEventsList: async (filters = {}) => {
+    // Database-backed timeline events for dashboard
+    const response = await apiClient.get('/timeline/list', { params: filters });
+    return response.data;
+  },
+
   getTimelineEventById: async (id) => {
     // Using /timeline endpoint to match backend API
     const response = await apiClient.get(`/timeline/${id}`);

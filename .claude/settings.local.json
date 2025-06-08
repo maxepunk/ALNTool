@@ -19,7 +19,19 @@
       "Bash(npm run docs:test:*)",
       "Bash(rg:*)",
       "Bash(awk:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(/home/spide/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n -A 3 -B 3 \"gap|Gap\" src/components/PlayerJourney/TimelineView.jsx)",
+      "Bash(/home/spide/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg \"import.*TimelineView\" src/)",
+      "Bash(/home/spide/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"return\" src/pages/Dashboard.jsx)",
+      "Bash(/home/spide/.claude/local/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg -n \"Quick Access\" src/pages/Dashboard.jsx)",
+      "Bash(sed:*)",
+      "Bash(curl:*)",
+      "Bash(npm restart)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(true)",
+      "Bash(timeout:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

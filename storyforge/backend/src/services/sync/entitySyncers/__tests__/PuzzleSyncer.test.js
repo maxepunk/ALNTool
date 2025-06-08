@@ -52,6 +52,9 @@ describe('PuzzleSyncer Integration Tests', () => {
       error: jest.fn()
     };
 
+    // Mock getDB to return our mock database
+    getDB.mockReturnValue(mockDB);
+
     // Create syncer instance
     syncer = new PuzzleSyncer({
       notionService: mockNotionService,

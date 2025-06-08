@@ -37,7 +37,14 @@ import {
   InputLabel,
   FormControl,
   ListSubheader, // For "Select All" / "Deselect All" in theme potentially
+  Switch,
+  FormControlLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import FitScreenIcon from '@mui/icons-material/FitScreen';
@@ -53,6 +60,15 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloseIcon from '@mui/icons-material/Close';
+// Dependency Choreographer icons
+import WarningIcon from '@mui/icons-material/Warning';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import GroupWorkIcon from '@mui/icons-material/GroupWork';
+import LinkIcon from '@mui/icons-material/Link';
+import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
+import NfcIcon from '@mui/icons-material/Nfc';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import BusinessIcon from '@mui/icons-material/Business';
 
 // Node types
 import EntityNode from './EntityNode';
@@ -67,6 +83,101 @@ import useGraphTransform from './useGraphTransform';
 import useLayoutManager from './useLayoutManager'; // Now simplified
 import useRelationshipMapperUIState from './useRelationshipMapperUIState';
 
+// Dependency analysis utilities
+const analyzeDependencies = (graphData, entityType) => {
+  if (!graphData?.nodes) return {
+    criticalPaths: [],
+    bottlenecks: [],
+    collaborationOpportunities: [],
+    isolationRisks: [],
+  };
+
+  const analysis = {
+    criticalPaths: [],
+    bottlenecks: [],
+    collaborationOpportunities: [],
+    isolationRisks: [],
+  };
+
+  // Detect UV Light dependency chain
+  const uvElements = graphData.nodes.filter(node => 
+    node.properties?.name?.toLowerCase().includes('uv') ||
+    node.properties?.themes?.includes('UV') ||
+    node.properties?.basicType?.toLowerCase().includes('uv')
+  );
+  if (uvElements.length > 0) {
+    analysis.criticalPaths.push({
+      type: 'UV Light Chain',
+      description: `${uvElements.length} UV-dependent elements detected`,
+      severity: 'high',
+      icon: <LightbulbIcon />
+    });
+  }
+
+  // Detect Company One-Pager dependencies
+  const onePagerElements = graphData.nodes.filter(node => 
+    node.properties?.name?.toLowerCase().includes('one-pager') ||
+    node.properties?.name?.toLowerCase().includes('company') ||
+    node.properties?.themes?.includes('Business')
+  );
+  if (onePagerElements.length > 0) {
+    analysis.criticalPaths.push({
+      type: 'Company One-Pager Network',
+      description: `${onePagerElements.length} business-critical elements`,
+      severity: 'medium',
+      icon: <BusinessIcon />
+    });
+  }
+
+  // Detect RFID bottlenecks (3 scanners for 20 players)
+  const rfidElements = graphData.nodes.filter(node => 
+    node.properties?.basicType?.toLowerCase().includes('rfid') ||
+    node.properties?.name?.toLowerCase().includes('rfid')
+  );
+  if (rfidElements.length > 3) {
+    analysis.bottlenecks.push({
+      type: 'RFID Scanner Bottleneck',
+      description: `${rfidElements.length} RFID elements with only 3 scanners`,
+      severity: 'high',
+      icon: <NfcIcon />
+    });
+  }
+
+  // Detect collaborative puzzles requiring 2+ players
+  const collaborativePuzzles = graphData.nodes.filter(node => 
+    node.type === 'Puzzle' && 
+    (node.properties?.minPlayers > 1 || 
+     node.properties?.name?.toLowerCase().includes('collab') ||
+     node.properties?.themes?.includes('Collaboration'))
+  );
+  if (collaborativePuzzles.length > 0) {
+    analysis.collaborationOpportunities.push({
+      type: 'Multi-Player Puzzles',
+      description: `${collaborativePuzzles.length} puzzles require collaboration`,
+      severity: 'medium',
+      icon: <GroupWorkIcon />
+    });
+  }
+
+  // Detect isolated characters (characters with < 2 connections)
+  if (entityType === 'Character') {
+    const connections = graphData.edges?.filter(edge => 
+      edge.source === entityId || edge.target === entityId
+    ).length || 0;
+    
+    if (connections < 2) {
+      analysis.isolationRisks.push({
+        type: 'Social Isolation Risk',
+        description: `Only ${connections} connections - may need interaction opportunities`,
+        severity: 'medium',
+        icon: <WarningIcon />
+      });
+    }
+  }
+
+  return analysis;
+};
+
 const RelationshipMapperContent = ({ 
   title,
   entityType, 
@@ -79,6 +190,16 @@ const RelationshipMapperContent = ({
 }) => {
   const ui = useRelationshipMapperUIState({ entityId });
   const layoutManager = useLayoutManager(); // Simplified call, no initialLayout needed
+  
+  // Dependency Choreographer state
+  const [dependencyAnalysisMode, setDependencyAnalysisMode] = useState(false);
+  const [highlightCriticalPaths, setHighlightCriticalPaths] = useState(true);
+  const [showBottlenecks, setShowBottlenecks] = useState(true);
+  const [showCollaborationOpps, setShowCollaborationOpps] = useState(true);
+  
+  // Analyze dependencies for orchestration insights
+  const dependencyAnalysis = useMemo(() => 
+    analyzeDependencies(graphData, entityType), [graphData, entityType]);
 
   // console.log('RelationshipMapper GraphData:', graphData); // Keep for debugging if needed
   // console.log('EntityType:', entityType); // Keep for debugging if needed
@@ -257,12 +378,37 @@ const RelationshipMapperContent = ({
         borderBottom: `1px solid ${theme.palette.divider}`,
         ...(ui.isFullScreen && { bgcolor: 'background.paper' })
       }}>
-        <Typography variant="h6" sx={{fontSize: '1.1rem'}}>{title || `${entityName}\'s Map`}</Typography> 
-        <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
-          <IconButton onClick={ui.toggleFullScreen} size="small">
-            {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6" sx={{fontSize: '1.1rem'}}>
+            {dependencyAnalysisMode ? 'Dependency Choreographer' : (title || `${entityName}\'s Map`)}
+          </Typography>
+          {dependencyAnalysisMode && (
+            <Chip 
+              icon={<LinkIcon />} 
+              label="Production Mode" 
+              color="primary" 
+              size="small"
+            />
+          )}
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={dependencyAnalysisMode} 
+                onChange={(e) => setDependencyAnalysisMode(e.target.checked)}
+                size="small"
+              />
+            }
+            label="Orchestration Mode"
+            sx={{ mr: 1 }}
+          />
+          <Tooltip title={ui.isFullScreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
+            <IconButton onClick={ui.toggleFullScreen} size="small">
+              {ui.isFullScreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
       <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}> 
         <Box sx={{ flexGrow: 1, height: '100%', position: 'relative' }}> {/* This is the ReactFlow container */}
@@ -299,12 +445,19 @@ const RelationshipMapperContent = ({
                     <li>Drag the background to pan the view.</li>
                     <li>Use mouse wheel or pinch to zoom.</li>
                   </ul>
-                  <strong>Controls (Panel):</strong>
+                  <strong>Standard Controls:</strong>
                   <ul>
                     <li><strong>View:</strong> Zoom in/out, or fit all items to the screen.</li>
                     <li><strong>Exploration Depth:</strong> Control how many levels of connections are shown.</li>
                     <li><strong>Filter Nodes/Edges:</strong> Toggle visibility of specific entity types or relationships.</li>
                     <li><strong>Signal Strength:</strong> Show or hide items deemed less critical connections.</li>
+                  </ul>
+                  <strong>Dependency Choreographer Mode:</strong>
+                  <ul>
+                    <li><strong>Production Mode:</strong> Highlights critical dependencies for About Last Night orchestration.</li>
+                    <li><strong>Critical Dependencies:</strong> UV Light chains, Company One-Pagers, collaborative puzzles.</li>
+                    <li><strong>Resource Bottlenecks:</strong> RFID scanner limitations, multi-player puzzle scheduling.</li>
+                    <li><strong>Social Balance:</strong> Character isolation risks and interaction opportunities.</li>
                   </ul>
                 </Typography>
                 <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant="contained">Got it!</Button>
@@ -319,7 +472,7 @@ const RelationshipMapperContent = ({
         <Box 
           sx={{
             // Common styles for the panel
-            width: '280px',
+            width: dependencyAnalysisMode ? '320px' : '280px', // Wider for dependency analysis
             flexShrink: 0,
             height: ui.isFullScreen ? 'auto' : '100%', // Full height in normal, auto in fullscreen
             maxHeight: ui.isFullScreen ? `calc(100vh - ${theme.spacing(10)})` : 'none', // Max height in fullscreen
@@ -344,11 +497,191 @@ const RelationshipMapperContent = ({
           }}
         >
           <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
-            <Typography variant="subtitle1" sx={{fontWeight: 600}}>Controls</Typography>
+            <Typography variant="subtitle1" sx={{fontWeight: 600}}>
+              {dependencyAnalysisMode ? 'Production Controls' : 'Controls'}
+            </Typography>
             <Tooltip title="Map Information & Help">
               <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
             </Tooltip>
           </Box>
+          
+          {/* Dependency Analysis Panel */}
+          {dependencyAnalysisMode && (
+            <>
+              <Accordion defaultExpanded sx={{ mb: 2, boxShadow: 1 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FlashOnIcon color="warning" fontSize="small" />
+                    Dependency Analysis
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  {/* Critical Paths */}
+                  {dependencyAnalysis.criticalPaths.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        Critical Dependencies:
+                      </Typography>
+                      {dependencyAnalysis.criticalPaths.map((path, index) => (
+                        <Box key={index} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          p: 1, 
+                          bgcolor: path.severity === 'high' ? 'error.light' : 'warning.light',
+                          borderRadius: 1,
+                          mt: 0.5,
+                          color: path.severity === 'high' ? 'error.contrastText' : 'warning.contrastText'
+                        }}>
+                          {path.icon}
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                              {path.type}
+                            </Typography>
+                            <Typography variant="caption" display="block">
+                              {path.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Bottlenecks */}
+                  {dependencyAnalysis.bottlenecks.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                        Resource Bottlenecks:
+                      </Typography>
+                      {dependencyAnalysis.bottlenecks.map((bottleneck, index) => (
+                        <Box key={index} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          p: 1, 
+                          bgcolor: 'error.light',
+                          borderRadius: 1,
+                          mt: 0.5,
+                          color: 'error.contrastText'
+                        }}>
+                          {bottleneck.icon}
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                              {bottleneck.type}
+                            </Typography>
+                            <Typography variant="caption" display="block">
+                              {bottleneck.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Collaboration Opportunities */}
+                  {dependencyAnalysis.collaborationOpportunities.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                        Collaboration Points:
+                      </Typography>
+                      {dependencyAnalysis.collaborationOpportunities.map((opp, index) => (
+                        <Box key={index} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          p: 1, 
+                          bgcolor: 'info.light',
+                          borderRadius: 1,
+                          mt: 0.5,
+                          color: 'info.contrastText'
+                        }}>
+                          {opp.icon}
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                              {opp.type}
+                            </Typography>
+                            <Typography variant="caption" display="block">
+                              {opp.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Isolation Risks */}
+                  {dependencyAnalysis.isolationRisks.length > 0 && (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                        Social Balance:
+                      </Typography>
+                      {dependencyAnalysis.isolationRisks.map((risk, index) => (
+                        <Box key={index} sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1, 
+                          p: 1, 
+                          bgcolor: 'warning.light',
+                          borderRadius: 1,
+                          mt: 0.5,
+                          color: 'warning.contrastText'
+                        }}>
+                          {risk.icon}
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                              {risk.type}
+                            </Typography>
+                            <Typography variant="caption" display="block">
+                              {risk.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Orchestration Controls */}
+                  <Typography variant="caption" sx={{ fontWeight: 'bold', mt: 1, mb: 1, display: 'block' }}>
+                    Production Highlights:
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch 
+                        checked={highlightCriticalPaths} 
+                        onChange={(e) => setHighlightCriticalPaths(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Critical Dependencies"
+                    sx={{ display: 'block', mb: 0.5 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch 
+                        checked={showBottlenecks} 
+                        onChange={(e) => setShowBottlenecks(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Resource Bottlenecks"
+                    sx={{ display: 'block', mb: 0.5 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch 
+                        checked={showCollaborationOpps} 
+                        onChange={(e) => setShowCollaborationOpps(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Collaboration Opportunities"
+                    sx={{ display: 'block' }}
+                  />
+                </AccordionDetails>
+              </Accordion>
+              <Divider sx={{my:1}}/>
+            </>
+          )}
           <Divider sx={{my:1}}/>
           
           <Typography variant="caption" display="block" gutterBottom>View</Typography>

@@ -49,6 +49,21 @@ async function getAllEvents() {
    return db.prepare('SELECT * FROM timeline_events').all();
 }
 
+// Get timeline events for list view
+function getTimelineEventsForList() {
+  const db = getDB();
+  return db.prepare(`
+    SELECT 
+      id, 
+      description, 
+      date,
+      act_focus,
+      notes
+    FROM timeline_events 
+    ORDER BY date ASC
+  `).all();
+}
+
 // Puzzles
 
 async function getAllPuzzles() {
@@ -174,7 +189,7 @@ function getElementById(id) {
 function getCharactersForList() {
   const db = getDB();
   // This query fetches only the essential fields for the character list view.
-  return db.prepare(`
+  const characters = db.prepare(`
     SELECT 
       id, 
       name, 
@@ -185,6 +200,12 @@ function getCharactersForList() {
     FROM characters 
     ORDER BY name ASC
   `).all();
+  
+  // Parse JSON strings to arrays for computed fields
+  return characters.map(character => ({
+    ...character,
+    resolution_paths: character.resolution_paths ? JSON.parse(character.resolution_paths) : []
+  }));
 }
 
 // ======== Journey Graph Caching Functions ========
@@ -356,6 +377,7 @@ module.exports = {
   getCharacterJourneyData,
   getElementById,
   getCharactersForList,
+  getTimelineEventsForList,
   // Journey caching functions
   getCachedJourneyGraph,
   saveCachedJourneyGraph,
