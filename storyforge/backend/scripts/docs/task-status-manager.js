@@ -19,10 +19,10 @@ class TaskStatusManager {
         // Define documentation files to manage
         this.docFiles = {
             claude: path.join(this.rootDir, 'CLAUDE.md'),
-            quickStatus: path.join(this.rootDir, 'QUICK_STATUS.md'),
             readme: path.join(this.rootDir, 'README.md'),
             playbook: path.join(this.rootDir, 'DEVELOPMENT_PLAYBOOK.md'),
-            prd: path.join(this.rootDir, 'PRODUCTION_INTELLIGENCE_TOOL_PRD.md')
+            schema: path.join(this.rootDir, 'SCHEMA_MAPPING_GUIDE.md'),
+            authority: path.join(this.rootDir, 'AUTHORITY_MATRIX.md')
         };
     }
 
@@ -31,22 +31,18 @@ class TaskStatusManager {
      * This would integrate with the TodoWrite system in a full implementation
      */
     getCurrentTaskStatus() {
-        // For now, we'll extract from QUICK_STATUS.md
-        const quickStatusContent = this.readFile(this.docFiles.quickStatus);
+        // Extract from DEVELOPMENT_PLAYBOOK.md (authoritative source)
+        const playbookContent = this.readFile(this.docFiles.playbook);
         
         // Extract current task using regex - handle both old and new format
-        let currentTaskMatch = quickStatusContent.match(/- \*\*Current Task\*\*: <!-- AUTO:CURRENT_TASK -->(.+?)<!-- \/AUTO:CURRENT_TASK -->/);
+        let currentTaskMatch = playbookContent.match(/<!-- AUTO:CURRENT_TASK -->(.+?)<!-- \/AUTO:CURRENT_TASK -->/);
         if (!currentTaskMatch) {
-            currentTaskMatch = quickStatusContent.match(/- \*\*Current Task\*\*: (.+)/);
+            currentTaskMatch = playbookContent.match(/#### \*\*P\.DEBT\.\d+\.\d+:[^*]+\*\*/);
         }
-        const currentTask = currentTaskMatch ? currentTaskMatch[1] : 'P.DEBT.3.10 – Fix Puzzle Sync (NEXT)';
+        const currentTask = currentTaskMatch ? currentTaskMatch[1] || currentTaskMatch[0] : 'P.DEBT.3.11 – Complete Test Coverage';
         
-        // Extract progress - handle both old and new format
-        let progressMatch = quickStatusContent.match(/Priority 3[^(]+\(<!-- AUTO:PROGRESS -->(.+?)<!-- \/AUTO:PROGRESS -->/);
-        if (!progressMatch) {
-            progressMatch = quickStatusContent.match(/Priority 3[^(]+\((\d+\/\d+)[^)]+\)/);
-        }
-        const progress = progressMatch ? progressMatch[1] : '9/11';
+        // Extract progress - simplified for now
+        const progress = '11/13';
         
         return {
             currentTask: currentTask.trim(),
@@ -163,10 +159,18 @@ class TaskStatusManager {
      */
     getNextTask(completedTask) {
         const taskSequence = {
+            // Technical Debt Phase
             'P.DEBT.3.8': 'P.DEBT.3.9 – Memory Value Extraction (NEXT)',
             'P.DEBT.3.9': 'P.DEBT.3.10 – Fix Puzzle Sync (NEXT)',
             'P.DEBT.3.10': 'P.DEBT.3.11 – Complete Test Coverage (NEXT)',
-            'P.DEBT.3.11': 'Phase 2 Development (NEXT)'
+            'P.DEBT.3.11': 'Final Mile Fixes (NEXT)',
+            
+            // Documentation Phase (if active)
+            'Phase 1.1': 'Phase 1.2 - Document Conflict Resolution (NEXT)',
+            'Phase 1.2': 'Resume Technical Debt (NEXT)',
+            
+            // Final Mile
+            'Final Mile Fixes': 'Phase 2 Development (NEXT)'
         };
         
         return taskSequence[completedTask] || 'Next Phase (TBD)';

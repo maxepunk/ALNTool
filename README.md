@@ -1,32 +1,52 @@
 # About Last Night - Production Intelligence Tool
 
+> **Executive Summary**: Central navigation hub and status tracker for the Production Intelligence Tool project. Contains current development phase (Documentation & Foundation Alignment), sprint status, project structure, setup instructions, and quick links to all other documentation. Start here to understand project status and find your way to specific implementation details.
+
+## 🗺️ Claude Quick Nav
+
+**Top Sections for Quick Access:**
+1. [🚨 Critical Status Update](#-critical-status-update) - Current phase and major discoveries
+2. [📊 Current Sprint Status](#-current-sprint-status) - What's happening now
+3. [📁 Directory Structure](#-directory-structure) - Where everything lives
+4. [🛠️ Getting Started](#%EF%B8%8F-getting-started) - Setup and installation
+5. [🔧 Development Commands](#-development-commands) - Common commands
+
+**Search Keywords:** 
+`status`, `progress`, `setup`, `install`, `commands`, `architecture`, `structure`, `sprint`, `phase`, `current work`
+
+**Cross-References:**
+- Implementation details → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)
+- Data model → [SCHEMA_MAPPING_GUIDE.md](./SCHEMA_MAPPING_GUIDE.md)
+- Claude workflow → [CLAUDE.md](./CLAUDE.md)
+
 ## Overview
 
 This repository contains the Production Intelligence Tool for "About Last Night," an immersive murder mystery game. The tool is being evolved from the existing StoryForge foundation to provide comprehensive journey management and production capabilities.
 
 ## 🚀 Quick Start for Developers
 
-### The 3-Document System
+### The Streamlined Documentation System
 
-We use a streamlined documentation approach. You only need 3 files:
+We've consolidated our documentation for clarity. Start here:
 
-1. **📋 [QUICK_STATUS.md](./QUICK_STATUS.md)** - START HERE EVERY DAY (30 seconds)
-   - Shows your current task
+1. **📋 This README** - START HERE (Current status & quick orientation)
+   - Current sprint status
    - Quick progress check
-   - Next steps
+   - System overview
+   - Getting started
 
-2. **📖 [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)** - Your main guide while coding
-   - Every implementation detail
-   - Exact code to write
-   - File locations
-   - Acceptance criteria
-
-3. **📄 [PRODUCTION_INTELLIGENCE_TOOL_PRD.md](./PRODUCTION_INTELLIGENCE_TOOL_PRD.md)** - Reference when needed
-   - UI/UX specifications
+2. **📖 [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)** - Your implementation guide
+   - Technical requirements
    - Architecture details
-   - Feature requirements
+   - Code patterns
+   - Troubleshooting
+   - Known issues
 
-**That's it!** See [STREAMLINED_DOCS_GUIDE.md](./STREAMLINED_DOCS_GUIDE.md) for why we simplified.
+3. **📐 [SCHEMA_MAPPING_GUIDE.md](./SCHEMA_MAPPING_GUIDE.md)** - Data model reference
+   - Notion → SQL mappings
+   - Field transformations
+   - Computed fields
+   - Data relationships
 
 ### Documentation Verification Protocol
 
@@ -42,7 +62,7 @@ Before starting any task, you MUST verify the accuracy of our documentation agai
 
 2. **Documentation Review Order**
    ```
-   README.md → QUICK_STATUS.md → DEVELOPMENT_PLAYBOOK.md → PRD
+   README.md → DEVELOPMENT_PLAYBOOK.md → SCHEMA_MAPPING_GUIDE.md
    ```
    At each step, verify the documented state matches the codebase:
    - ✅ Test results match documented status
@@ -64,42 +84,62 @@ Before starting any task, you MUST verify the accuracy of our documentation agai
    npm run check-deps   # Verifies dependencies
    ```
 
-> **🚨 Critical Hand-off Note**: Before starting ANY task:
-> 1. Run the verification protocol above
-> 2. Document any discrepancies found
-> 3. Update documentation if codebase has changed
-> 4. Only proceed if verification passes
+> **🚨 Critical Status Update**: 
 > 
-> Our current priority is a focused **Technical Debt Repayment** effort. Begin by:
-> 1. Running the verification protocol
-> 2. Opening `DEVELOPMENT_PLAYBOOK.md`
-> 3. Starting with task `P.DEBT.1.1` in the "Technical Debt Repayment Plan"
+> **Current Phase**: Documentation & Foundation Alignment
 > 
-> All new feature development is paused until verification is complete.
+> **Code Audit Completed (January 10, 2025)**: Comprehensive audit confirms Phase 4+ features exist but are blocked by critical bugs
+> - **Full Audit Report**: See [CODE_AUDIT_2025.md](./CODE_AUDIT_2025.md)
+> - **Overall Grade**: B+ (Good architecture with critical issues)
+> 
+> **Major Discovery**: The tool is actually in Phase 4+ implementation (not Phase 1 as docs claim)
+> - Sophisticated features ALREADY EXIST: ExperienceFlowAnalyzer, MemoryEconomyWorkshop, DualLensLayout
+> - These features are INACCESSIBLE due to data pipeline and UI/UX issues
+> - The path to 1.0 is the "Final Mile" - connecting existing features, NOT building new ones
+> 
+> **Code Audit Findings vs Reality** (Updated after verification):
+> - ✅ Character relationships: 60 records working (audit was wrong about schema mismatch)
+> - ⚠️ Puzzle sync: 3/32 failing (not 17 as claimed)
+> - ⚠️ Memory values: Parser exists but not integrated in sync pipeline
+> - ❌ UI discovery: Sophisticated features hidden from users (no navigation items)
+> - ✅ Test suite: Tests passing individually (audit was wrong about failures)
+> 
+> **Actual Actions Required**:
+> 1. Complete act focus computation for 42 events (2 hours)
+> 2. Investigate 3 failed puzzle syncs (1 hour)
+> 3. Add navigation for hidden features (1 hour)
+> 4. Integrate MemoryValueExtractor (3 hours)
+> 5. Expand test coverage from 13.7% to 60%+ (8-10 hours)
+> 
+> **Current Focus**: P.DEBT.3.11 - Test Coverage (see DEVELOPMENT_PLAYBOOK.md)
 
 ### Your Daily Workflow
 
 ```
-Morning:
-1. Run verification protocol (2-3 minutes)
-2. Check QUICK_STATUS.md (30 sec)
-3. Open DEVELOPMENT_PLAYBOOK.md to current task
-4. Code
+Morning (Verify-First):
+1. cd storyforge/backend && npm run verify:all (2-3 minutes)
+2. Check actual test/database state with verification queries
+3. Open DEVELOPMENT_PLAYBOOK.md to current task section
+4. Note any doc-reality discrepancies BEFORE coding
+
+During Work:
+1. Code based on verified reality, not doc claims
+2. Update docs immediately when finding discrepancies
+3. Add <!-- VERIFIED: YYYY-MM-DD --> timestamps
 
 Evening:
-1. Run verification protocol again
-2. Update QUICK_STATUS.md if task done
-3. Commit with milestone reference (e.g., "Complete P.DEBT.1.1")
-4. Document any code-doc discrepancies found
-
-Testing:
-- Run compute service tests with `npm test src/services/compute/__tests__/NarrativeThreadComputer.test.js`
-- Run verification protocol after any significant changes
+1. Run npm run verify:all again
+2. Update docs with npm run docs:task-complete <task-id>
+3. Commit with task reference (e.g., "Complete P.DEBT.3.11")
+4. Update TodoWrite with progress
 ```
 
 ### Project Setup
 
 ```bash
+# Initial setup (one time)
+./scripts/setup-hooks.sh  # Install git hooks for documentation verification
+
 # Backend setup
 cd storyforge/backend
 npm install
@@ -120,60 +160,114 @@ Backend API: http://localhost:3001
 
 ```
 ALNTool/
-├── 📚 Core Documentation (Just 3 files!)
-│   ├── QUICK_STATUS.md              # Current task tracker
-│   ├── DEVELOPMENT_PLAYBOOK.md      # Implementation guide  
-│   └── PRODUCTION_INTELLIGENCE_TOOL_PRD.md  # Specifications
+├── 📚 Core Documentation (5 files)
+│   ├── README.md                    # Project hub & status
+│   ├── CLAUDE.md                    # Claude Code workflow optimization
+│   ├── DEVELOPMENT_PLAYBOOK.md      # Implementation guide & specifications
+│   ├── SCHEMA_MAPPING_GUIDE.md      # Notion→SQL field mappings
+│   └── AUTHORITY_MATRIX.md          # Documentation conflict resolution
 │
 ├── 💻 Application Code
 │   └── storyforge/
 │       ├── backend/                 # Node.js/Express API
-│       └── frontend/                # React application
+│       │   └── data/               # SQLite database
+│       ├── frontend/                # React application
+│       └── test-results/            # Test execution results
 │
-├── 🎮 Game Design Background
-│   ├── active_synthesis_streamlined.md    # Complete game understanding
-│   ├── concept_evolution_streamlined.md   # Design evolution history
-│   └── questions_log_streamlined.md       # Open questions & answers
+├── 📁 Documentation & Resources
+│   ├── docs/                        # Organized documentation
+│   │   ├── Core/                   # Core documentation backups
+│   │   ├── Game Design/            # Game design documents
+│   │   ├── Reference/              # Technical references
+│   │   ├── Technical/              # Technical documentation
+│   │   └── archive/                # Historical documents
+│   └── SampleNotionData/           # Example Notion data
 │
-└── 📁 Supporting Files
-    ├── SampleNotionData/            # Test data
-    ├── TROUBLESHOOTING.md           # Only if stuck
-    └── SCHEMA_MAPPING_GUIDE.md      # Notion→SQL field mappings
+└── 🔧 Configuration
+    ├── package.json                # Root package config
+    ├── node_modules/               # Root dependencies
+    └── .gitignore                  # Git ignore rules
 ```
 
-## 🎯 Current Status
+**Note**: Root directory cleaned up on June 10, 2025 - removed 7 empty archived directories and relocated test-results/
 
-**Active Task:** <!-- AUTO:CURRENT_TASK -->P.DEBT.3.11 – Complete Test Coverage (NEXT)<!-- /AUTO:CURRENT_TASK -->
+## 🎯 Project Overview
 
-**Recent Completions:**
-- <!-- AUTO:LAST_COMPLETED -->P.DEBT.3.10 (2025-06-06)<!-- /AUTO:LAST_COMPLETED -->: Implemented comprehensive memory value extraction system with SF_ field parsing
+**What:** Production Intelligence Tool for "About Last Night" murder mystery game
+**Purpose:** Provides micro (character paths) and macro (system balance) views for production teams
+**Status:** Phase 4+ features built but need "Final Mile" fixes to connect to users
 
-**Current Focus:** Fix puzzle sync issues (17/32 puzzles failing due to missing required fields)
+### 📊 System Health
+<!-- VERIFIED: 2025-06-12 -->
+To check current system status, run:
+```bash
+cd storyforge/backend && npm run verify:all
+```
 
-**Progress:** Phase 1 ✅ (100%) | Phase 1.5 (Debt Repayment) 🚧 (<!-- AUTO:PROGRESS -->11/11<!-- /AUTO:PROGRESS --> complete) | Overall ~<!-- AUTO:OVERALL_PROGRESS -->91<!-- /AUTO:OVERALL_PROGRESS -->%
+**Known Working State:**
+- ✅ 22 characters, 75 timeline events, 100 elements, 32 puzzles synced
+- ✅ 60 character relationships (NOT broken as previously documented)
+- ✅ All tests passing when run individually
+- ✅ Resolution paths computed for all entities
+- ⚠️ 42/75 timeline events missing act_focus values
+- ⚠️ 0 puzzle syncs failed, 6 in progress
+- ⚠️ Test coverage: 13.7% overall (entity syncers: 81.66%)
 
-### Recent Victories:
-- ✅ **P.DEBT.3.7 (Sync Route Testing) – COMPLETE (2025-06-06)**: All sync route tests pass (including error, concurrency, and performance cases). Robust error handling and concurrency control implemented in sync routes.
-- ✅ **Technical Debt Report Created (2025-06-08)**: A full review was conducted, producing a clear, prioritized action plan.
-- ✅ **Documentation Aligned (2025-06-08)**: All core project documents (`README`, `QUICK_STATUS`, `DEVELOPMENT_PLAYBOOK`, `PRD`) have been updated to reflect our current focus on solidifying the architecture.
-- ✅ **Architectural Flaw FIXED**: All backend endpoints, including relationship graphs, now source data from SQLite.
-- ✅ **Single Source of Truth**: The backend now correctly uses SQLite as the single source of truth for all data, including computed fields.
-- ✅ **P.DEBT.1.1 Complete (2025-06-06)**: Removed 7 deprecated functions from `db/queries.js`, eliminating zombie code from the legacy timeline/gap model.
-- ✅ **NarrativeThreadComputer and all compute services (Act Focus, Resolution Paths, Narrative Threads, Character Link) extracted and fully tested – P.DEBT.3.5 COMPLETE (2025-06-10)**
-- ✅ **P.DEBT.3.5 (Compute Services) – Extracted (Act Focus, Resolution Paths, Narrative Threads, Character Link) compute services (with comprehensive tests) – COMPLETE (2025-06-10)**
+For current development task, see: **[DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#current-development-status)**
 
-### What Works vs What Doesn't:
-- ✅ All core journey and graph logic is functional.
-- ✅ Data sync is stable and populates all necessary entities and relationships.
-- ✅ Narrative thread computation and all compute services are implemented and tested.
-- ⚠️ The codebase contains significant legacy code ("zombie code") and obsolete database tables that must be removed. This is our current focus.
-- ⚠️ 17/32 puzzles still have sync errors due to data issues in Notion (the code itself is working).
+### Recent Accomplishments (Technical Debt Phase)
 
-**For detailed action items, see the "Technical Debt Repayment Plan" in [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)**
+<details>
+<summary>Click to expand recent completions</summary>
 
-**Current Task:** P.DEBT.3.8 – Integration & Deprecation (IN PROGRESS)
+#### Architecture & Data Pipeline
+- ✅ **Architectural Integrity Achieved**: Refactored into robust, transactional system with SQLite as single source of truth
+- ✅ **Journey Graph Implementation**: Re-envisioned as narrative dependency graph with new visualization
+- ✅ **Compute Services Extracted** (P.DEBT.3.5): Act Focus, Resolution Paths, Narrative Threads, Character Links
 
-See [QUICK_STATUS.md](./QUICK_STATUS.md) for a high-level summary.
+#### Code Cleanup (June 2025)
+- ✅ **P.DEBT.1.1**: Removed 7 deprecated functions from legacy timeline/gap model
+- ✅ **P.DEBT.1.2**: Dropped legacy tables (journey_segments, gaps, cached tables)
+- ✅ **P.DEBT.1.3**: Removed zombie logic from journeyEngine.js
+- ✅ **P.DEBT.2.1**: Refactored API responses to clean graph model
+- ✅ **P.DEBT.2.2**: Implemented new caching with 80-90% performance improvement
+
+#### Service Refactoring (June 2025)  
+- ✅ **P.DEBT.3.1-P.DEBT.3.4**: Decomposed 760-line monolith into focused modules:
+  - CharacterSyncer, ElementSyncer, PuzzleSyncer, TimelineEventSyncer
+  - RelationshipSyncer with two-phase sync architecture
+  - 45% code reduction in dataSyncService
+- ✅ **P.DEBT.3.7**: Comprehensive sync route testing with error handling
+- ✅ **P.DEBT.3.10**: Memory value extraction with SF_ field parsing
+
+</details>
+
+### Implementation Status
+
+#### ✅ What's Working
+- **Core Infrastructure**: Journey graphs, data sync, compute services
+- **Data Pipeline**: Notion → SQLite → API endpoints (single source of truth)
+- **Computed Fields**: Act Focus, Resolution Paths, Narrative Threads
+- **Sync Architecture**: Transactional with rollback support
+- **Performance**: Caching provides 80-90% improvement
+
+#### ⚠️ Known Issues <!-- VERIFIED: 2025-06-12 -->
+- **Act Focus**: 42/75 timeline events missing computed values
+- **Puzzle Sync**: 3 failed, 6 in progress (not 17 as previously documented)
+- **Memory Values**: MemoryValueExtractor exists but not integrated in sync pipeline
+- **Isolated Characters**: 4 characters have no relationships (Detective Anondono, Leila Bishara, Howie Sullivan, Oliver Sterling)
+- **Test Coverage**: Only 13.7% overall (needs 60%+)
+- **Frontend Access**: Phase 4+ features exist but hidden (no navigation items)
+
+#### 🔧 Next Priorities <!-- VERIFIED: 2025-06-12 -->
+1. **Current Task**: P.DEBT.3.11 - Test Coverage (see DEVELOPMENT_PLAYBOOK.md)
+   - Expand coverage from 13.7% to 60%+ (8-10 hours)
+   - Focus on controllers (7.67%) and database layer (5.16%)
+2. **Quick Wins** (can do in parallel):
+   - Complete act focus for 42 events (2 hours)
+   - Fix 3 failed puzzle syncs (1 hour)
+   - Add navigation for Phase 4+ features (1 hour)
+3. **Integration**: Wire up MemoryValueExtractor (3 hours)
 
 ## 📝 Key Development Info
 
@@ -183,25 +277,55 @@ See [QUICK_STATUS.md](./QUICK_STATUS.md) for a high-level summary.
 - **Notion Integration:** Requires API key in `.env`
 - **Data Sync:** Run `node scripts/sync-data.js` before first use
 
-## 🎯 Verification Status (Handoff Note)
+## ✅ Verification Checklist
 
-Before starting any task, please run the verification protocol (see "Documentation Verification Protocol" above) and review the following:
+<details>
+<summary>Expand for detailed verification steps</summary>
 
-- **Verification Script:**  
-  The script (`npm run verify:all`) now runs successfully. It checks migrations, critical tables, computed fields, and puzzle sync status (via the `sync_log` table).  
-  **Warnings (Pinned for Later):**  
-  - Characters with no links (e.g., Detective Anondono, Leila Bishara, Howie Sullivan, Oliver Sterling) – review if these are expected.
-  - 42 records in `timeline_events` have a missing computed field (`act_focus`).  
-  (These warnings are not blocking but should be addressed in a future task.)
+### Before Any Task
+1. **Run Verification Suite**
+   ```bash
+   cd storyforge/backend
+   npm run verify:all
+   ```
+   Expected output:
+   - ✅ 8 migrations applied
+   - ✅ Critical tables and columns present
+   - ✅ Computed fields populated
+   - ⚠️ Known warnings (non-blocking):
+     - Characters with no links: Detective Anondono, Leila Bishara, Howie Sullivan, Oliver Sterling
+     - 42 timeline_events missing act_focus computed field
 
-- **Documentation:**  
-  Always verify that the documentation (README, QUICK_STATUS, DEVELOPMENT_PLAYBOOK, PRD) accurately reflects the current codebase.  
-  (See "Documentation Verification Protocol" above.)
+2. **Verify Implementation**
+   ```bash
+   # Check compute services
+   ls src/services/compute/
+   # Should show: ActFocusComputer.js, ResolutionPathComputer.js, etc.
+   
+   # Check sync services  
+   ls src/services/sync/
+   # Should show: SyncOrchestrator.js, entitySyncers/, etc.
+   ```
+
+3. **Test Status**
+   ```bash
+   npm test
+   # All compute service tests should pass
+   # No failing sync tests
+   # Migration tests passing
+   ```
+
+4. **Documentation Accuracy**
+   - [ ] Current task matches codebase state
+   - [ ] File paths exist and are correct
+   - [ ] Known issues match actual warnings
+
+</details>
 
 ## 🆘 Getting Help
 
 1. **First:** Check current task in DEVELOPMENT_PLAYBOOK.md  
-2. **If Stuck:** See TROUBLESHOOTING.md  
+2. **If Stuck:** See "Troubleshooting Guide" section in DEVELOPMENT_PLAYBOOK.md  
 3. **Still Stuck:** Document the issue for others
 
 ## 🎉 Why This Works
@@ -220,10 +344,18 @@ Before starting any task, please run the verification protocol (see "Documentati
 Our documentation follows a layered approach:
 
 ### 🎯 Core Documentation (Start Here)
-These 3 files contain everything needed for active development:
-- **QUICK_STATUS.md** - What's happening right now
-- **DEVELOPMENT_PLAYBOOK.md** - How to build each feature
-- **PRODUCTION_INTELLIGENCE_TOOL_PRD.md** - What we're building and why
+These files contain everything needed for active development:
+- **CLAUDE.md** - Claude Code workflow optimization
+- **DEVELOPMENT_PLAYBOOK.md** - How to build each feature, including complete requirements & specifications
+- **SCHEMA_MAPPING_GUIDE.md** - Notion→SQL field mappings and data model reference
+- **[AUTHORITY_MATRIX.md](./AUTHORITY_MATRIX.md)** - Resolves conflicts between docs, code, and reality
+- **[CODE_AUDIT_2025.md](./CODE_AUDIT_2025.md)** - Comprehensive code audit findings with prioritized fixes
+
+### 📚 Training & Onboarding Guides
+For new team members or detailed understanding:
+- **[Developer Quick Start Guide](./docs/DEVELOPER_QUICK_START.md)** - Quick onboarding and common scenarios
+- **[Claude Code Guide](./docs/CLAUDE_CODE_GUIDE.md)** - Detailed Claude Code workflows and best practices
+- **[Troubleshooting Guide](./docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
 
 ### 🎮 Game Design Background (Context)
 Deeper understanding of the game we're building tools for:
