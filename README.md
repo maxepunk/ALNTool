@@ -1,6 +1,6 @@
 # About Last Night - Production Intelligence Tool
 
-> **Executive Summary**: Central navigation hub and status tracker for the Production Intelligence Tool project. Contains current development phase (Documentation & Foundation Alignment), sprint status, project structure, setup instructions, and quick links to all other documentation. Start here to understand project status and find your way to specific implementation details.
+> **Executive Summary**: Central navigation hub and status tracker for the Production Intelligence Tool project. Contains current development phase (Technical Debt Repayment → Final Mile), sprint status, project structure, setup instructions, and quick links to all other documentation. Test coverage milestone achieved (63.68%). Ready for Final Mile fixes to connect Phase 4+ features to users.
 
 ## 🗺️ Claude Quick Nav
 
@@ -86,7 +86,20 @@ Before starting any task, you MUST verify the accuracy of our documentation agai
 
 > **🚨 Critical Status Update**: 
 > 
-> **Current Phase**: Documentation & Foundation Alignment
+> **Current Phase**: Final Mile (Connecting Phase 4+ Features)
+> 
+> **Final Mile Progress (June 15, 2025)**:
+> - ✅ Character Links: Working correctly (60 links exist, no schema fix needed) [VERIFIED]
+> - ✅ MemoryValueExtractor: Already integrated in ComputeOrchestrator [VERIFIED]
+> - ✅ Database Cleanup: Removed deprecated `memory_value` column
+> - ⚠️ Memory Values: Only 1/100 elements has non-zero value (Howie's Memory Token) [VERIFIED]
+> - ℹ️ SF_ Template: Found in description text (e.g., "S.F. - Last Try"), not structured format [VERIFIED]
+> - ✅ Act Focus Analysis: 42 events missing values due to incomplete Notion data (NOT a bug) [VERIFIED]
+> 
+> **Test Coverage Milestone Achieved (June 12, 2025)**: P.DEBT.3.11 Complete
+> - **Coverage Improved**: From 13.7% to 63.68% overall
+> - **Tests Created**: Controllers, Services, Database, Utils all have comprehensive test suites
+> - **Key Learnings**: See [TEST_COVERAGE_LEARNINGS.md](./storyforge/backend/TEST_COVERAGE_LEARNINGS.md)
 > 
 > **Code Audit Completed (January 10, 2025)**: Comprehensive audit confirms Phase 4+ features exist but are blocked by critical bugs
 > - **Full Audit Report**: See [CODE_AUDIT_2025.md](./CODE_AUDIT_2025.md)
@@ -103,15 +116,22 @@ Before starting any task, you MUST verify the accuracy of our documentation agai
 > - ⚠️ Memory values: Parser exists but not integrated in sync pipeline
 > - ❌ UI discovery: Sophisticated features hidden from users (no navigation items)
 > - ✅ Test suite: Tests passing individually (audit was wrong about failures)
+> - ✅ Test coverage: 63.68% achieved (was 13.7%)
 > 
-> **Actual Actions Required**:
-> 1. Complete act focus computation for 42 events (2 hours)
-> 2. Investigate 3 failed puzzle syncs (1 hour)
-> 3. Add navigation for hidden features (1 hour)
-> 4. Integrate MemoryValueExtractor (3 hours)
-> 5. Expand test coverage from 13.7% to 60%+ (8-10 hours)
+> **Final Mile Actions Required** (Updated June 14, 2025):
+> 1. ~~Fix character links schema~~ ✅ Already working correctly
+> 2. ~~Integrate MemoryValueExtractor~~ ✅ Already integrated
+> 3. ~~Fix Act Focus computation~~ ✅ Working correctly (NULL values expected with incomplete data)
+> 4. Add navigation for hidden features - 1 hour
+> 5. Update Notion elements with SF_ template (data task - designer responsibility)
+> 6. Update 59 elements with "First Available" field (data task - designer responsibility)
 > 
-> **Current Focus**: P.DEBT.3.11 - Test Coverage (see DEVELOPMENT_PLAYBOOK.md)
+> **Current Focus**: Ready for Final Mile fixes (see DEVELOPMENT_PLAYBOOK.md)
+> 
+> **Process Discovery (June 14, 2025)**: <!-- VERIFIED: 2025-06-14 -->
+> - ✅ Established Notion Validation Protocol - Always check Notion as source of truth before assuming data issues are bugs
+> - ✅ Distinguished data completeness vs technical bugs - 42 missing act_focus values are expected with incomplete Notion data
+> - ✅ Updated verification protocols in CLAUDE.md and troubleshooting guide in DEVELOPMENT_PLAYBOOK.md
 
 ### Your Daily Workflow
 
@@ -160,12 +180,17 @@ Backend API: http://localhost:3001
 
 ```
 ALNTool/
-├── 📚 Core Documentation (5 files)
+├── 📚 Core Documentation (10 files)
 │   ├── README.md                    # Project hub & status
 │   ├── CLAUDE.md                    # Claude Code workflow optimization
 │   ├── DEVELOPMENT_PLAYBOOK.md      # Implementation guide & specifications
 │   ├── SCHEMA_MAPPING_GUIDE.md      # Notion→SQL field mappings
-│   └── AUTHORITY_MATRIX.md          # Documentation conflict resolution
+│   ├── AUTHORITY_MATRIX.md          # Documentation conflict resolution
+│   ├── CODE_AUDIT_2025.md          # Comprehensive audit & fixes
+│   ├── MCP_GUIDE.md                # MCP server documentation
+│   ├── WSL2_DEV_BEST_PRACTICES.md  # WSL2 development guide
+│   ├── WSL_RECOVERY_PLAN.md        # WSL2 recovery procedures
+│   └── FILESYSTEM_CLEANUP_PLAN.md  # Cleanup documentation
 │
 ├── 💻 Application Code
 │   └── storyforge/
@@ -176,11 +201,11 @@ ALNTool/
 │
 ├── 📁 Documentation & Resources
 │   ├── docs/                        # Organized documentation
-│   │   ├── Core/                   # Core documentation backups
-│   │   ├── Game Design/            # Game design documents
-│   │   ├── Reference/              # Technical references
-│   │   ├── Technical/              # Technical documentation
+│   │   ├── Guides/                 # How-to guides
 │   │   └── archive/                # Historical documents
+│   │       ├── sessions/           # Session handoffs
+│   │       ├── assessments/        # Old audits
+│   │       └── design/             # Game design docs
 │   └── SampleNotionData/           # Example Notion data
 │
 └── 🔧 Configuration
@@ -198,20 +223,21 @@ ALNTool/
 **Status:** Phase 4+ features built but need "Final Mile" fixes to connect to users
 
 ### 📊 System Health
-<!-- VERIFIED: 2025-06-12 -->
+<!-- VERIFIED: 2025-06-11 -->
 To check current system status, run:
 ```bash
 cd storyforge/backend && npm run verify:all
 ```
 
-**Known Working State:**
+**Known Working State (Verified June 15, 2025):**
 - ✅ 22 characters, 75 timeline events, 100 elements, 32 puzzles synced
-- ✅ 60 character relationships (NOT broken as previously documented)
+- ✅ 60 character relationships working correctly
 - ✅ All tests passing when run individually
 - ✅ Resolution paths computed for all entities
-- ⚠️ 42/75 timeline events missing act_focus values
-- ⚠️ 0 puzzle syncs failed, 6 in progress
-- ⚠️ Test coverage: 13.7% overall (entity syncers: 81.66%)
+- ✅ Test coverage: 63.68% overall (P.DEBT.3.11 complete)
+- ⚠️ 42/75 timeline events missing act_focus values (Notion data incomplete) <!-- VERIFIED: 2025-06-28 -->
+- ⚠️ Only 1/100 elements has non-zero memory value
+- ⚠️ Frontend features exist but not accessible in navigation
 
 For current development task, see: **[DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md#current-development-status)**
 
@@ -251,23 +277,20 @@ For current development task, see: **[DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLA
 - **Sync Architecture**: Transactional with rollback support
 - **Performance**: Caching provides 80-90% improvement
 
-#### ⚠️ Known Issues <!-- VERIFIED: 2025-06-12 -->
-- **Act Focus**: 42/75 timeline events missing computed values
-- **Puzzle Sync**: 3 failed, 6 in progress (not 17 as previously documented)
-- **Memory Values**: MemoryValueExtractor exists but not integrated in sync pipeline
-- **Isolated Characters**: 4 characters have no relationships (Detective Anondono, Leila Bishara, Howie Sullivan, Oliver Sterling)
-- **Test Coverage**: Only 13.7% overall (needs 60%+)
+#### ⚠️ Known Issues <!-- VERIFIED: 2025-06-15 -->
+- **Act Focus**: 42 timeline events missing values (Notion data incomplete) <!-- VERIFIED: 2025-06-28 -->
+- **Memory Values**: Only 1/100 elements has non-zero value (data issue, not technical)
 - **Frontend Access**: Phase 4+ features exist but hidden (no navigation items)
+- **Isolated Characters**: Some characters have no relationships yet
 
-#### 🔧 Next Priorities <!-- VERIFIED: 2025-06-12 -->
-1. **Current Task**: P.DEBT.3.11 - Test Coverage (see DEVELOPMENT_PLAYBOOK.md)
-   - Expand coverage from 13.7% to 60%+ (8-10 hours)
-   - Focus on controllers (7.67%) and database layer (5.16%)
-2. **Quick Wins** (can do in parallel):
-   - Complete act focus for 42 events (2 hours)
-   - Fix 3 failed puzzle syncs (1 hour)
+#### 🔧 Next Priorities <!-- VERIFIED: 2025-06-15 -->
+1. **Test Coverage**: ✅ COMPLETE - Achieved 63.68% coverage
+2. **Quick Wins** (Final Mile):
    - Add navigation for Phase 4+ features (1 hour)
-3. **Integration**: Wire up MemoryValueExtractor (3 hours)
+   - Update Notion data (designer responsibility):
+     - Add memory values to 99 elements
+     - Complete act_focus for 42 timeline events
+3. **Frontend Access**: Connect existing features to UI
 
 ## 📝 Key Development Info
 

@@ -1,7 +1,26 @@
 # Schema Mapping Guide
 ## Notion Database → SQLite Schema Reference
 
+> **Executive Summary**: Authoritative reference for all data transformations between Notion and SQLite. Maps field names, types, and relationships for Characters, Elements, Puzzles, and Timeline databases. Includes critical computed fields (memory values, act focus, narrative threads) and sync architecture details. Essential when working with data sync, debugging field mappings, or implementing new computed fields.
+
 This document provides a complete mapping between Notion database schemas and our SQLite implementation, including calculated fields and data transformations.
+
+## 🗺️ Claude Quick Nav
+
+**Top Sections for Quick Access:**
+1. [📊 Database Overview](#-database-overview) - All tables and sync status
+2. [🔄 Characters Database Mapping](#-characters-database-mapping) - Character fields
+3. [🧩 Puzzles Database Mapping](#-puzzles-database-mapping) - Puzzle structure
+4. [📦 Elements Database Mapping](#-elements-database-mapping) - Element fields & memory values
+5. [🧮 Computed Fields Reference](#-computed-fields-reference) - Calculated fields
+
+**Search Keywords:** 
+`mapping`, `schema`, `fields`, `notion`, `sqlite`, `computed`, `memory value`, `rfid`, `relationships`, `sync`
+
+**Cross-References:**
+- Implementation guide → [DEVELOPMENT_PLAYBOOK.md](./DEVELOPMENT_PLAYBOOK.md)
+- Current status → [README.md](./README.md)
+- Sync architecture → [DEVELOPMENT_PLAYBOOK.md#core-components](./DEVELOPMENT_PLAYBOOK.md#core-components)
 
 ---
 
@@ -9,10 +28,59 @@ This document provides a complete mapping between Notion database schemas and ou
 
 | Notion Database | Database ID | SQL Tables | Status |
 |-----------------|-------------|------------|---------|
-| Characters | `18c2f33d583f8060a6abde32ff06bca2` | characters, character_* relations | ✅ Syncing (missing computed fields) |
-| Timeline | `1b52f33d583f80deae5ad20c120dd` | timeline_events | ✅ Syncing (missing notes) |
-| Puzzles | `1b62f33d583f80cc87cfd7d6c4b0b265` | puzzles | ⚠️ 17/32 failing |
-| Elements | `18c2f33d583f802091bcd84c7dd94306` | elements | ⚠️ Missing 50% of fields |
+| Characters | `18c2f33d583f8060a6abde32ff06bca2` | characters, character_* relations | ✅ Syncing |
+| Timeline | `1b52f33d583f80deae5ad20c120dd` | timeline_events | ✅ Syncing |
+| Puzzles | `1b62f33d583f80cc87cfd7d6c4b0b265` | puzzles | ✅ All 32 syncing (17 have NULL owners in Notion) |
+| Elements | `18c2f33d583f802091bcd84c7dd94306` | elements | ✅ All fields mapped and stored |
+
+---
+
+## 🔗 Notion Database Interconnections
+
+### Database Relationships
+The four Notion databases are interconnected through **dual-property relations** that automatically sync between databases:
+
+| From Database | Field | To Database | Synced Field | Relationship Type |
+|---------------|-------|-------------|--------------|-------------------|
+| **Timeline Events** | Memory/Evidence | **Elements** | Timeline Event | Many-to-Many |
+| **Timeline Events** | Characters Involved | **Characters** | Events | Many-to-Many |
+| **Elements** | Owner | **Characters** | Owned Elements | Many-to-One |
+| **Elements** | Container | **Elements** | Contents | Self-referential |
+| **Elements** | Container Puzzle | **Puzzles** | Locked Item | Many-to-One |
+| **Elements** | Required For (Puzzle) | **Puzzles** | Puzzle Elements | Many-to-Many |
+| **Elements** | Rewarded by (Puzzle) | **Puzzles** | Rewards | Many-to-Many |
+| **Characters** | Associated Elements | **Elements** | (Single property) | Many-to-Many |
+| **Characters** | Character Puzzles | **Puzzles** | (Single property) | Many-to-Many |
+| **Puzzles** | Parent item | **Puzzles** | Sub-Puzzles | Self-referential |
+
+### Rollup Fields (Computed in Notion)
+These fields automatically aggregate data from related records:
+
+#### Timeline Events
+- `mem type`: Rollup from Memory/Evidence → Basic Type (shows element types)
+
+#### Elements  
+- `Associated Characters`: Rollup from Timeline Event → Characters Involved
+- `Puzzle Chain`: Rollup from Container → Container Puzzle
+
+#### Characters
+- `Connections`: Rollup from Events → Characters Involved (shows unique connected characters)
+
+#### Puzzles
+- `Owner`: Rollup from Locked Item → Owner (character who owns the locked container)
+- `Timing`: Rollup from Puzzle Elements → First Available (earliest act when all elements available)
+- `Narrative Threads`: Rollup from Rewards → Narrative Threads (themes from reward elements)
+- `Story Reveals`: Rollup from Rewards → Timeline Event (events revealed by rewards)
+
+### Formula Fields (Computed in Notion)
+#### Elements
+- `Container?`: Formula checking if element has Contents OR is part of Container Puzzle
+
+### Data Quality Implications
+- **Act Focus computation** depends on Elements having "First Available" populated
+- **Narrative Threads for Puzzles** depend on Reward elements having threads defined
+- **Character Connections** automatically calculated from shared timeline events
+- **Puzzle Timing** automatically calculated from required elements' availability
 
 ---
 
@@ -41,9 +109,12 @@ These fields don't exist in Notion but are essential for the tool's functionalit
 
 #### 1. **Act Focus** (For Timeline Events)
 - **Source**: Related memory/evidence (Elements) via element_ids
-- **Calculation**: Most dominant act from all related elements
-- **Example**: If event has 3 Act 1 elements and 1 Act 2 element → Act Focus = "Act 1"
+- **Calculation**: Most dominant act from all related elements' "First Available" field
+- **Data Dependency**: Requires Elements to have "First Available" populated in Notion
+- **Current Status**: 59/100 elements missing "First Available" → 42/75 timeline events have NULL act_focus
+- **Example**: If event has 3 "Act 1" elements and 1 "Act 2" element → Act Focus = "Act 1"
 - **Required For**: Timeline filtering, journey segmentation
+- **Note**: This is a **data completeness issue**, not a technical bug. Game designers must populate "First Available" in Elements database.
 
 #### 2. **Narrative Threads** (For Puzzles)  
 - **Source**: Rollup from reward elements via reward_ids
@@ -99,48 +170,41 @@ These fields don't exist in Notion but are essential for the tool's functionalit
 ## 🧩 Puzzles Database Mapping
 
 ### Core Fields
-| Notion Property | SQL Column | Type | Mapper Function | Status | Issue |
-|----------------|------------|------|-----------------|---------|--------|
-| **Puzzle** | name | TEXT | extractTitle() | ❌ | **CRITICAL: Field name mismatch** |
-| Timing | timing | TEXT | extractSelect() | ✅ | - |
-| Owner | owner_id | TEXT | First relation ID | ✅ | - |
-| Locked Item | locked_item_id | TEXT | First relation ID | ✅ | - |
-| Rewards | reward_ids | JSON | extractRelation() → JSON | ✅ | - |
-| Puzzle Elements | puzzle_element_ids | JSON | extractRelation() → JSON | ✅ | - |
-| Story Reveals | ❌ NOT MAPPED | TEXT | - | ❌ | Data loss |
-| Narrative Threads | ❌ NOT MAPPED | JSON | - | ❌ | Data loss |
+| Notion Property | SQL Column | Type | Mapper Function | Status |
+|----------------|------------|------|-----------------|---------|
+| **Puzzle** | name | TEXT | extractTitle() | ✅ FIXED - Mapper handles correctly |
+| Timing | timing | TEXT | extractSelect() | ✅ |
+| Owner | owner_id | TEXT | First relation ID | ✅ (17/32 NULL in Notion) |
+| Locked Item | locked_item_id | TEXT | First relation ID | ✅ |
+| Rewards | reward_ids | JSON | extractRelation() → JSON | ✅ |
+| Puzzle Elements | puzzle_element_ids | JSON | extractRelation() → JSON | ✅ |
+| Story Reveals | story_reveals | TEXT | extractRichText() | ✅ Mapped |
+| Narrative Threads | narrative_threads | JSON | Computed from rewards | ✅ NarrativeThreadComputer |
 
-### 🔧 Fix Required
-```javascript
-// In dataSyncService.js syncPuzzles()
-insertStmt.run(
-  mappedPuzzle.id,
-  mappedPuzzle.puzzle || '', // Currently fails if empty
-  // Should be: mappedPuzzle.puzzle || mappedPuzzle.name || 'Untitled Puzzle',
-```
+### ✅ Puzzle Sync Status
+- All 32 puzzles sync successfully
+- 17 puzzles have NULL owner_id (data issue in Notion, not sync failure)
+- Two-phase sync architecture handles foreign keys correctly
 
 ---
 
 ## 🎭 Elements Database Mapping
 
-### Core Fields (Currently Mapped)
+### ✅ Core Fields (ALL MAPPED AND WORKING)
 | Notion Property | SQL Column | Type | Status |
 |----------------|------------|------|---------|
 | Name | name | TEXT | ✅ |
 | Basic Type | type | TEXT | ✅ |
 | Description/Text | description | TEXT | ✅ |
+| Status | status | TEXT | ✅ MAPPED |
+| Owner | owner_id | TEXT | ✅ MAPPED |
+| Container | container_id | TEXT | ✅ MAPPED |
+| Timeline Event | timeline_event_id | TEXT | ✅ MAPPED |
+| First Available | first_available | TEXT | ✅ MAPPED (59/100 elements NULL in Notion) |
+| Production Notes | production_notes | TEXT | ✅ MAPPED |
 
-### ❌ Missing Fields (Not Mapped)
-| Notion Property | Should Map To | Type | Impact |
-|----------------|---------------|------|---------|
-| Status | status | TEXT | Can't track production readiness |
-| Owner | owner_id | TEXT | Can't track element ownership |
-| Container | container_id | TEXT | Lose element hierarchy |
-| Contents | contents_ids | JSON | Lose element relationships |
-| Timeline Event | timeline_event_id | TEXT | Lose event connections |
-| First Available | first_available | TEXT | Can't track availability |
-| Production Notes | production_notes | TEXT | Lose production info |
-| Container Puzzle | container_puzzle_id | TEXT | Lose puzzle connections |
+### Relation Fields Note
+The mapper extracts some fields as arrays (owner, container) but DB stores single IDs. This may need minor adjustment but all data is captured.
 
 ### 🏷️ Memory Token Special Data
 Memory tokens embed data in Description field:
@@ -301,64 +365,62 @@ function assignResolutionPaths(entity, entityType) {
 
 ---
 
-## 🚨 Critical Issues Summary
+## 🚨 Real Issues (Post-Architectural Fixes)
 
-1. **Linked Characters Not Returned** - Data exists but API doesn't query it
-2. **Puzzle Name Field Mismatch** - Causes 17/32 puzzles to fail sync  
-3. **Elements Missing 50% Fields** - Major data loss
-4. **No Memory Value Extraction** - Can't calculate path affinities
-5. **No Analytics Computation** - Missing all derived metrics
-6. **Resolution Paths Not Computed** - Frontend expects arrays on all entities
-   - No source field in Notion
-   - Must be inferred from element ownership & character actions
-   - ResolutionPathAnalyzerPage component is non-functional without this
-7. **Act Focus Not Computed for Timeline Events**
-   - Frontend filters expect this field
-   - Must aggregate from related elements
-   - Timeline view can't filter by act without this
-8. **Narrative Threads Not Rolled Up for Puzzles**
-   - Frontend displays expect aggregated threads
-   - Must compute from reward elements
-   - Thematic filtering broken without this
+### ✅ Already Fixed
+1. ~~**Linked Characters Not Returned**~~ - GraphService now queries from SQLite
+2. ~~**Puzzle Sync Failures**~~ - All 32 puzzles sync (17 have NULL owners in Notion)
+3. ~~**Elements Missing Fields**~~ - All fields present in DB and mapper
+4. ~~**Dual Data Pipeline**~~ - Fixed by graph service refactor (June 7)
+
+### 🔴 Real Issues Remaining
+1. **Memory Value Extraction Not Integrated**
+   - MemoryValueExtractor exists but not called in ComputeOrchestrator
+   - rfid_tag and memory_type not parsing from descriptions
+   - Blocks path affinity calculations
+
+2. **Act Focus Missing for 42 Timeline Events**
+   - ActFocusComputer exists but may not handle events without elements
+   - Timeline filtering broken without this
+
+3. **Resolution Paths Partially Computed**
+   - ResolutionPathComputer exists but may need tuning
+   - Some entities missing paths
+
+4. **Minor Mapper Issues**
+   - Some fields extracted as arrays but stored as single IDs
+   - May need adjustment for owner, container fields
 
 ---
 
-## 🔧 Implementation Priority
+## 🔧 Real Implementation Priority (Updated)
 
-1. **🔴 CRITICAL - Add linked characters to API response**
-   - Frontend is blocked without this
-   - Data already exists in character_links
+1. **🔴 CRITICAL - Integrate MemoryValueExtractor**
+   ```javascript
+   // In ComputeOrchestrator.js
+   const MemoryValueExtractor = require('./MemoryValueExtractor');
+   this.memoryValueExtractor = new MemoryValueExtractor(db);
+   // Add to computeAll() method
+   ```
 
-2. **🔴 CRITICAL - Compute Act Focus for Timeline Events**
-   - Required for timeline filtering
-   - Aggregate from related elements' "First Available"
+2. **🔴 CRITICAL - Fix Act Focus for 42 Timeline Events**
+   - Verify ActFocusComputer handles events without elements
+   - May need default value logic
 
-3. **🟡 HIGH - Fix puzzle sync failures**
-   - 17 puzzles not syncing
-   - Simple field name fix
+3. **🟡 HIGH - Fix Memory Field Parsing**
+   - rfid_tag and memory_type not populating
+   - Check regex patterns in notionPropertyMapper
 
-4. **🟡 HIGH - Compute Resolution Paths**
-   - Balance Dashboard depends on this
-   - Resolution Path Analyzer is broken
-   - Calculate during sync based on ownership patterns
+4. **🟢 MEDIUM - Adjust Array/Single ID Mappers**
+   - Minor issue where mapper extracts arrays but DB expects single IDs
+   - Affects owner, container fields
 
-5. **🟡 HIGH - Add missing Element fields**
-   - Losing critical production data
-   - Affects journey computation
-
-6. **🟢 MEDIUM - Compute Narrative Threads for Puzzles**
-   - Rollup from reward elements
-   - Needed for thematic filtering
-
-7. **✅ COMPLETE - Extract memory values**
-   - ✅ MemoryValueExtractor service parses SF_ fields from descriptions
-   - ✅ Database columns: rfid_tag, value_rating, memory_type, memory_group, group_multiplier, calculated_memory_value
-   - ✅ Individual token values calculated (base × type multiplier)
-   - ✅ Group multipliers stored for completion bonus logic
-
-8. **🟢 LOW - Compute analytics**
-   - Nice to have
-   - Can be added incrementally
+### ✅ Already Complete
+- Character links computed and stored
+- All puzzles syncing
+- Element fields mapped
+- Narrative threads computed
+- Resolution paths computed (may need tuning)
 
 ---
 
