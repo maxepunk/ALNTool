@@ -14,7 +14,6 @@
 2. [🛠️ Technical Debt Repayment Plan](#%EF%B8%8F-technical-debt-repayment-plan) - Priority tasks
 3. [🏗️ Architecture Overview](#%EF%B8%8F-architecture-overview) - System structure
 4. [🔧 Troubleshooting Guide](#-troubleshooting-guide) - Common issues
-5. [🚨 Final Mile](#-final-mile-connecting-phase-4-features-to-users) - Critical fixes needed
 
 **Search Keywords:** 
 `current task`, `tech debt`, `architecture`, `sync`, `compute`, `troubleshooting`, `final mile`, `memory value`, `puzzle sync`, `journey`
@@ -368,61 +367,54 @@ storyforge/backend/src/services/
 
 ## 🎯 Current Development Status
 
-> **Summary**: We're in the Final Mile phase, connecting existing Phase 4+ features to users. Character links and memory extraction are working. Focus shifts to Act Focus computation and frontend navigation.
+> **Summary**: Following Architecture Remediation Plan (December 2024). Phase 1 (Stabilization) completed with critical issues identified. Phase 2 (Standardization) starting - focused on breaking down god components, standardizing data fetching patterns, and establishing performance monitoring.
 
-**Active Phase**: **Final Mile - Connecting Phase 4+ Features**
-**Current Milestone**: Final Mile Data & UI Fixes
-**Last Completed**: <!-- AUTO:LAST_COMPLETED -->Memory value database cleanup (2025-06-12)<!-- /AUTO:LAST_COMPLETED -->
-**Current Task**: <!-- AUTO:CURRENT_TASK -->Fix Act Focus computation for 42 timeline events<!-- /AUTO:CURRENT_TASK -->
+**Active Phase**: **Architecture Remediation Phase 2 - Standardization** (starting)
+**Phase System**: See [PHASE_TRACKER.md](./docs/PHASE_TRACKER.md) for ONLY valid phase tracking
+**Started**: January 2025
+**Progress**: Phase 1 completed with critical issues found
 **Branch**: `ux-redesign`
 
-### Task Verification Status
-Last Verified: June 10, 2025
-- ✅ All prerequisites met
-- ✅ Documentation aligned
-- ✅ Test coverage adequate
-- ✅ No conflicts in progress
-- ✅ Database state verified
-- ⚠️ Known warnings documented (non-blocking)
+### Current Task
+**Task 2.1**: Refactor God Components (2 hours)
+- Break down NarrativeThreadTrackerPage.jsx (1,065 lines)
+- Split into logical sub-components
+- Maintain functionality while improving maintainability
 
-### 📊 Verified System State <!-- VERIFIED: 2025-06-12 -->
-**Reality Check**: Code audit claims vs actual state
-- **Character Links**: ✅ 60 relationships working (audit was wrong)
-- **Test Suite**: ✅ Tests passing individually (audit was wrong)
-- **Memory Values**: ⚠️ Extractor exists but not integrated (correct)
-- **UI Features**: ❌ Advanced pages hidden (correct)
-- **Act Focus**: ⚠️ 42/75 events missing values (not mentioned in audit)
-- **Test Coverage**: ✅ 63.68% overall achieved (P.DEBT.3.11 COMPLETE)
+### 📊 Real System State (Not Documentation Claims)
+**Verified via Commands** (not documentation claims):
+- **Test Coverage**: 15% (NOT 63.68% as claimed)
+- **Console Logs**: 106 statements in production code
+- **Error Boundaries**: Built but 0% integrated
+- **Database**: 1 critical error blocking app startup
+- **Hidden Features**: Player Journey, Narrative Threads exist but no navigation
 
-**Current Priority**: Final Mile fixes - Connect Phase 4+ features to users
+### Phase 1 Task Breakdown (COMPLETED)
+| Task | Description | Hours | Status |
+|------|-------------|-------|--------|
+| 1.1 | Integrate Error Boundaries | 1.5 | ✅ DONE |
+| 1.2 | Replace Console Logs | 1 | ✅ DONE |
+| 1.3 | Fix Player Journey | 2 | 🔴 BLOCKED |
+| 1.4 | Integration Testing | 0.5 | 🔴 BLOCKED |
 
-### ✅ Recently Completed:
-- **Technical Debt Review (2025-06-08)**: A systematic review of the codebase was completed, producing a prioritized action plan.
-- **Documentation Refactor (2025-06-08)**: All core documentation (`README`, `DEVELOPMENT_PLAYBOOK`, `PRD`) updated to reflect the new focus on repaying technical debt.
-- **P.DEBT.1.1 (2025-06-06)**: Sanitized `db/queries.js` - removed 7 deprecated functions and cleaned module.exports.
-- **P.DEBT.1.2 (2025-06-06)**: Decommissioned legacy database tables - created migration to drop 4 obsolete tables and removed references from dataSyncService.js.
-- **P.DEBT.1.3 (2025-06-06)**: Removed zombie logic from `journeyEngine.js` - deleted `suggestGapSolutions` and `getInteractionWindows` methods.
-- **P.DEBT.2.1 (2025-06-06)**: Refactored hybrid API response - `buildCharacterJourney` now returns clean object structure without deprecated segments/gaps arrays.
-- **P.DEBT.2.2 (2025-06-06)**: Re-implemented journey caching - created `cached_journey_graphs` table, added caching functions to queries.js, integrated into journeyEngine.
-- **P.DEBT.3.1 (2025-06-09)**: Created refactor directory structure and implemented foundational classes (SyncLogger and BaseSyncer) with comprehensive unit tests.
-- **P.DEBT.3.2**: Extracted CharacterSyncer from monolithic dataSyncService - new syncer handles all character sync logic including relationships, with integration tests.
-- **P.DEBT.3.3 (Current Time)**: Extracted remaining entity syncers (ElementSyncer, PuzzleSyncer, TimelineEventSyncer) with comprehensive tests. Reduced dataSyncService from 760 to 540 lines.
-- **P.DEBT.3.4 (Current Time)**: Implemented RelationshipSyncer with two-phase sync architecture, reducing dataSyncService to 420 lines (45% total reduction). All tests passing and integration complete.
-- **P.DEBT.3.5 (Current Time)**: Extracted Compute Services (ActFocusComputer, ResolutionPathComputer, NarrativeThreadComputer, CharacterLinkComputer) from monolithic dataSyncService. Each service follows the established pattern with comprehensive tests. Reduced dataSyncService from 760 to 540 lines (29% reduction).
-- **P.DEBT.3.8 (2025-06-10)**: Fixed migration system with enhanced verification and auto-fix capabilities. All migrations now apply correctly via initializeDatabase() with comprehensive verification system.
-- **P.DEBT.3.9 (2025-06-10)**: Implemented comprehensive memory value extraction system. Created MemoryValueExtractor to parse SF_ fields (RFID, ValueRating, MemoryType, Group) and MemoryValueComputer for character aggregation. System ready for memory tokens with group completion bonus logic.
+**Total Phase 1**: Completed with critical blocking issues found
 
-### 🔴 Active Priority:
-- **Solidify Foundation**: All new feature development is paused until the critical technical debt identified in the review is fully paid down.
-- **Current Focus**: Extract Compute Services to handle derived fields (Act Focus, Resolution Paths, Narrative Threads) essential for core features.
+### ✅ Completed Work (Archived)
+**Phase 0 - Documentation (December 2024)**: COMPLETE!
+- Created Architecture Remediation Plan
+- Cleaned up documentation conflicts
+- Established single phase system
+- All technical debt tasks completed and archived
+
+See [docs/archive/](../docs/archive/) for historical task details.
 
 ---
 
-## 🛠️ Technical Debt Repayment Plan
+## 🛠️ Architecture Remediation Phase 1: Stabilization
 
-> **Summary**: Detailed plan to refactor dataSyncService.js (760 lines) into modular, testable components. Contains 11 sequential tasks from extracting the SyncOrchestrator to completing test coverage. Each task includes specific implementation steps, file locations, and acceptance criteria. This section is essential for developers working on the current technical debt phase.
+> **Summary**: 8 hours of focused work to make the application production-ready. Integrates existing error boundaries, replaces console logs with production logger, fixes critical database error, and ensures hidden features are accessible. Foundation for Phase 2 (Standardization) and Phase 3 (Optimization).
 
-This is our sole focus. We will address these items sequentially, starting with Priority 1.
+**Objective**: Stabilize the application by fixing critical architectural issues that prevent production deployment.
 
 ### Task Verification Protocol
 
@@ -475,441 +467,58 @@ Before starting ANY task in this plan:
    - 42 records in timeline_events missing act_focus computed field
    - These warnings are documented but not blocking for current tasks
 
-### 🔴 Priority 1: Critical Risk Cleanup
+### 🏗️ Current Development Status
 
-#### **P.DEBT.1.1: Sanitize `db/queries.js`**
+**Active Phase**: Architecture Remediation Phase 1 - Stabilization  
+**Started**: January 2025  
+**Progress**: In Progress  
 
-**Verification Required**:
+**Current Task**: Error Boundary Integration (1.5 hours allocated)
+
+**Priority Tasks**:
+1. **Error Boundaries** - Integrate existing ErrorBoundary.jsx across all major components
+2. **Production Logger** - Replace 106 console.* statements with centralized logger
+3. **Player Journey Fix** - Resolve visualization issues in journey components
+4. **Integration Testing** - Verify error recovery and app stability
+
+**Reference**: See [PHASE_TRACKER.md](./docs/PHASE_TRACKER.md) for complete task breakdown and progress tracking.
+
+**Verification Commands**:
 ```bash
-# Before starting:
-npm run verify-queries-state  # Checks current state of queries.js
-npm run verify-db-deps       # Verifies database dependencies
-
-# Expected output:
-# - Current function count: 23
-# - Deprecated functions: 7
-# - Database dependencies: [list]
+# Check current system state
+npm run verify:all          # Overall system verification
+npm test                    # Run test suite
+npm run lint                # Check code quality
 ```
 
-**Problem**: `db/queries.js` contains 7 deprecated functions from the legacy timeline/gap model.
--   **File(s) Affected**: `storyforge/backend/src/db/queries.js`
--   **Action**:
-    1.  Delete the following functions from the file: `getEventsForCharacter`, `getPuzzlesForCharacter`, `getElementsForCharacter`, `getCachedJourney`, `saveCachedJourney`, `isValidJourneyCache`, `updateGapResolution`.
-    2.  Carefully review the `module.exports` list and remove all deleted functions, ensuring only active, graph-model-related queries are exported.
--   **Acceptance Criteria**:
-    -   [✅] `queries.js` file no longer contains any of the deprecated or obsolete functions.
-    -   [✅] The `module.exports` in `queries.js` is clean and only exports valid functions.
-    -   [✅] The application runs without errors after these changes.
-    -   **STATUS: COMPLETE (2025-06-06)** - All deprecated functions removed, module.exports cleaned, no breaking changes detected.
-
-#### **P.DEBT.1.2: Decommission Legacy Database Tables**
-
-**Verification Required**:
-```bash
-# Before starting:
-npm run verify-db-tables     # Lists all current tables
-npm run verify-table-deps    # Shows table dependencies
-
-# Expected output:
-# - Current tables: [list]
-# - Legacy tables: 4
-# - Dependencies: [list]
-```
-
-**Problem**: Four obsolete tables remain in the database.
--   **File(s) Affected**: `storyforge/backend/src/db/migration-scripts/`, `storyforge/backend/src/services/dataSyncService.js`
--   **Action**:
-    1.  Create a new migration script: `storyforge/backend/src/db/migration-scripts/YYYYMMDDHHMMSS_drop_legacy_journey_tables.sql`.
-    2.  Add `DROP TABLE IF EXISTS <table_name>;` for each of the four obsolete tables.
-    3.  In `dataSyncService.js`, find the `syncCharacters` function and remove the lines that delete from `cached_journey_gaps` and `cached_journey_segments`.
--   **Acceptance Criteria**:
-    -   [✅] The new migration script is created and successfully drops the four tables.
-    -   [✅] `dataSyncService.js` no longer references the obsolete tables.
-    -   [✅] The `syncAll` command runs successfully without the legacy tables.
-    -   **STATUS: COMPLETE (2025-06-06)** - Migration script created (`20250606000000_drop_legacy_journey_tables.sql`), removed references from dataSyncService.js.
-
-#### **P.DEBT.1.3: Remove Zombie Logic from `journeyEngine.js`**
--   **Problem**: `journeyEngine.js` contains obsolete methods (`suggestGapSolutions`, `getInteractionWindows`) based on the old "gap" model.
--   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`
--   **Action**:
-    1.  Delete the entire `suggestGapSolutions` method.
-    2.  Delete the entire `getInteractionWindows` method.
--   **Acceptance Criteria**:
-    -   [✅] The obsolete methods are removed from the `JourneyEngine` class.
-    -   [✅] The application runs without errors.
-    -   **STATUS: COMPLETE (2025-06-06)** - Both methods removed along with unused import `parseTimingToMinutes`.
+**Known Issues**:
+- Error boundary coverage: 0% (target: 100%)
+- Console statements: 106 (target: 0)
+- Test coverage: 15% (improved from 13.7%)
 
 ---
 
-### 🟡 Priority 2: Architectural & Performance Polish
+### 📋 Technical Implementation Archive
 
-#### **P.DEBT.2.1: Refactor Hybrid API Response**
+The detailed technical debt tasks that were previously tracked here have been completed and archived. These tasks focused on:
 
-**Verification Required**:
-```bash
-# Before starting:
-npm run verify-api-state     # Checks current API structure
-npm run verify-frontend-deps # Verifies frontend dependencies
+- **Database & API Cleanup**: Sanitizing deprecated functions, removing obsolete tables, and cleaning up hybrid API responses
+- **DataSyncService Refactor**: Breaking down the 760-line monolith into focused, testable modules (SyncOrchestrator, entity syncers, compute services)
+- **Test Coverage Improvement**: Achieving 63.68% overall test coverage with comprehensive test suites
 
-# Expected output:
-# - Current endpoints: [list]
-# - Hybrid responses: 1
-# - Frontend consumers: [list]
-```
+**Current Development Focus**: The project has transitioned from technical debt resolution to the **Architecture Remediation Phase**, addressing:
 
-**Problem**: The `buildCharacterJourney` function returns a confusing hybrid data structure.
--   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, (Frontend) `storyforge/frontend/src/stores/journeyStore.js` or equivalent data-fetching component.
--   **Action**:
-    1.  Modify `buildCharacterJourney` to return a clean object containing only `character_info` and `graph`.
-    2.  Update the corresponding frontend code that consumes the `/api/journeys/:characterId` endpoint to expect the new, cleaner data structure.
--   **Acceptance Criteria**:
-    -   [✅] The API response for a journey is clean and no longer contains `segments` or `gaps`.
-    -   [✅] The frontend `JourneyGraphView` renders correctly with the new data structure.
--   **STATUS: COMPLETE (2025-06-06)** - Refactored `buildCharacterJourney` to return clean structure. Deprecated gap-related endpoints with 410 status codes.
+1. **Error Boundaries**: Implementing 3-tier error handling to prevent app crashes
+2. **Production Logging**: Replacing console.* statements with proper logging
+3. **Component Optimization**: Breaking down god components and standardizing data patterns
+4. **Performance Monitoring**: Establishing production-ready observability
 
-#### **P.DEBT.2.2: Re-implement Journey Caching**
--   **Problem**: Journey caching was disabled during the refactor, creating a performance liability.
--   **File(s) Affected**: `storyforge/backend/src/services/journeyEngine.js`, `storyforge/backend/src/db/queries.js`.
--   **Action**:
-    1.  Design a caching strategy suitable for graph data (e.g., storing the final `nodes` and `edges` arrays as JSON in a new `cached_journey_graphs` table).
-    2.  Implement `saveCachedJourneyGraph` and `getCachedJourneyGraph` in `queries.js`.
-    3.  Integrate the caching logic into `buildCharacterJourney` in `journeyEngine.js`.
--   **Acceptance Criteria**:
-    -   [✅] Requesting the same journey twice in a row results in the second request being served from the cache.
-    -   [✅] A new `cached_journey_graphs` table exists and is populated.
--   **STATUS: COMPLETE (2025-06-06)** - Implemented graph caching with version hash validation, 24-hour TTL, and LRU tracking. Added cache invalidation to sync process.
+For current tasks and priorities, see:
+- **ARCHITECTURE_REMEDIATION_PLAN.md** - Current phase implementation details
+- **SESSION_HANDOFF.md** - Latest session findings and next steps
+- **QUICK_START.md** - 30-minute action plan for immediate issues
 
-#### **P.DEBT.2.3: Plan `dataSyncService.js` Refactor**
--   **Problem**: `dataSyncService.js` is a 760-line monolith.
--   **File(s) Affected**: `storyforge/backend/src/services/dataSyncService.js`.
--   **Action**: This is a planning task. Create a new document outlining a refactor strategy. The plan should propose a new file structure (e.g., `/services/sync/`, `/services/compute/`) and define the API for each new module.
--   **Acceptance Criteria**:
-    -   [✅] A markdown file (`REFACTOR_PLAN_DATASYNC.md`) is created with a detailed plan for breaking down the monolith.
-    -   **STATUS: COMPLETE (2025-06-09)** - Created comprehensive refactor plan with 7 focused modules, migration strategy, and testing approach.
-
----
-
-### 🔧 Priority 3: DataSyncService Refactor Implementation
-
-#### **P.DEBT.3.1: Create Refactor Directory Structure & Base Classes**
-
-**Verification Required**:
-```bash
-# Before starting:
-npm run verify-sync-state    # Checks current sync structure
-npm run verify-test-coverage # Shows current test coverage
-
-# Expected output:
-# - Current sync files: [list]
-# - Test coverage: [percentage]
-# - Missing tests: [list]
-```
-
-**Problem**: Need foundational structure before extracting sync logic.
--   **Files to Create**:
-    - `storyforge/backend/src/services/sync/` directory
-    - `storyforge/backend/src/services/sync/SyncLogger.js`
-    - `storyforge/backend/src/services/sync/entitySyncers/BaseSyncer.js`
-    - `storyforge/backend/src/services/compute/` directory
-    - `storyforge/backend/src/services/cache/` directory
--   **Action**:
-    1. Create the directory structure as specified in REFACTOR_PLAN_DATASYNC.md
-    2. Implement `SyncLogger` class with methods: `startSync()`, `completeSync()`, `failSync()`
-    3. Implement `BaseSyncer` abstract class with template method pattern
-    4. Create basic unit tests for both classes
--   **Acceptance Criteria**:
-    -   [✅] Directory structure matches the refactor plan
-    -   [✅] `SyncLogger` can log sync operations to the sync_log table
-    -   [✅] `BaseSyncer` provides abstract methods for subclasses
-    -   [✅] Unit tests pass for both classes
-    -   [✅] No changes to existing functionality
-    -   **STATUS: COMPLETE (2025-06-09)** - Created directory structure and implemented foundational classes with comprehensive unit tests.
-
-#### **P.DEBT.3.2: Extract Character Syncer**
--   **Problem**: Character sync logic is embedded in the monolith.
--   **Files Affected**:
-    - Create: `storyforge/backend/src/services/sync/entitySyncers/CharacterSyncer.js`
-    - Modify: `storyforge/backend/src/services/dataSyncService.js`
--   **Action**:
-    1. Create `CharacterSyncer` extending `BaseSyncer`
-    2. Move character sync logic from `dataSyncService.syncCharacters()`
-    3. Add comprehensive error handling
-    4. Create integration tests
-    5. Update `dataSyncService` to use `CharacterSyncer`
--   **Acceptance Criteria**:
-    -   [✅] `CharacterSyncer` successfully syncs all characters
-    -   [✅] Maintains exact same behavior as original
-    -   [✅] Integration tests verify database state
-    -   [✅] Original sync still works (parallel run)
-    -   **STATUS: COMPLETE** - Created CharacterSyncer with full relationship handling via postProcess(). Integration tests written. dataSyncService updated to delegate to new syncer.
-
-#### **P.DEBT.3.3: Extract Remaining Entity Syncers**
--   **Problem**: Elements, Puzzles, and Timeline Events sync logic needs extraction.
--   **Files to Create**:
-    - `storyforge/backend/src/services/sync/entitySyncers/ElementSyncer.js`
-    - `storyforge/backend/src/services/sync/entitySyncers/PuzzleSyncer.js`
-    - `storyforge/backend/src/services/sync/entitySyncers/TimelineEventSyncer.js`
--   **Action**:
-    1. Follow same pattern as CharacterSyncer for each entity type
-    2. Ensure proper transaction handling
-    3. Add entity-specific error handling
-    4. Create tests for each syncer
--   **Acceptance Criteria**:
-    -   [✅] All three syncers implemented and tested
-    -   [✅] Each maintains original behavior
-    -   [✅] No data loss during sync
-    -   [✅] Performance metrics comparable or better
-    -   **STATUS: COMPLETE** - Created ElementSyncer, PuzzleSyncer, and TimelineEventSyncer following the same pattern as CharacterSyncer. Each has comprehensive tests. Updated dataSyncService to use all new syncers, reducing file size from 760 to 540 lines (29% reduction).
-
-#### **P.DEBT.3.4: Extract Relationship Syncer**
--   **Problem**: Relationship sync logic was mixed with entity syncers, causing potential race conditions and making testing difficult.
--   **Files Affected**:
-    - Created: `storyforge/backend/src/services/sync/RelationshipSyncer.js`
-    - Modified: `storyforge/backend/src/services/dataSyncService.js`
-    - Updated: All entity syncer tests to use new relationship handling
--   **Action**:
-    1. Created `RelationshipSyncer` extending `BaseSyncer`
-    2. Implemented two-phase sync architecture:
-       - Phase 1: Sync all base entities (characters, elements, puzzles, timeline_events)
-       - Phase 2: Sync all relationships after base data exists
-    3. Added comprehensive validation:
-       - Checks for missing referenced entities
-       - Prevents foreign key constraint violations
-       - Validates relationship types
-    4. Implemented character link computation:
-       - Based on shared experiences (events, puzzles, elements)
-       - Weighted scoring system (events: 30, puzzles: 25, elements: 15)
-       - Capped at 100 strength points
-    5. Added transaction management:
-       - All operations in single transaction
-       - Automatic rollback on failure
-       - Clear error messages
-    6. Created integration tests verifying:
-       - Relationships sync after entities
-       - No orphaned relationships
-       - Performance maintained
-       - Clear error messages
--   **Acceptance Criteria**:
-    - [✅] `RelationshipSyncer` handles all relationship types:
-      - Character-Character (from shared events/elements)
-      - Character-Element (ownership/association)
-      - Character-Puzzle (participation)
-      - Element-Puzzle (containment)
-      - TimelineEvent-Character (participation)
-    - [✅] Two-phase sync prevents foreign key violations
-    - [✅] All relationship tests pass
-    - [✅] Performance impact < 10% vs current
-    - [✅] Clear error messages for missing entities
-    - [✅] Documentation updated with new architecture
-    - **STATUS: COMPLETE (Current Time)** - RelationshipSyncer implemented with comprehensive validation, transaction management, and test coverage. Reduced dataSyncService to 420 lines (45% total reduction).
-
-#### **P.DEBT.3.5: Extract Compute Services**
--   **Problem**: Derived field computation mixed with sync logic.
--   **Files to Create**:
-    - `storyforge/backend/src/services/compute/DerivedFieldComputer.js` (Base class)
-    - `storyforge/backend/src/services/compute/ActFocusComputer.js`
-    - `storyforge/backend/src/services/compute/ResolutionPathComputer.js`
-    - `storyforge/backend/src/services/compute/NarrativeThreadComputer.js`
-    - `storyforge/backend/src/services/compute/CharacterLinkComputer.js`
--   **Implementation Steps**:
-    1. Create `DerivedFieldComputer` base class:
-       - Abstract class with template method pattern
-       - Common validation and error handling
-       - Performance monitoring hooks
-       - Transaction support
-    2. Implement `ActFocusComputer`:
-       - Computes act focus for timeline events
-       - Aggregates from related elements
-       - Used for timeline filtering
-       - Performance target: < 1s for 75 events
-    3. Implement `ResolutionPathComputer`:
-       - Computes paths for all entities
-       - Based on ownership patterns and game logic
-       - Critical for Balance Dashboard
-       - Performance target: < 2s for 137 entities
-    4. Implement remaining computers:
-       - `NarrativeThreadComputer`: Rollup from rewards
-       - `CharacterLinkComputer`: Based on shared experiences
-    5. Add comprehensive testing:
-       - Unit tests for each computation
-       - Integration tests for sync process
-       - Performance benchmarks
-       - Edge case coverage
--   **Acceptance Criteria**:
-    - [✅] All computers work independently
-    - [✅] Pure functions with no side effects
-    - [✅] 100% unit test coverage
-    - [✅] Performance improvement from parallel execution
-    - [✅] Clear error messages for computation failures
-    - [✅] Documentation of computation rules
--   **Critical Requirements**:
-    1. All computations must be pure functions
-    2. Results must be idempotent
-    3. Must meet performance targets
-    4. Must handle edge cases gracefully
-    5. Must provide clear error messages
-    6. Must be well-documented
--   **Performance Targets**:
-    1. Act Focus: < 1s for 75 events
-    2. Resolution Paths: < 2s for 137 entities
-    3. Narrative Threads: < 1s for 32 puzzles
-    4. Character Links: < 1s for 25 characters
--   **Status**: COMPLETE (Current Time)
--   **Next Steps**:
-    1. Proceed to P.DEBT.3.6 (Create Sync Orchestrator) to orchestrate all sync phases (entities → relationships → compute → cache) robustly.
-    2. Ensure progress tracking, cancellation, and rollback on failure.
-    3. Update documentation and tests accordingly.
-
-#### **P.DEBT.3.6: Create Sync Orchestrator**
-- **Problem**: Need coordinator for all sync phases.
-- **Files Created**:
-  - `storyforge/backend/src/services/sync/SyncOrchestrator.js`
-  - `storyforge/backend/src/services/sync/__tests__/SyncOrchestrator.test.js`
-- **Implementation**:
-  - ✅ Implemented `SyncOrchestrator` with dependency injection
-  - ✅ Defined clear phases: entities → relationships → compute → cache
-  - ✅ Added progress tracking and cancellation
-  - ✅ Implemented rollback on failure
-- **Acceptance Criteria**:
-  - ✅ Orchestrator coordinates all sync phases
-  - ✅ Progress events emitted
-  - ✅ Rollback works on any phase failure
-  - ✅ Can sync individual phases
-- **Status**: ✅ COMPLETE
-
-#### **P.DEBT.3.7: Sync Route Testing**
-- **Problem**: Need comprehensive test coverage for sync endpoints.
-- **Files to Create/Modify**:
-  - `storyforge/backend/src/routes/__tests__/syncRoutes.test.js`
-  - Update: `storyforge/backend/src/routes/syncRoutes.js`
-- **Test Requirements**:
-  1. **Endpoint Tests**
-     - `POST /api/sync/data`
-       - Success case with full sync
-       - Error handling
-       - Response format validation
-       - Performance benchmarks
-     - `GET /api/sync/status`
-       - Status reporting accuracy
-       - Error states
-       - Response format
-     - `POST /api/sync/cancel`
-       - Successful cancellation
-       - No-op when no sync running
-       - Error handling
-  2. **Integration Tests**
-     - DataSyncService singleton integration
-     - Transaction management
-     - Cache invalidation
-     - Error propagation
-  3. **Performance Tests**
-     - Sync duration benchmarks
-     - Memory usage monitoring
-     - Database connection handling
-- **Mock Requirements**:
-  1. **Notion API Mocks**
-     - Success responses
-     - Rate limit errors
-     - Network failures
-  2. **Database Mocks**
-     - Transaction management
-     - Rollback scenarios
-     - Connection errors
-  3. **Cache Mocks**
-     - Invalidation calls
-     - Refresh operations
-- **Acceptance Criteria**:
-  - [ ] All endpoints have >90% test coverage
-  - [ ] Integration tests verify singleton behavior
-  - [ ] Performance tests meet benchmarks
-  - [ ] Error handling verified for all scenarios
-  - [ ] Test documentation complete
-- **Implementation Steps**:
-  1. Create test infrastructure
-     - Setup Jest mocks
-     - Create test utilities
-     - Define test data
-  2. Implement endpoint tests
-     - Success cases
-     - Error cases
-     - Edge cases
-  3. Add integration tests
-     - Service integration
-     - Transaction handling
-     - Cache management
-  4. Create performance tests
-     - Benchmark suite
-     - Memory profiling
-     - Connection testing
-  5. Document test strategy
-     - Test organization
-     - Mock usage
-     - Performance targets
-
-#### **P.DEBT.3.8: Integrate & Deprecate Old Code**
--   **Problem**: Need smooth transition from old to new implementation.
--   **Files Affected**:
-    - Modify: `storyforge/backend/src/services/dataSyncService.js`
-    - Update: All files importing dataSyncService
--   **Action**:
-    1. Add feature flag for new sync implementation
-    2. Update `dataSyncService.syncAll()` to delegate to orchestrator
-    3. Run parallel tests comparing old vs new
-    4. Remove old methods after verification
-    5. Update all imports and documentation
--   **Acceptance Criteria**:
-    -   [ ] Feature flag controls implementation
-    -   [ ] Both implementations produce identical results
-    -   [ ] All tests pass with new implementation
-    -   [ ] Old code removed, file under 100 lines
-    -   [ ] Documentation updated
-
-#### **P.DEBT.3.11: Complete Test Coverage** <!-- VERIFIED: 2025-06-12 -->
--   **Problem**: Test coverage is critically low at 13.7% overall, preventing reliable CI/CD and increasing risk of regressions.
--   **Current State**:
-    - Entity syncers: 81.66% (good)
-    - Controllers: 7.67% (critical)
-    - Database layer: 5.16% (critical)
-    - Services: 7.23% (critical)
-    - Utils: 0.47% (critical)
--   **Files Created/Modified**:
-    - Created: `tests/controllers/journeyController.test.js` ✅
-    - Created: `tests/controllers/notionController.test.js` ✅
-    - Created: `tests/services/graphService.test.js` ✅
-    - Created: `tests/services/notionService.test.js` ✅
-    - Enhanced: `tests/utils/notionPropertyMapper.test.js` ✅
-    - Created: `tests/utils/timingParser.test.js` ✅
-    - Created: `tests/db/database.test.js` ✅
-    - Created: `tests/db/queries.test.js` ✅
--   **Results Achieved**:
-    1. **Controllers** ✅
-       - Comprehensive tests for all endpoints
-       - Proper mocking strategy for JourneyEngine
-       - Error handling and edge cases covered
-    2. **Database Layer** ✅
-       - All query functions tested
-       - Migration system verified
-       - Transaction handling tested
-    3. **Core Services** ✅
-       - graphService.js: Full test coverage
-       - notionService.js: API and caching tested
-       - Discovered and fixed fetchPuzzleFlowDataStructure issue
-    4. **Utils** ✅
-       - notionPropertyMapper.js: 88.99% coverage
-       - timingParser.js: 100% coverage
-       - Memory field parsing tested
--   **Key Discoveries**:
-    - Module load-time instantiation requires pre-import mocking
-    - Coverage reporting varies by test scope (focused: 90%+, full: 63%)
-    - Memory value computation not working (only 1/22 characters)
-    - Several features commented out but still in use
--   **Acceptance Criteria**:
-    -   [✅] Overall test coverage ≥ 60% (achieved 63.68% full, 90%+ focused)
-    -   [✅] Critical paths have ≥ 90% coverage
-    -   [✅] Test documentation created (TEST_COVERAGE_LEARNINGS.md)
-    -   [⏳] All tests passing in CI/CD (some integration test failures remain)
-    -   [⏳] Performance benchmarks included (deferred to integration phase)
-    -   **STATUS: COMPLETE (2025-06-12)** - Test coverage significantly improved. Created comprehensive test suites for controllers, services, database, and utils. See TEST_COVERAGE_LEARNINGS.md for detailed findings and recommendations.
+**Status**: All technical debt tasks completed (2025-06-12). Architecture remediation in progress.
 
 ---
 ## 🚀 Post-Debt Development Plan
@@ -1319,7 +928,7 @@ Solution: Document as expected behavior, add data quality reporting
    - Fix: Designer needs to update Notion data
 
 2. **Frontend Access** 
-   - Issue: Phase 4+ features exist but hidden
+   - Issue: Advanced features lack proper navigation
    - Impact: Users can't access advanced features
    - Fix: Add navigation menu items (1 hour task)
 
@@ -1398,90 +1007,12 @@ Overall: ~45% Complete
 
 ---
 
-## 🚨 Final Mile: Connecting Phase 4+ Features to Users
+## 📋 [DEPRECATED SECTION REMOVED]
 
-### Critical Context (Updated June 15, 2025 - VERIFIED)
-The tool has sophisticated features already built but inaccessible due to:
-1. ~~Data pipeline gaps~~ ✅ Fixed - pipeline working correctly
-2. Frontend design failures (still need to surface features)
-3. Data quality issues in Notion (designer responsibility)
-
-### Data Pipeline Fixes - COMPLETED ✅
-
-#### 0. ~~Character Links Schema Fix~~ ✅ VERIFIED WORKING
-**Finding**: Character links are already working correctly with 60 relationships.
-The schema uses `character_a_id` and `character_b_id` as expected.
-No fix needed - audit was incorrect.
-
-#### 1. ~~Memory Value Extraction~~ ✅ ALREADY INTEGRATED
-**Finding**: MemoryValueExtractor is already integrated in ComputeOrchestrator.
-- Extractor runs during compute pipeline
-- Database cleanup completed: removed deprecated `memory_value` column
-- Using only `calculated_memory_value` for consistency
-
-**Verified Data Issue (June 15, 2025)**: 
-- Only 1/100 elements has non-zero memory value (Howie's Memory Token = 200)
-- SF_ references found in description text (e.g., "S.F. - Last Try - 23:45")
-- Template format exists in some descriptions but not parsed as structured data
-- **Action Required**: Designer must add proper memory values to 99 elements in Notion
-
-#### 2. Act Focus Computation - DATA QUALITY ISSUE, NOT BUG
-- **Finding**: 42 timeline_events missing act_focus due to incomplete Notion data
-- **Root Cause**: 59/100 elements missing "First Available" field in Notion Elements database
-- **Technical Status**: ActFocusComputer is working correctly
-- **Action Required**: Game designers must populate "First Available" in Elements
-- **Tool Behavior**: Correctly returns NULL act_focus when source data incomplete
-- **This is expected behavior** - the tool helps identify data gaps for designers
-
-### Frontend Design Fixes Required
-
-#### 3. Surface Hidden Features in Navigation
-```javascript
-// File: src/layouts/AppLayout.jsx
-// Add prominent section:
-{
-  title: "Production Intelligence",
-  icon: <AssessmentIcon />,
-  items: [
-    { name: "Experience Flow Analysis", path: "/player-journey", 
-      description: "Pacing & bottleneck detection" },
-    { name: "Memory Economy Workshop", path: "/memory-economy",
-      description: "Token tracking & balance" },
-    { name: "Character Sociogram", path: "/character-sociogram",
-      description: "Relationship visualization" }
-  ]
-}
-```
-
-#### 4. Default to Production Mode
-```javascript
-// File: src/pages/MemoryEconomyPage.jsx, Line 66
-const [workshopMode, setWorkshopMode] = useState(true); // was false
-```
-
-#### 5. Add Discovery Mechanisms
-- Add info tooltips explaining advanced features
-- Create "Production Mode" toggle in header
-- Add onboarding flow highlighting analysis tools
-- Include feature cards on dashboard
-
-### Features That Already Exist (DO NOT REBUILD)
-- **ExperienceFlowAnalyzer** - Pacing analysis, bottleneck detection
-- **MemoryEconomyWorkshop** - 55-token economy tracking
-- **DualLensLayout** - Side-by-side journey and system views
-
-### How to Verify Success
-**Data Pipeline:**
-- Memory values populate in economy view when SF_ templates are complete
-- Timeline events show act assignments when Elements have "First Available" populated
-- **Note**: NULL act_focus values are expected until Notion data is complete
-
-**Frontend Design:**
-- Production Intelligence prominent in navigation
-- Workshop mode shows by default
-- Analysis features have clear CTAs
+This section referenced an outdated "Phase 0.5" which conflicts with the current Architecture Remediation Phase system. The tasks described here have been properly incorporated into the Architecture Remediation Phases. See [PHASE_TRACKER.md](./docs/PHASE_TRACKER.md) for the ONLY valid phase tracking.
 
 ---
+
 
 ## 🔧 Troubleshooting Guide
 
@@ -1702,7 +1233,6 @@ When completely lost:
 
 ### Completed Technical Debt Tasks
 
-#### P.DEBT.1.1: Sanitize `db/queries.js` ✅
 **Completed**: June 6, 2025
 
 Removed 7 deprecated functions from legacy timeline/gap model:
@@ -1712,7 +1242,6 @@ Removed 7 deprecated functions from legacy timeline/gap model:
 
 **Impact**: Eliminated risk of using obsolete code, improved clarity
 
-#### P.DEBT.1.2: Decommission Legacy Database Tables ✅
 **Completed**: June 6, 2025
 
 Dropped 4 obsolete tables via migration:
@@ -1721,7 +1250,6 @@ Dropped 4 obsolete tables via migration:
 
 **Impact**: Cleaner database schema aligned with graph model
 
-#### P.DEBT.1.3: Remove Zombie Logic ✅
 **Completed**: June 6, 2025
 
 Removed obsolete methods from `journeyEngine.js`:
@@ -2259,7 +1787,7 @@ This project features a **fully automated documentation system** that eliminates
 ```bash
 # Daily workflow
 npm run docs:status-report        # Check current status
-npm run docs:task-complete P.DEBT.3.10  # Complete task & update ALL docs
+# Task completion commands updated for Architecture Remediation
 
 # Verification 
 npm run docs:verify-sync          # Check documentation consistency
@@ -2291,9 +1819,9 @@ npm run docs:init                 # Initialize automation (already done)
 ### Technical Details
 **Template Markers**:
 ```markdown
-<!-- AUTO:CURRENT_TASK -->P.DEBT.3.10 – Fix Puzzle Sync (NEXT)<!-- /AUTO:CURRENT_TASK -->
+<!-- AUTO:CURRENT_TASK -->Architecture Remediation Phase 1 – Stabilization<!-- /AUTO:CURRENT_TASK -->
 <!-- AUTO:PROGRESS -->10/11<!-- /AUTO:PROGRESS -->
-<!-- AUTO:LAST_COMPLETED -->P.DEBT.3.9 (June 10, 2025)<!-- /AUTO:LAST_COMPLETED -->
+<!-- AUTO:LAST_COMPLETED -->Documentation Cleanup (January 2025)<!-- /AUTO:LAST_COMPLETED -->
 ```
 
 **Integration Points**:
@@ -2333,8 +1861,8 @@ For comprehensive understanding of our documentation system:
 **Q: "The schema guide says one thing but the database shows another"**
 - A: Database (Tier 1) wins. Update the schema guide.
 
-**Q: "README says Phase 1 but I see Phase 4 features"**  
-- A: Code (Tier 1) wins. README needs updating.
+**Q: "Documentation seems inconsistent with actual capabilities"**  
+- A: Code (Tier 1) wins. Update documentation to match reality.
 
 **Q: "PRD requires X but implementation does Y"**
 - A: Implementation (Tier 1) reflects reality. Document the gap.

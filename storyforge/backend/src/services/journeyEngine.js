@@ -1,7 +1,8 @@
+const logger = require('../utils/logger');
+
 // This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
 const { getDB } = require('../db/database'); // Adjust path as needed
 const dbQueries = require('../db/queries'); // Adjust path
-
 
 class JourneyEngine {
   /**
@@ -24,7 +25,7 @@ class JourneyEngine {
     const position = { x: 0, y: 0 }; // Initial position for layout
 
     // Pass 1: Node Collection - Get all relevant entities for the journey
-    const journeyData = await dbQueries.getCharacterJourneyData(characterId);
+    const journeyData = dbQueries.getCharacterJourneyData(characterId);
 
     // Create nodes for each entity type
     journeyData.puzzles.forEach(puzzle => {
@@ -32,7 +33,7 @@ class JourneyEngine {
         id: `puzzle-${puzzle.id}`,
         type: 'activityNode', // Custom node type for styling
         data: { label: `Puzzle: ${puzzle.name}`, ...puzzle },
-        position, // Position will be calculated by the frontend layout algorithm
+        position // Position will be calculated by the frontend layout algorithm
       });
     });
 
@@ -41,19 +42,18 @@ class JourneyEngine {
         id: `element-${element.id}`,
         type: 'discoveryNode', // Custom node type
         data: { label: `Element: ${element.name}`, ...element },
-        position,
+        position
       });
     });
 
     journeyData.events.forEach(event => {
-        nodes.push({
-            id: `event-${event.id}`,
-            type: 'loreNode', // Custom node type for historical events
-            data: { label: `Event: ${event.description}`, ...event },
-            position,
-        });
+      nodes.push({
+        id: `event-${event.id}`,
+        type: 'loreNode', // Custom node type for historical events
+        data: { label: `Event: ${event.description}`, ...event },
+        position
+      });
     });
-
 
     // Pass 2: Dependency Edge Creation (Gameplay Graph)
     journeyData.puzzles.forEach(puzzle => {
@@ -65,7 +65,7 @@ class JourneyEngine {
           id: `e-${puzzle.locked_item_id}-to-${puzzle.id}`,
           source: `element-${puzzle.locked_item_id}`,
           target: puzzleNodeId,
-          label: 'unlocks',
+          label: 'unlocks'
         });
       }
 
@@ -77,11 +77,11 @@ class JourneyEngine {
             id: `e-${puzzle.id}-to-${rewardId}`,
             source: puzzleNodeId,
             target: `element-${rewardId}`,
-            label: 'rewards',
+            label: 'rewards'
           });
         });
       } catch (e) {
-        console.warn(`Could not parse reward_ids for puzzle ${puzzle.id}`);
+        logger.warn(`Could not parse reward_ids for puzzle ${puzzle.id}`);
       }
     });
 
@@ -93,7 +93,7 @@ class JourneyEngine {
           source: `element-${element.id}`,
           target: `event-${element.timeline_event_id}`,
           label: 'provides context for',
-          type: 'contextEdge', // For special styling on the frontend
+          type: 'contextEdge' // For special styling on the frontend
         });
       }
     });
@@ -119,22 +119,22 @@ class JourneyEngine {
     if (!isTestingWithOverride) {
       const cachedJourney = await dbQueries.getCachedJourneyGraph(characterId);
       if (cachedJourney) {
-        console.log(`Serving cached journey for character ${characterId}`);
+        logger.debug(`Serving cached journey for character ${characterId}`);
         return cachedJourney;
       }
     }
-    
+
     // 2. Compute the journey graph
-    const characterData = await dbQueries.getCharacterById(characterId);
+    const characterData = dbQueries.getCharacterById(characterId);
     if (!characterData) {
-      console.error(`Character with ID ${characterId} not found.`);
+      logger.error(`Character with ID ${characterId} not found.`);
       return null;
     }
 
     const journeyGraph = await this.buildJourneyGraph(characterId);
-    
+
     // Fetch linked characters for this character
-    const linkedCharacters = await dbQueries.getLinkedCharacters(characterId);
+    const linkedCharacters = dbQueries.getLinkedCharacters(characterId);
 
     const computedJourney = {
       character_id: characterId,
@@ -152,7 +152,6 @@ class JourneyEngine {
 
     return computedJourney;
   }
-
 
 }
 

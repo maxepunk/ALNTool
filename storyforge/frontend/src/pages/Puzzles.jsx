@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Chip, Typography, Paper, CircularProgress, Alert, Box, FormControl, InputLabel, Select, MenuItem, Button,
   Grid, Card, CardContent, LinearProgress, Tooltip, Avatar // Added for production intelligence
@@ -8,6 +8,7 @@ import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
 import { useState, useEffect, useMemo } from 'react'; // Added useEffect, useMemo
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import GroupWorkIcon from '@mui/icons-material/GroupWork';
@@ -50,13 +51,23 @@ const columns = [
   },
 ];
 
-const ACT_FOCUS_OPTIONS = ['All Acts', 'Act 1', 'Act 2', 'Act 3'];
-
 function Puzzles() {
   const navigate = useNavigate();
 
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+
   // State for filters
   const [actFocusFilter, setActFocusFilter] = useState('All Acts'); // Renamed from timing
+
+  // Early return if constants are still loading
+  if (constantsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Puzzles...</Typography>
+      </Box>
+    );
+  }
   const [availableThemes, setAvailableThemes] = useState([]);
   const [selectedThemes, setSelectedThemes] = useState({});
   const [availableNarrativeThreads, setAvailableNarrativeThreads] = useState([]);
@@ -68,11 +79,12 @@ function Puzzles() {
   const apiFilters = {};
   // if (actFocusFilter !== 'All Acts') apiFilters.actFocus = actFocusFilter; // Or apiFilters.timing = actFocusFilter if they are the same
 
-  const { data: puzzles, isLoading, error, refetch } = useQuery(
-    ['puzzles', apiFilters], // apiFilters might be empty if only doing client-side for new fields
-    () => api.getPuzzles(apiFilters),
-    { staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000 }
-  );
+  const { data: puzzles, isLoading, error, refetch } = useQuery({
+    queryKey: ['puzzles', apiFilters], // apiFilters might be empty if only doing client-side for new fields
+    queryFn: () => api.getPuzzles(apiFilters),
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000
+  });
 
   useEffect(() => {
     if (puzzles) {
@@ -108,17 +120,26 @@ function Puzzles() {
 
   // Production Intelligence Analytics
   const puzzleAnalytics = useMemo(() => {
-    if (!puzzles) return {
-      totalPuzzles: 0,
-      collaborativePuzzles: 0,
-      soloExperiences: 0,
-      actDistribution: { 'Act 1': 0, 'Act 2': 0, 'Act 3': 0 },
-      narrativeDistribution: {},
-      rewardAnalysis: { totalRewards: 0, avgRewardsPerPuzzle: 0 },
-      ownershipAnalysis: { assigned: 0, unassigned: 0 },
-      complexityDistribution: {},
-      issues: []
-    };
+    if (!puzzles) {
+      const emptyActDistribution = {};
+      const actTypes = getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2']);
+      actTypes.forEach(act => {
+        emptyActDistribution[act] = 0;
+      });
+      emptyActDistribution['Act 3'] = 0; // Legacy support
+      
+      return {
+        totalPuzzles: 0,
+        collaborativePuzzles: 0,
+        soloExperiences: 0,
+        actDistribution: emptyActDistribution,
+        narrativeDistribution: {},
+        rewardAnalysis: { totalRewards: 0, avgRewardsPerPuzzle: 0 },
+        ownershipAnalysis: { assigned: 0, unassigned: 0 },
+        complexityDistribution: {},
+        issues: []
+      };
+    }
 
     const totalPuzzles = puzzles.length;
 
@@ -131,11 +152,13 @@ function Puzzles() {
     ).length;
 
     // Act distribution
-    const actDistribution = {
-      'Act 1': puzzles.filter(p => p.properties?.actFocus === 'Act 1' || p.timing === 'Act 1').length,
-      'Act 2': puzzles.filter(p => p.properties?.actFocus === 'Act 2' || p.timing === 'Act 2').length,
-      'Act 3': puzzles.filter(p => p.properties?.actFocus === 'Act 3' || p.timing === 'Act 3').length
-    };
+    const actTypes = getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2']);
+    const actDistribution = {};
+    actTypes.forEach(act => {
+      actDistribution[act] = puzzles.filter(p => p.properties?.actFocus === act || p.timing === act).length;
+    });
+    // Include Act 3 as legacy support
+    actDistribution['Act 3'] = puzzles.filter(p => p.properties?.actFocus === 'Act 3' || p.timing === 'Act 3').length;
 
     // Narrative thread distribution
     const narrativeDistribution = {};
@@ -156,17 +179,21 @@ function Puzzles() {
     const unassigned = totalPuzzles - assigned;
 
     // Complexity analysis (based on multiple factors)
+    const highComplexityOwnersThreshold = getConstant(gameConstants, 'PUZZLES.HIGH_COMPLEXITY_OWNERS_THRESHOLD', 1);
+    const highComplexityRewardsThreshold = getConstant(gameConstants, 'PUZZLES.HIGH_COMPLEXITY_REWARDS_THRESHOLD', 2);
+    const mediumComplexityRewardsThreshold = getConstant(gameConstants, 'PUZZLES.MEDIUM_COMPLEXITY_REWARDS_THRESHOLD', 1);
+    
     const complexityDistribution = {
       'High Complexity': puzzles.filter(p => 
-        (p.owner?.length > 1) && (p.rewards?.length > 2)
+        (p.owner?.length > highComplexityOwnersThreshold) && (p.rewards?.length > highComplexityRewardsThreshold)
       ).length,
       'Medium Complexity': puzzles.filter(p => 
-        (p.owner?.length === 1 && p.rewards?.length > 1) || 
-        (p.owner?.length > 1 && p.rewards?.length <= 2)
+        (p.owner?.length === 1 && p.rewards?.length > mediumComplexityRewardsThreshold) || 
+        (p.owner?.length > highComplexityOwnersThreshold && p.rewards?.length <= highComplexityRewardsThreshold)
       ).length,
       'Low Complexity': puzzles.filter(p => 
         (!p.owner || p.owner.length === 0) || 
-        (!p.rewards || p.rewards.length <= 1)
+        (!p.rewards || p.rewards.length <= mediumComplexityRewardsThreshold)
       ).length
     };
 
@@ -185,7 +212,8 @@ function Puzzles() {
       });
     }
 
-    if (unassigned > totalPuzzles * 0.3) {
+    const unassignedWarningThreshold = getConstant(gameConstants, 'PUZZLES.UNASSIGNED_WARNING_THRESHOLD', 0.3);
+    if (unassigned > totalPuzzles * unassignedWarningThreshold) {
       issues.push({
         type: 'ownership-gaps',
         severity: 'warning',
@@ -195,7 +223,8 @@ function Puzzles() {
     }
 
     const noRewards = puzzles.filter(p => !p.rewards || p.rewards.length === 0).length;
-    if (noRewards > totalPuzzles * 0.2) {
+    const noRewardsWarningThreshold = getConstant(gameConstants, 'PUZZLES.NO_REWARDS_WARNING_THRESHOLD', 0.2);
+    if (noRewards > totalPuzzles * noRewardsWarningThreshold) {
       issues.push({
         type: 'reward-economy',
         severity: 'info',
@@ -205,7 +234,8 @@ function Puzzles() {
     }
 
     const noNarrativeThreads = puzzles.filter(p => !p.narrativeThreads || p.narrativeThreads.length === 0).length;
-    if (noNarrativeThreads > totalPuzzles * 0.4) {
+    const noNarrativeThreadsWarningThreshold = getConstant(gameConstants, 'PUZZLES.NO_NARRATIVE_THREADS_WARNING_THRESHOLD', 0.4);
+    if (noNarrativeThreads > totalPuzzles * noNarrativeThreadsWarningThreshold) {
       issues.push({
         type: 'narrative-isolation',
         severity: 'info',
@@ -225,7 +255,7 @@ function Puzzles() {
       complexityDistribution,
       issues
     };
-  }, [puzzles]);
+  }, [puzzles, gameConstants]);
 
   const filteredPuzzles = useMemo(() => {
     if (!puzzles) return [];
@@ -418,7 +448,7 @@ function Puzzles() {
             <FormControl fullWidth size="small">
               <InputLabel id="puzzle-actfocus-label">Act Focus / Timing</InputLabel>
               <Select labelId="puzzle-actfocus-label" value={actFocusFilter} label="Act Focus / Timing" onChange={handleActFocusChange}>
-                {ACT_FOCUS_OPTIONS.map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
+                {['All Acts'].concat(getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2'])).concat(['Act 3']).map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

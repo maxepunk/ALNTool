@@ -1,3 +1,4 @@
+import logger from '../../utils/logger';
 /**
  * filterGraph.js
  * Pure function for filtering graph nodes and edges for RelationshipMapper.
@@ -28,7 +29,7 @@ function filterGraph(
   } = {}
 ) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) {
-    console.warn('[filterGraph] Invalid nodes or edges input. Nodes:', nodes, 'Edges:', edges);
+    logger.warn('[filterGraph] Invalid nodes or edges input. Nodes:', nodes, 'Edges:', edges);
     return { nodes: [], edges: [] };
   }
 
@@ -139,7 +140,7 @@ function filterGraph(
     if (workingNodeMap.has(centerNodeId)) { // Ensure centerNodeId is valid before adding
         visited.add(centerNodeId);
     } else {
-        console.warn(`[filterGraph] Center node ID ${centerNodeId} not found in initial workingNodeMap. Depth filtering might be incorrect.`);
+        logger.warn(`[filterGraph] Center node ID ${centerNodeId} not found in initial workingNodeMap. Depth filtering might be incorrect.`);
     }
 
     const queue = [{ id: centerNodeId, d: 0 }];
@@ -185,7 +186,7 @@ function filterGraph(
     workingEdges = workingEdges.filter((e) => visited.has(e.source) && visited.has(e.target));
     workingNodeMap = new Map(workingNodes.map(n => [n.id, n]));
   } else if (depth > 0 && workingNodes.length > 1 && centerNodeId && !workingNodeMap.has(centerNodeId)) {
-    console.warn(`[filterGraph] Center node ${centerNodeId} for depth filtering not found in the provided nodes. Returning all nodes/edges.`);
+    logger.warn(`[filterGraph] Center node ${centerNodeId} for depth filtering not found in the provided nodes. Returning all nodes/edges.`);
   }
 
   // --- Act Focus Filtering ---

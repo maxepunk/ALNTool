@@ -3,7 +3,7 @@ const BaseSyncer = require('./BaseSyncer');
 /**
  * Syncer for Character entities.
  * Handles fetching from Notion, mapping, and inserting character data.
- * 
+ *
  * @extends BaseSyncer
  */
 class CharacterSyncer extends BaseSyncer {
@@ -48,10 +48,10 @@ class CharacterSyncer extends BaseSyncer {
   async mapData(notionCharacter) {
     try {
       const mapped = await this.propertyMapper.mapCharacterWithNames(
-        notionCharacter, 
+        notionCharacter,
         this.notionService
       );
-      
+
       if (mapped.error) {
         return { error: mapped.error };
       }
@@ -85,12 +85,12 @@ class CharacterSyncer extends BaseSyncer {
   async insertData(mappedData) {
     // Extract relationships before inserting
     const { _relationships, ...characterData } = mappedData;
-    
+
     // Insert the character
     const stmt = this.db.prepare(
       'INSERT INTO characters (id, name, type, tier, logline, connections) VALUES (?, ?, ?, ?, ?, ?)'
     );
-    
+
     stmt.run(
       characterData.id,
       characterData.name,
@@ -99,7 +99,7 @@ class CharacterSyncer extends BaseSyncer {
       characterData.logline,
       characterData.connections
     );
-    
+
     // Store relationships for post-processing
     if (!this._pendingRelationships) {
       this._pendingRelationships = [];
@@ -119,7 +119,7 @@ class CharacterSyncer extends BaseSyncer {
     // Character relationships are now handled by RelationshipSyncer in Phase 2
     // This ensures all entities exist before relationships are created
     this.logger.info(`Stored relationship data for ${this._pendingRelationships?.length || 0} characters for Phase 2 processing`);
-    
+
     // Relationships will be processed by RelationshipSyncer after all entities are synced
     // This prevents foreign key constraint violations
   }

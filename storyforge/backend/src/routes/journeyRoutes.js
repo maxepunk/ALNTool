@@ -7,7 +7,7 @@ const {
   getAllGaps,
   getSyncStatus,
   getGapSuggestions,
-  resolveGap,
+  resolveGap
 } = require('../controllers/journeyController');
 
 // Journey and Gap related routes

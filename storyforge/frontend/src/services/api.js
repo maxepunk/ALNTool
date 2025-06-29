@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import logger from '../utils/logger';
 // Create axios instance with base URL
 const apiClient = axios.create({
   baseURL: '/api', // Ensure this matches your BFF's proxy path if using Vite/CRA proxy
@@ -32,7 +33,7 @@ export const api = {
     if (!characterId) {
       // Optionally, throw an error or return a specific response if characterId is missing
       // For now, let the backend handle missing/invalid ID, or rely on caller validation
-      console.warn('getJourneyByCharacterId called without a characterId');
+      logger.warn('getJourneyByCharacterId called without a characterId');
     }
     const response = await apiClient.get(`/journeys/${characterId}`);
     return response.data;
@@ -93,8 +94,20 @@ export const api = {
   getElementGraph: async (id, depth = 2) => {
     const url = `/elements/${id}/graph`;
     const params = { depth };
-    console.log('Attempting to fetch graph data:', { url, params });
+    logger.debug('Attempting to fetch graph data:', { url, params });
     const response = await apiClient.get(url, { params });
+    return response.data;
+  },
+
+  // Sync data from Notion
+  syncData: async () => {
+    const response = await apiClient.post('/sync/data');
+    return response.data;
+  },
+
+  // Get sync status
+  getSyncStatus: async () => {
+    const response = await apiClient.get('/sync/status');
     return response.data;
   },
 
@@ -161,7 +174,7 @@ apiClient.interceptors.response.use(
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('API Error Response:', {
+      logger.error('API Error Response:', {
         data: error.response.data,
         status: error.response.status,
         headers: error.response.headers,
@@ -170,10 +183,10 @@ apiClient.interceptors.response.use(
       });
     } else if (error.request) {
       // The request was made but no response was received
-      console.error('API No Response:', error.request, error.config.url);
+      logger.error('API No Response:', error.request, error.config.url);
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error('API Request Setup Error:', error.message, error.config.url);
+      logger.error('API Request Setup Error:', error.message, error.config.url);
     }
     
     // Standardize error object to be returned
@@ -186,6 +199,87 @@ apiClient.interceptors.response.use(
     return Promise.reject(customError);
   }
 );
+
+// Named exports for backward compatibility with tests
+export const fetchCharacterGraphData = async (id) => {
+  const response = await fetch(`/api/characters/${id}/graph`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch character graph data for ${id}: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchElementGraphData = async (id) => {
+  const response = await fetch(`/api/elements/${id}/graph`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch element graph data for ${id}: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchPuzzleGraphData = async (id) => {
+  const response = await fetch(`/api/puzzles/${id}/graph`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch puzzle graph data for ${id}: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchTimelineGraphData = async (id) => {
+  const response = await fetch(`/api/timeline/${id}/graph`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch timeline graph data for ${id}: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchCharacters = async () => {
+  const response = await fetch('/api/characters');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch characters: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchElements = async () => {
+  const response = await fetch('/api/elements');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch elements: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchPuzzles = async () => {
+  const response = await fetch('/api/puzzles');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch puzzles: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchTimelineEvents = async () => {
+  const response = await fetch('/api/timeline');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch timeline events: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const fetchEntityById = async (entityType, id) => {
+  const response = await fetch(`/api/${entityType}/${id}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${entityType} with id ${id}: ${response.status}`);
+  }
+  return response.json();
+};
+
+export const searchAll = async (query) => {
+  const response = await fetch(`/api/search?q=${query}`);
+  if (!response.ok) {
+    throw new Error(`Search failed: ${response.status}`);
+  }
+  return response.json();
+};
 
 export { apiClient }; // Named export for apiClient
 export default api; // Default export the api object with methods

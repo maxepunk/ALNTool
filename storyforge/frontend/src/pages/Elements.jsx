@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'; // Added useEffect, useMemo
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Chip, Button, Box, Select, MenuItem, FormControl, InputLabel, Grid, Paper, Alert, Skeleton,
   Typography, List, ListItem, ListItemText, Checkbox, Collapse, Card, CardContent, LinearProgress,
-  Tooltip, Avatar, Badge // Added for production intelligence
+  Tooltip, Avatar, Badge, CircularProgress // Added for production intelligence
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -20,37 +20,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
-
-// Element types
-const ELEMENT_TYPES = [
-  'All Types',
-  'Prop', 
-  'Set Dressing', 
-  'Memory Token Video', 
-  'Character Sheet'
-];
-
-// Add filter options
-const STATUS_OPTIONS = [
-  'All Statuses',
-  'Ready for Playtest',
-  'Done',
-  'In development',
-  'Idea/Placeholder',
-  'Source Prop/print',
-  'To Design',
-  'To Build',
-  'Needs Repair',
-];
-const FIRST_AVAILABLE_OPTIONS = [
-  'All Acts',
-  'Act 0',
-  'Act 1',
-  'Act 2',
-  'Act 3', // Added Act 3
-];
-
-const ACT_FOCUS_OPTIONS = ['All Acts', 'Act 1', 'Act 2', 'Act 3']; // For new Act Focus filter
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 
 // Table column definitions
 const columns = [
@@ -121,8 +91,20 @@ function Elements() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+  
   const queryParams = new URLSearchParams(location.search);
   const typeFromQuery = queryParams.get('type');
+
+  // Early return if constants are still loading
+  if (constantsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Elements...</Typography>
+      </Box>
+    );
+  }
   
   // Existing Filters
   const [elementType, setElementType] = useState(typeFromQuery || 'All Types');
@@ -143,11 +125,12 @@ function Elements() {
   // 'firstAvailable' is also a server-side filter, keep if still needed alongside actFocusFilter
   if (firstAvailable !== 'All Acts') apiFilters.firstAvailable = firstAvailable;
   
-  const { data: elements, isLoading, error, refetch } = useQuery(
-    ['elements', apiFilters], // Use apiFilters for query key
-    () => api.getElements(apiFilters),
-    { staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000 }
-  );
+  const { data: elements, isLoading, error, refetch } = useQuery({
+    queryKey: ['elements', apiFilters], // Use apiFilters for query key
+    queryFn: () => api.getElements(apiFilters),
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000
+  });
 
   // Effect to populate available themes and memory sets for client-side filtering
   useEffect(() => {
@@ -251,16 +234,21 @@ function Elements() {
     // Identify production issues
     const issues = [];
     
-    if (memoryElements.length < 45) {
+    const memoryWarningThreshold = getConstant(gameConstants, 'ELEMENTS.MEMORY_TOKEN_WARNING_THRESHOLD', 45);
+    const targetTokenCount = getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55);
+    const memoryReadinessThreshold = getConstant(gameConstants, 'ELEMENTS.MEMORY_READINESS_THRESHOLD', 0.8);
+    const overallReadinessThreshold = getConstant(gameConstants, 'ELEMENTS.OVERALL_READINESS_THRESHOLD', 0.7);
+
+    if (memoryElements.length < memoryWarningThreshold) {
       issues.push({
         type: 'memory-shortage',
         severity: 'warning',
-        message: `Only ${memoryElements.length} memory tokens found (target: 55)`,
+        message: `Only ${memoryElements.length} memory tokens found (target: ${targetTokenCount})`,
         action: 'Add more memory tokens to reach target economy'
       });
     }
 
-    if (memoryTokensReady < memoryElements.length * 0.8) {
+    if (memoryTokensReady < memoryElements.length * memoryReadinessThreshold) {
       issues.push({
         type: 'memory-production',
         severity: 'warning',
@@ -269,7 +257,7 @@ function Elements() {
       });
     }
 
-    if (readyElements < totalElements * 0.7) {
+    if (readyElements < totalElements * overallReadinessThreshold) {
       issues.push({
         type: 'production-readiness',
         severity: 'info',
@@ -401,12 +389,12 @@ function Elements() {
                   </Typography>
                   <LinearProgress 
                     variant="determinate" 
-                    value={(elementAnalytics.memoryTokens.total / 55) * 100}
+                    value={(elementAnalytics.memoryTokens.total / getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55)) * 100}
                     sx={{ mt: 1, mb: 1, height: 6, borderRadius: 3 }}
-                    color={elementAnalytics.memoryTokens.total >= 50 ? 'success' : 'warning'}
+                    color={elementAnalytics.memoryTokens.total >= getConstant(gameConstants, 'MEMORY_VALUE.MIN_TOKEN_COUNT', 50) ? 'success' : 'warning'}
                   />
                   <Typography variant="caption" color="text.secondary">
-                    Target: 55 tokens ({elementAnalytics.memoryTokens.ready} ready)
+                    Target: {getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55)} tokens ({elementAnalytics.memoryTokens.ready} ready)
                   </Typography>
                 </CardContent>
               </Card>
@@ -503,7 +491,7 @@ function Elements() {
             <FormControl fullWidth size="small">
               <InputLabel id="element-type-label">Element Type</InputLabel>
               <Select labelId="element-type-label" value={elementType} label="Element Type" onChange={handleTypeChange}>
-                {ELEMENT_TYPES.map((type) => (<MenuItem key={type} value={type}>{type}</MenuItem>))}
+                {['All Types'].concat(getConstant(gameConstants, 'ELEMENTS.CATEGORIES', ['Prop', 'Set Dressing', 'Memory Token Video', 'Character Sheet'])).map((type) => (<MenuItem key={type} value={type}>{type}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>
@@ -511,7 +499,7 @@ function Elements() {
             <FormControl fullWidth size="small">
               <InputLabel id="element-status-label">Status</InputLabel>
               <Select labelId="element-status-label" value={status} label="Status" onChange={handleStatusChange}>
-                {STATUS_OPTIONS.map((s) => (<MenuItem key={s} value={s}>{s}</MenuItem>))}
+                {['All Statuses'].concat(getConstant(gameConstants, 'ELEMENTS.STATUS_TYPES', ['Ready for Playtest', 'Done', 'In development', 'Idea/Placeholder', 'Source Prop/print', 'To Design', 'To Build', 'Needs Repair'])).map((s) => (<MenuItem key={s} value={s}>{s}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>
@@ -519,7 +507,7 @@ function Elements() {
             <FormControl fullWidth size="small">
               <InputLabel id="element-first-available-label">First Available</InputLabel>
               <Select labelId="element-first-available-label" value={firstAvailable} label="First Available" onChange={handleFirstAvailableChange}>
-                {FIRST_AVAILABLE_OPTIONS.map((fa) => (<MenuItem key={fa} value={fa}>{fa}</MenuItem>))}
+                {['All Acts', 'Act 0'].concat(getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2'])).concat(['Act 3']).map((fa) => (<MenuItem key={fa} value={fa}>{fa}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>
@@ -528,7 +516,7 @@ function Elements() {
             <FormControl fullWidth size="small">
               <InputLabel id="element-act-focus-label">Act Focus</InputLabel>
               <Select labelId="element-act-focus-label" value={actFocusFilter} label="Act Focus" onChange={handleActFocusChange}>
-                {ACT_FOCUS_OPTIONS.map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
+                {['All Acts'].concat(getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2'])).concat(['Act 3']).map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

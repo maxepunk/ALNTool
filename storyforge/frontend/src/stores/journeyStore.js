@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import logger from '../utils/logger';
 import api from '../services/api'; // Assuming api.js exports a default or named 'api' object
 
 const useJourneyStore = create(subscribeWithSelector((set, get) => ({
@@ -19,13 +20,13 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
 
     const state = get();
     if (state.loadingJourneyCharacterId === characterId) {
-      console.log(`Already loading journey for character ${characterId}, skipping duplicate request`);
+      logger.debug(`Already loading journey for character ${characterId}, skipping duplicate request`);
       return;
     }
     
     // Do not re-fetch if data already exists, unless forced
     if (state.journeyData.has(characterId)) {
-      console.log(`Journey data already loaded for character ${characterId}`);
+      logger.debug(`Journey data already loaded for character ${characterId}`);
       return;
     }
     
@@ -38,7 +39,7 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
         loadingJourneyCharacterId: null,
       }));
     } catch (err) {
-      console.error(`Error loading journey for character ${characterId}:`, err);
+      logger.error(`Error loading journey for character ${characterId}:`, err);
       set({ error: err.message || 'Failed to load journey', loadingJourneyCharacterId: null });
     }
   },
@@ -59,7 +60,7 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
   // Getters
   activeJourney: () => {
     const activeId = get().activeCharacterId;
-    return activeId ? get().journeyData.get(activeId) : null;
+    return activeId ? (get().journeyData.get(activeId) || null) : null;
   },
 
 })));

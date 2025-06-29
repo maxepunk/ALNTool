@@ -1,0 +1,182 @@
+# About Last Night - Production Intelligence Tool
+
+You are working on a comprehensive journey management and production tool for an immersive murder mystery game. This tool serves game designers and production teams, providing both micro (individual character paths) and macro (system-wide balance) perspectives.
+
+## Critical Project Context
+
+**IMPORTANT DISCOVERY**: This is a Phase 4+ system, not Phase 1. Sophisticated features are ALREADY BUILT (ExperienceFlowAnalyzer, MemoryEconomyWorkshop, DualLensLayout) but are inaccessible due to data pipeline and UI/UX issues. The "Final Mile" to 1.0 requires CONNECTING existing features, not building new ones.
+
+## Architecture Overview
+
+### Backend Stack
+- **Framework**: Node.js with Express
+- **Database**: SQLite (single source of truth)
+- **External API**: Notion API for content management
+- **Architecture**: 4-phase sync pipeline
+  1. Entity sync (characters, elements, puzzles, timeline)
+  2. Relationship sync (junction tables)
+  3. Compute phase (derived fields)
+  4. Verification phase
+
+### Frontend Stack
+- **Framework**: React 18 with Vite
+- **UI Library**: Material-UI (MUI)
+- **State Management**: Zustand
+- **Graph Visualization**: React Flow, D3
+- **Features**: DualLensLayout, RelationshipMapper, JourneyGraphView
+
+### Project Structure
+```
+ALNTool/
+├── storyforge/
+│   ├── backend/         # Express API server
+│   │   ├── src/
+│   │   │   ├── services/sync/        # 4-phase sync architecture
+│   │   │   ├── services/compute/     # Computed field services
+│   │   │   ├── routes/               # API endpoints
+│   │   │   └── db/                   # Database layer
+│   │   └── data/production.db        # SQLite database
+│   └── frontend/        # React application
+├── docs/               # Documentation archive
+└── SampleNotionData/   # Example game content
+```
+
+## Data Model & Key Concepts
+
+### Core Entities
+- **Characters**: Game participants with tiers (Core/Secondary/Tertiary)
+- **Elements**: Physical/digital items, including memory tokens
+- **Puzzles**: Interactive challenges with element dependencies
+- **Timeline Events**: 19-year backstory events with character involvement
+
+### Computed Fields (Not in Notion - Must Calculate)
+1. **Act Focus**: Dominant act from related elements
+2. **Memory Values**: Extracted from element descriptions (SF_ValueRating)
+3. **Narrative Threads**: Rollup from puzzle reward elements
+4. **Resolution Paths**: Black Market, Detective, or Third Path alignment
+5. **Character Links**: Relationships derived from shared events/puzzles
+
+### Memory Economy
+- RFID tags with values 1-5
+- Type multipliers: Personal ×1, Business ×3, Technical ×5
+- Group completion bonuses
+- Critical for game balance
+
+## Development Principles
+
+### Authority Hierarchy
+When information conflicts, follow this hierarchy:
+1. **Tier 1**: Source Code & Database (always wins)
+2. **Tier 2**: PRD & Notion Documentation
+3. **Tier 3**: README & DEVELOPMENT_PLAYBOOK
+4. **Tier 4**: Migration Files & Tests
+5. **Tier 5**: Archived Documentation
+6. **Tier 6**: External Guides
+
+### Code Conventions
+- **NO COMMENTS** unless explicitly requested
+- Prefer editing existing files over creating new ones
+- Use `file:line_number` format for references (e.g., `RelationshipSyncer.js:72`)
+- Follow existing patterns in the codebase
+- Write tests BEFORE implementation when possible
+
+### Testing Philosophy
+- Target >90% coverage for critical sync services
+- Mock Notion API responses consistently
+- Use transaction-based tests with rollback
+- Run `npm run verify:all` before starting work
+
+## Critical Known Issues
+
+### P0 Bugs (Must Fix)
+1. **Character Links Broken**: Schema mismatch - code expects `character1_id/character2_id` but DB has `character_a_id/character_b_id` (RelationshipSyncer.js:72-82)
+2. **Test Suite Failing**: Database initialization issues blocking CI/CD
+3. **MemoryValueExtractor Not Integrated**: Service exists but not called in sync pipeline
+4. **Hidden UI Features**: Advanced pages exist but no navigation items (AppLayout.jsx:89-95)
+
+### Known Data Issues
+- 4 characters have no relationships (Detective Anondono, Leila Bishara, Howie Sullivan, Oliver Sterling)
+- 17/32 puzzles have NULL owner_id in Notion
+- 42 timeline events missing act_focus computed field
+
+## Common Workflows
+
+### Before Starting Work
+```bash
+cd storyforge/backend
+npm run verify:all              # Always run first
+# Expected: 8 migrations, computed fields populated
+# Warnings: Some characters with no links, some events missing act_focus
+```
+
+### Development Commands
+```bash
+# Backend
+npm run dev                     # Start backend server
+npm test                        # Run test suite
+npm run verify:migrations       # Check DB state
+
+# Frontend
+cd ../frontend && npm run dev   # Start frontend
+
+# Data Sync
+node scripts/sync-data.js       # Full Notion sync
+sqlite3 data/production.db      # Direct DB access
+```
+
+### Debugging Sync Issues
+1. Check sync_log table for errors
+2. Verify foreign key constraints
+3. Run sync in phases to isolate issues
+4. Check Notion data for draft/incomplete records
+
+## Performance Considerations
+
+### Critical Bottlenecks
+- RelationshipSyncer has O(n²) complexity (needs optimization)
+- No database indexes on foreign keys
+- Frontend bundle is 5MB+ (needs code splitting)
+- Some async operations not properly awaited
+
+### Caching Strategy
+- Journey graphs cached in `cached_journey_graphs` table
+- 80-90% performance improvement with caching
+- Cache invalidation on data sync
+
+## Documentation System
+
+### Core Documentation (Keep Open While Coding)
+1. **DEVELOPMENT_PLAYBOOK.md**: Implementation guide, patterns, troubleshooting
+2. **SCHEMA_MAPPING_GUIDE.md**: Notion→SQL mappings, computed fields
+3. **README.md**: Current status, known issues, setup
+
+### Verification Protocol
+Always verify documentation claims against code:
+- Test results match documented status?
+- File paths exist and correct?
+- Dependencies available?
+- Acceptance criteria testable?
+
+## Error Handling Patterns
+
+### Sync Errors
+- Validation errors expected for draft Notion content
+- Use SyncLogger for debugging
+- Transaction rollback on failure
+- Preserve partial progress where safe
+
+### API Errors
+- Consistent error response format
+- Proper HTTP status codes
+- Error details in development, sanitized in production
+- Rate limit handling with exponential backoff
+
+## Key Insights for Development
+
+1. **The tool is production-ready architecturally** - focus on connecting features, not rebuilding
+2. **Sync architecture is solid** - 4-phase pipeline handles complex relationships well
+3. **Computed fields are critical** - many features depend on derived data
+4. **Test coverage is essential** - complex sync logic requires thorough testing
+5. **Performance optimization needed** - several O(n²) operations need refactoring
+
+Remember: This is a tool for game designers and production teams, not for running live games. Focus on reliability, clarity, and operational efficiency.

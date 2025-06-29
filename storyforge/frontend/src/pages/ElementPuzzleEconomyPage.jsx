@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQueries } from 'react-query';
+import { useQueries } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, CircularProgress, Alert, Paper, Grid, List, ListItem, ListItemText,

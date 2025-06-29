@@ -80,7 +80,7 @@ The main `RelationshipMapper.jsx` component now delegates all UI state and handl
 - All transformation from raw Notion/BFF data or BFF-precomputed graph data to React Flow nodes/edges is handled by `transformToGraphElements.js`.
 - No other part of the codebase should perform node/edge transformation.
 
-## Future Enhancements (Phase 4)
+## Future Enhancements
 
 - **Interactive Editing**: Allow creating/modifying relationships directly by interacting with the graph
 - **Additional Visualization Options**: Add more layout algorithms (force-directed, hierarchical, etc.)

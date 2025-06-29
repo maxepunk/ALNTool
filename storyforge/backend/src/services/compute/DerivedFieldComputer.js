@@ -4,7 +4,9 @@
  */
 class DerivedFieldComputer {
   constructor(db) {
-    if (!db) throw new Error('Database connection required');
+    if (!db) {
+      throw new Error('Database connection required');
+    }
     this.db = db;
   }
 
@@ -43,12 +45,12 @@ class DerivedFieldComputer {
     if (Object.keys(computedFields).length === 0) {
       return; // Nothing to update
     }
-    
+
     const updates = Object.entries(computedFields)
       .map(([field, value]) => `${field} = ?`)
       .join(', ');
     const values = [...Object.values(computedFields), entity[idField]];
-    
+
     try {
       const stmt = this.db.prepare(
         `UPDATE ${tableName} SET ${updates} WHERE ${idField} = ?`
@@ -73,4 +75,4 @@ class DerivedFieldComputer {
   }
 }
 
-module.exports = DerivedFieldComputer; 
+module.exports = DerivedFieldComputer;

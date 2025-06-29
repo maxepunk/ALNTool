@@ -6,7 +6,7 @@ const BaseSyncer = require('./entitySyncers/BaseSyncer');
  * 1. Validating relationships between entities
  * 2. Computing character links based on shared experiences
  * 3. Ensuring referential integrity
- * 
+ *
  * The syncer operates after all entity syncers have completed their work,
  * ensuring that all referenced entities exist before creating relationships.
  */
@@ -40,11 +40,11 @@ class RelationshipSyncer extends BaseSyncer {
    */
   async validateRelationships(relationships) {
     const errors = [];
-    
+
     // Check character existence
     if (relationships.characterIds) {
       const missingChars = await this._findMissingEntities(
-        'characters', 
+        'characters',
         relationships.characterIds
       );
       if (missingChars.length > 0) {
@@ -55,7 +55,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check element existence
     if (relationships.elementIds) {
       const missingElems = await this._findMissingEntities(
-        'elements', 
+        'elements',
         relationships.elementIds
       );
       if (missingElems.length > 0) {
@@ -66,7 +66,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check puzzle existence
     if (relationships.puzzleIds) {
       const missingPuzzles = await this._findMissingEntities(
-        'puzzles', 
+        'puzzles',
         relationships.puzzleIds
       );
       if (missingPuzzles.length > 0) {
@@ -77,7 +77,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check timeline event existence
     if (relationships.eventIds) {
       const missingEvents = await this._findMissingEntities(
-        'timeline_events', 
+        'timeline_events',
         relationships.eventIds
       );
       if (missingEvents.length > 0) {
@@ -99,13 +99,15 @@ class RelationshipSyncer extends BaseSyncer {
    * @returns {Promise<string[]>} Array of missing IDs
    */
   async _findMissingEntities(table, ids) {
-    if (!ids || ids.length === 0) return [];
-    
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+
     const placeholders = ids.map(() => '?').join(',');
     const existing = this.db.prepare(
       `SELECT id FROM ${table} WHERE id IN (${placeholders})`
     ).all(...ids);
-    
+
     const existingIds = new Set(existing.map(e => e.id));
     return ids.filter(id => !existingIds.has(id));
   }
@@ -122,7 +124,7 @@ class RelationshipSyncer extends BaseSyncer {
     try {
       // Get all characters from Notion to fetch their relationships
       const characters = await this.notionService.getCharacters();
-      
+
       // Prepare insert statements
       const insertEventRel = this.db.prepare(
         'INSERT OR IGNORE INTO character_timeline_events (character_id, timeline_event_id) VALUES (?, ?)'
@@ -243,20 +245,20 @@ class RelationshipSyncer extends BaseSyncer {
 
       // Get all characters
       const characters = this.db.prepare('SELECT id FROM characters').all();
-      
+
       // For each character pair, compute link strength
       for (let i = 0; i < characters.length; i++) {
         for (let j = i + 1; j < characters.length; j++) {
           try {
             const char1Id = characters[i].id;
             const char2Id = characters[j].id;
-            
+
             // Compute link strength based on:
             // 1. Shared timeline events
             // 2. Shared puzzles
             // 3. Shared elements
             const strength = await this._computeLinkStrength(char1Id, char2Id);
-            
+
             if (strength > 0) {
               this.db.prepare(
                 'INSERT INTO character_links (character_a_id, character_b_id, link_type, link_source_id, link_strength) VALUES (?, ?, ?, ?, ?)'
@@ -274,7 +276,7 @@ class RelationshipSyncer extends BaseSyncer {
       if (!wasInTransaction) {
         this.db.prepare('COMMIT').run();
       }
-      
+
       return { processed, errors };
     } catch (error) {
       // Only rollback if we started the transaction
@@ -343,19 +345,19 @@ class RelationshipSyncer extends BaseSyncer {
     try {
       // Initialize database connection
       this.initDB();
-      
+
       // Clear existing relationships
       await this.clearExistingData();
 
       // Sync character-entity relationships
       const charRelStats = await this.syncCharacterRelationships();
 
-      // Compute character links based on shared experiences  
+      // Compute character links based on shared experiences
       const linkStats = await this.computeCharacterLinks();
 
       const duration = Date.now() - startTime;
       this.logger.info(`Relationship sync completed in ${duration}ms`);
-      
+
       return {
         processed: charRelStats.processed + linkStats.processed,
         errors: charRelStats.errors + linkStats.errors,
@@ -368,4 +370,4 @@ class RelationshipSyncer extends BaseSyncer {
   }
 }
 
-module.exports = RelationshipSyncer; 
+module.exports = RelationshipSyncer;

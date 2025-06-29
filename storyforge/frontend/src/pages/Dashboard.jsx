@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Grid, Card, CardContent, Typography, Box, CircularProgress, Tooltip, Paper, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Chip, Alert, LinearProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PeopleIcon from '@mui/icons-material/People';
@@ -20,6 +20,7 @@ import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
 import { Link as RouterLink } from 'react-router-dom';
 import { Divider } from '@mui/material';
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 
 function StatCard({ title, count, icon, color = "primary", navigateTo, queryParams, isLoading, warning = false }) {
   const navigate = useNavigate();
@@ -100,13 +101,35 @@ const QuickAccessItem = ({ icon, text, to, queryParams, subtitle }) => {
 };
 
 function ProductionCommandCenter() {
+  // All hooks must be called before any conditional returns
+  const navigate = useNavigate();
+  
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+  
   // Fetch core game data for orchestration insights
-  const { data: charactersData, isLoading: charactersLoading } = useQuery('charactersSummary', () => api.getCharacters({ limit: 1000 }), { staleTime: 5 * 60 * 1000 });
-  const { data: elementsData, isLoading: elementsLoading } = useQuery('elementsSummary', () => api.getElements({ limit: 1000 }), { staleTime: 5 * 60 * 1000 });
-  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery('puzzlesSummary', () => api.getPuzzles({ limit: 1000 }), { staleTime: 5 * 60 * 1000 });
-  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery('timelineEventsSummary', () => api.getTimelineEventsList({ limit: 1000 }), { staleTime: 5 * 60 * 1000 });
+  const { data: charactersData, isLoading: charactersLoading } = useQuery({
+    queryKey: ['charactersSummary'],
+    queryFn: () => api.getCharacters({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
+  const { data: elementsData, isLoading: elementsLoading } = useQuery({
+    queryKey: ['elementsSummary'],
+    queryFn: () => api.getElements({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
+  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery({
+    queryKey: ['puzzlesSummary'],
+    queryFn: () => api.getPuzzles({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
+  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery({
+    queryKey: ['timelineEventsSummary'],
+    queryFn: () => api.getTimelineEventsList({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
 
-  // Orchestration-specific calculations
+  // Calculate values using optional chaining to avoid errors when data is loading
   const memoryTokens = elementsData?.filter(el => 
     el.properties?.basicType?.toLowerCase().includes('memory') || 
     el.properties?.basicType?.toLowerCase().includes('token') ||
@@ -117,26 +140,30 @@ function ProductionCommandCenter() {
     token.properties?.status === 'Ready' || token.properties?.status === 'Complete'
   ).length;
 
-  const memoryTokensTotal = 55; // Target from game design docs
+  // Get target from game constants with safe fallback
+  const memoryTokensTotal = constantsLoading ? 55 : getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55);
   const memoryCompletionPercentage = Math.round((memoryTokensCompleted / memoryTokensTotal) * 100);
 
   // Three-Path Balance Analysis (using computed resolution_paths from backend)
+  const knownPaths = constantsLoading ? ['Black Market', 'Detective', 'Third Path'] : getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
   const charactersWithPaths = charactersData?.filter(char => char.resolution_paths && char.resolution_paths.length > 0) || [];
-  const blackMarketCount = charactersWithPaths.filter(char => char.resolution_paths.includes('Black Market')).length;
-  const detectiveCount = charactersWithPaths.filter(char => char.resolution_paths.includes('Detective')).length;
-  const thirdPathCount = charactersWithPaths.filter(char => char.resolution_paths.includes('Third Path')).length;
+  const blackMarketCount = charactersWithPaths.filter(char => char.resolution_paths.includes(knownPaths[0] || 'Black Market')).length;
+  const detectiveCount = charactersWithPaths.filter(char => char.resolution_paths.includes(knownPaths[1] || 'Detective')).length;
+  const thirdPathCount = charactersWithPaths.filter(char => char.resolution_paths.includes(knownPaths[2] || 'Third Path')).length;
 
   // Character Tier Analysis
-  const tierCounts = {
-    'Core': charactersData?.filter(char => char.tier === 'Core').length || 0,
-    'Secondary': charactersData?.filter(char => char.tier === 'Secondary').length || 0,
-    'Tertiary': charactersData?.filter(char => char.tier === 'Tertiary').length || 0,
-  };
+  const characterTiers = constantsLoading ? ['Core', 'Secondary', 'Tertiary'] : getConstant(gameConstants, 'CHARACTERS.TIERS', ['Core', 'Secondary', 'Tertiary']);
+  const tierCounts = {};
+  characterTiers.forEach(tier => {
+    tierCounts[tier] = charactersData?.filter(char => char.tier === tier).length || 0;
+  });
 
   // Act Focus Analysis
-  const act1Events = timelineEventsData?.filter(event => event.act_focus === 'Act 1').length || 0;
-  const act2Events = timelineEventsData?.filter(event => event.act_focus === 'Act 2').length || 0;
-  const unassignedEvents = timelineEventsData?.filter(event => !event.act_focus || event.act_focus === 'Unassigned').length || 0;
+  const actTypes = constantsLoading ? ['Act 1', 'Act 2'] : getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2']);
+  const unassignedActValue = constantsLoading ? 'Unassigned' : getConstant(gameConstants, 'ACTS.DEFAULT', 'Unassigned');
+  const act1Events = timelineEventsData?.filter(event => event.act_focus === actTypes[0]).length || 0;
+  const act2Events = timelineEventsData?.filter(event => event.act_focus === actTypes[1]).length || 0;
+  const unassignedEvents = timelineEventsData?.filter(event => !event.act_focus || event.act_focus === unassignedActValue).length || 0;
 
   // Critical Dependencies Analysis
   const collaborativePuzzles = puzzlesData?.filter(puzzle => 
@@ -146,8 +173,14 @@ function ProductionCommandCenter() {
   const elementsToDesignCount = elementsData?.filter(el => el.properties?.status === 'To Design').length || 0;
   const elementsToBuildCount = elementsData?.filter(el => el.properties?.status === 'To Build').length || 0;
 
-
-  const navigate = useNavigate();
+  // Early return if constants are still loading to prevent errors with getConstant calls
+  if (constantsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Production Command Center...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -192,8 +225,8 @@ function ProductionCommandCenter() {
               </Grid>
             </Grid>
             {charactersWithPaths.length > 0 && (
-              <Alert severity={Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > 3 ? "warning" : "success"} sx={{ mt: 2 }}>
-                {Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > 3 
+              <Alert severity={Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > getConstant(gameConstants, 'DASHBOARD.PATH_IMBALANCE_THRESHOLD', 3) ? "warning" : "success"} sx={{ mt: 2 }}>
+                {Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > getConstant(gameConstants, 'DASHBOARD.PATH_IMBALANCE_THRESHOLD', 3)
                   ? "Path imbalance detected - consider redistributing character paths"
                   : "Three paths are well balanced"}
               </Alert>
@@ -342,15 +375,15 @@ function ProductionCommandCenter() {
             
             <Typography variant="subtitle2" sx={{fontWeight: 'medium', mb: 1}}>Next Priority Actions:</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {memoryCompletionPercentage < 50 && (
+              {memoryCompletionPercentage < getConstant(gameConstants, 'DASHBOARD.MEMORY_COMPLETION_WARNING_THRESHOLD', 50) && (
                 <Alert severity="warning" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Memory token completion below 50% - prioritize token design
+                    Memory token completion below {getConstant(gameConstants, 'DASHBOARD.MEMORY_COMPLETION_WARNING_THRESHOLD', 50)}% - prioritize token design
                   </Typography>
                 </Alert>
               )}
               
-              {unassignedEvents > 5 && (
+              {unassignedEvents > getConstant(gameConstants, 'DASHBOARD.UNASSIGNED_EVENTS_WARNING_THRESHOLD', 5) && (
                 <Alert severity="info" sx={{ p: 1 }}>
                   <Typography variant="body2">
                     {unassignedEvents} timeline events need Act Focus assignment
@@ -358,7 +391,7 @@ function ProductionCommandCenter() {
                 </Alert>
               )}
               
-              {Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > 3 && (
+              {Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > getConstant(gameConstants, 'DASHBOARD.PATH_IMBALANCE_THRESHOLD', 3) && (
                 <Alert severity="warning" sx={{ p: 1 }}>
                   <Typography variant="body2">
                     Character path imbalance - review resolution assignments

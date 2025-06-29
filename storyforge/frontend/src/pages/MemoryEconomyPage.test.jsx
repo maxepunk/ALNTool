@@ -1,6 +1,16 @@
-// Constants and helpers copied for isolated testing
-const VALUE_MAPPING = { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 };
-const TYPE_MULTIPLIERS = { Personal: 1, Business: 3, Technical: 5 };
+// Import centralized constants instead of duplicating business logic
+import { useGameConstants } from '../hooks/useGameConstants';
+
+// For testing, we'll use the actual GameConstants values
+const GameConstants = {
+  MEMORY_VALUE: {
+    BASE_VALUES: { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 },
+    TYPE_MULTIPLIERS: { Personal: 2.0, Business: 5.0, Technical: 10.0 }
+  }
+};
+
+const VALUE_MAPPING = GameConstants.MEMORY_VALUE.BASE_VALUES;
+const TYPE_MULTIPLIERS = GameConstants.MEMORY_VALUE.TYPE_MULTIPLIERS;
 
 const KEYWORDS_TECHNICAL = ["ip", "algorithm", "breakthrough", "neurobiology", "sensory triggers", "ai pattern", "neurochemical catalyst", "validation system", "protocol", "patent", "research", "data model", "encryption"];
 const KEYWORDS_BUSINESS = ["deal", "corporate", "funding", "company", "market", "ledger", "investment", "ceo", "board", "acquisition", "merger", "stock", "trade secret", "client list", "supply chain"];
@@ -105,10 +115,10 @@ describe('MemoryEconomyPage Helper Functions', () => {
 
 // Mock data for processedMemoryTokens and filteredAndSortedTokens tests
 const mockProcessedTokens = [
-  { id: 't1', name: 'Token 1', inferredCategory: 'Technical', baseValueLevel: 5, memorySets: ['Set A', 'Set B'], finalValue: 25000, baseValueAmount: 5000, typeMultiplierValue: 5 },
-  { id: 't2', name: 'Token 2', inferredCategory: 'Business', baseValueLevel: 3, memorySets: ['Set A'], finalValue: 3000, baseValueAmount: 1000, typeMultiplierValue: 3 },
-  { id: 't3', name: 'Token 3', inferredCategory: 'Personal', baseValueLevel: 1, memorySets: ['Set B'], finalValue: 100, baseValueAmount: 100, typeMultiplierValue: 1 },
-  { id: 't4', name: 'Token 4', inferredCategory: 'Technical', baseValueLevel: 3, memorySets: [], finalValue: 5000, baseValueAmount: 1000, typeMultiplierValue: 5 },
+  { id: 't1', name: 'Token 1', inferredCategory: 'Technical', baseValueLevel: 5, memorySets: ['Set A', 'Set B'], finalValue: 100000, baseValueAmount: 10000, typeMultiplierValue: 10.0 },
+  { id: 't2', name: 'Token 2', inferredCategory: 'Business', baseValueLevel: 3, memorySets: ['Set A'], finalValue: 5000, baseValueAmount: 1000, typeMultiplierValue: 5.0 },
+  { id: 't3', name: 'Token 3', inferredCategory: 'Personal', baseValueLevel: 1, memorySets: ['Set B'], finalValue: 200, baseValueAmount: 100, typeMultiplierValue: 2.0 },
+  { id: 't4', name: 'Token 4', inferredCategory: 'Technical', baseValueLevel: 3, memorySets: [], finalValue: 10000, baseValueAmount: 1000, typeMultiplierValue: 10.0 },
 ];
 
 describe('MemoryEconomyPage Data Processing', () => {
@@ -134,8 +144,8 @@ describe('MemoryEconomyPage Data Processing', () => {
     expect(result.inferredCategory).toBe('Technical');
     expect(result.baseValueLevel).toBe(5);
     expect(result.baseValueAmount).toBe(10000);
-    expect(result.typeMultiplierValue).toBe(5);
-    expect(result.finalValue).toBe(50000);
+    expect(result.typeMultiplierValue).toBe(10.0);
+    expect(result.finalValue).toBe(100000);
   });
 
   it('should correctly calculate final value for a Business Level 3 token', () => {
@@ -144,8 +154,8 @@ describe('MemoryEconomyPage Data Processing', () => {
     expect(result.inferredCategory).toBe('Business');
     expect(result.baseValueLevel).toBe(3); // "significant interaction" or default if no other kw
     expect(result.baseValueAmount).toBe(1000);
-    expect(result.typeMultiplierValue).toBe(3);
-    expect(result.finalValue).toBe(3000);
+    expect(result.typeMultiplierValue).toBe(5.0);
+    expect(result.finalValue).toBe(5000);
   });
 
   it('should correctly calculate final value for a Personal Level 1 token', () => {
@@ -154,8 +164,8 @@ describe('MemoryEconomyPage Data Processing', () => {
     expect(result.inferredCategory).toBe('Personal');
     expect(result.baseValueLevel).toBe(1);
     expect(result.baseValueAmount).toBe(100);
-    expect(result.typeMultiplierValue).toBe(1);
-    expect(result.finalValue).toBe(100);
+    expect(result.typeMultiplierValue).toBe(2.0);
+    expect(result.finalValue).toBe(200);
   });
 
   // Tests for filtering logic (simulating filteredAndSortedTokens)

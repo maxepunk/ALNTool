@@ -2,6 +2,7 @@ import React from 'react';
 import { getBezierPath, EdgeLabelRenderer, useReactFlow } from '@xyflow/react';
 import { Box, Typography, Tooltip } from '@mui/material';
 
+import logger from '../../utils/logger';
 export default function CustomEdge({
   id,
   sourceX,
@@ -91,7 +92,7 @@ export default function CustomEdge({
 
 
   // Logging der finalen Style-Entscheidungen (optional, für Debugging)
-  // console.log(`CustomEdge (ID: ${id}) Style Decision:`,
+  // logger.debug(`CustomEdge (ID: ${id}) Style Decision:`,
   //   { edgeCategory, shortLabel: data?.shortLabel, isStrongRelationship, initialStyle: style, finalEdgeStyle });
 
   return (

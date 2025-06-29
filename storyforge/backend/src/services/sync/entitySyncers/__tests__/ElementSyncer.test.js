@@ -36,14 +36,30 @@ describe('ElementSyncer Integration Tests', () => {
 
     // Mock all expected SQL statements
     mockDB.prepare.mockImplementation((sql) => {
-      if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwned;
-      if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssoc;
-      if (sql.includes('DELETE FROM puzzle_elements')) return mockStmts.deletePuzzleElem;
-      if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElem;
-      if (sql.includes('INSERT OR REPLACE INTO elements')) return mockStmts.insertElem;
-      if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
-      if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
-      if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+      if (sql.includes('DELETE FROM character_owned_elements')) {
+        return mockStmts.deleteCharOwned;
+      }
+      if (sql.includes('DELETE FROM character_associated_elements')) {
+        return mockStmts.deleteCharAssoc;
+      }
+      if (sql.includes('DELETE FROM puzzle_elements')) {
+        return mockStmts.deletePuzzleElem;
+      }
+      if (sql.includes('DELETE FROM elements')) {
+        return mockStmts.deleteElem;
+      }
+      if (sql.includes('INSERT OR REPLACE INTO elements')) {
+        return mockStmts.insertElem;
+      }
+      if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) {
+        return mockStmts.insertCharOwned;
+      }
+      if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) {
+        return mockStmts.insertCharAssoc;
+      }
+      if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) {
+        return mockStmts.insertPuzzleElem;
+      }
       if (sql.includes('BEGIN') || sql.includes('COMMIT') || sql.includes('ROLLBACK')) {
         return { run: jest.fn() };
       }
@@ -132,12 +148,24 @@ describe('ElementSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
-        if (sql.includes('DELETE FROM interactions')) return mockStmts.deleteInteractions;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwned;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssoc;
-        if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
-        if (sql.includes('INSERT INTO elements')) return mockStmts.insertElement;
+        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) {
+          return mockStmts.updatePuzzles;
+        }
+        if (sql.includes('DELETE FROM interactions')) {
+          return mockStmts.deleteInteractions;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwned;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssoc;
+        }
+        if (sql.includes('DELETE FROM elements')) {
+          return mockStmts.deleteElements;
+        }
+        if (sql.includes('INSERT INTO elements')) {
+          return mockStmts.insertElement;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -164,12 +192,14 @@ describe('ElementSyncer Integration Tests', () => {
       // Verify element insertion
       expect(mockStmts.insertElement.run).toHaveBeenCalledTimes(2);
       expect(mockStmts.insertElement.run).toHaveBeenCalledWith(
-        'elem1', 'Key Card', 'Prop', 'Access card for secure areas', 'Ready', 
-        'char1', null, 'Print on RFID card', 'Act 1', 'event1'
+        'elem1', 'Key Card', 'Prop', 'Access card for secure areas', 'Ready',
+        'char1', null, 'Print on RFID card', 'Act 1', 'event1',
+        null, null, null, null, 1, null  // Memory value fields
       );
       expect(mockStmts.insertElement.run).toHaveBeenCalledWith(
         'elem2', 'Evidence File', 'Document', 'Contains crucial information', 'To Build',
-        null, 'elem1', '', 'Act 2', null
+        null, 'elem1', '', 'Act 2', null,
+        null, null, null, null, 1, null  // Memory value fields
       );
 
       // Verify logging
@@ -219,14 +249,30 @@ describe('ElementSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
-        if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
-        if (sql.includes('INSERT INTO elements')) return mockStmts.insertElement;
-        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
-        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
-        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) {
+          return mockStmts.updatePuzzles;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwnedElems;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssocElems;
+        }
+        if (sql.includes('DELETE FROM elements')) {
+          return mockStmts.deleteElements;
+        }
+        if (sql.includes('INSERT INTO elements')) {
+          return mockStmts.insertElement;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) {
+          return mockStmts.insertCharOwned;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) {
+          return mockStmts.insertCharAssoc;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) {
+          return mockStmts.insertPuzzleElem;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -238,8 +284,8 @@ describe('ElementSyncer Integration Tests', () => {
         errors: 1
       });
       expect(mockStmts.insertElement.run).toHaveBeenCalledTimes(2); // Only successful mappings
-      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem1', 'Knife', '', '', '', null, null, '', '', null);
-      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem3', 'Gun', '', '', '', null, null, '', '', null);
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem1', 'Knife', '', '', '', null, null, '', '', null, null, null, null, null, 1, null);
+      expect(mockStmts.insertElement.run).toHaveBeenCalledWith('elem3', 'Gun', '', '', '', null, null, '', '', null, null, null, null, null, 1, null);
     });
 
     it('should handle null relationships gracefully', async () => {
@@ -263,8 +309,9 @@ describe('ElementSyncer Integration Tests', () => {
 
       expect(result.synced).toBe(1);
       expect(mockInsertStmt.run).toHaveBeenCalledWith(
-        'elem1', 'Standalone Element', 'Prop', '', '', 
-        null, null, '', '', null
+        'elem1', 'Standalone Element', 'Prop', '', '',
+        null, null, '', '', null,
+        null, null, null, null, 1, null  // Memory value fields
       );
     });
 
@@ -294,15 +341,33 @@ describe('ElementSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) return mockStmts.updatePuzzles;
-        if (sql.includes('DELETE FROM element_interactions')) return mockStmts.deleteInteractions;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
-        if (sql.includes('DELETE FROM elements')) return mockStmts.deleteElements;
-        if (sql.includes('INSERT INTO elements')) return mockStmts.insertElement;
-        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertCharOwned;
-        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertCharAssoc;
-        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElem;
+        if (sql.includes('UPDATE puzzles SET locked_item_id = NULL')) {
+          return mockStmts.updatePuzzles;
+        }
+        if (sql.includes('DELETE FROM element_interactions')) {
+          return mockStmts.deleteInteractions;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwnedElems;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssocElems;
+        }
+        if (sql.includes('DELETE FROM elements')) {
+          return mockStmts.deleteElements;
+        }
+        if (sql.includes('INSERT INTO elements')) {
+          return mockStmts.insertElement;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) {
+          return mockStmts.insertCharOwned;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) {
+          return mockStmts.insertCharAssoc;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) {
+          return mockStmts.insertPuzzleElem;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -350,7 +415,7 @@ describe('ElementSyncer Integration Tests', () => {
     it('should handle database errors gracefully', async () => {
       mockNotionService.getElements.mockResolvedValue([{ id: 'elem1' }]);
       mockPropertyMapper.mapElementWithNames.mockResolvedValue({ id: 'elem1', name: 'Key Card' });
-      
+
       // Simulate database error
       mockDB.prepare.mockImplementation(() => {
         throw new Error('Database connection lost');

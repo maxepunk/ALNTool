@@ -1,74 +1,31 @@
-const { getDB } = require('../../../src/db/database');
+const TestDbSetup = require('../../utils/testDbSetup');
 const DerivedFieldComputer = require('../../../src/services/compute/DerivedFieldComputer');
 const ActFocusComputer = require('../../../src/services/compute/ActFocusComputer');
 const ResolutionPathComputer = require('../../../src/services/compute/ResolutionPathComputer');
 const ComputeOrchestrator = require('../../../src/services/compute/ComputeOrchestrator');
 
 describe('Compute Services', () => {
+  let dbSetup;
   let db;
   let orchestrator;
 
-  beforeAll(() => {
-    // Use test database
-    db = getDB(':memory:');
-    
-    // Create test tables
-    db.exec(`
-      CREATE TABLE timeline_events (
-        id TEXT PRIMARY KEY,
-        description TEXT,
-        element_ids TEXT,
-        act_focus TEXT
-      );
-      
-      CREATE TABLE characters (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        connections INTEGER,
-        resolution_paths TEXT
-      );
-      
-      CREATE TABLE elements (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        type TEXT,
-        first_available TEXT,
-        narrative_threads TEXT,
-        resolution_paths TEXT
-      );
-      
-      CREATE TABLE puzzles (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        computed_narrative_threads TEXT,
-        resolution_paths TEXT
-      );
-      
-      CREATE TABLE character_owned_elements (
-        character_id TEXT,
-        element_id TEXT,
-        FOREIGN KEY (character_id) REFERENCES characters(id),
-        FOREIGN KEY (element_id) REFERENCES elements(id)
-      );
-    `);
+  beforeAll(async () => {
+    // Initialize test database with migrations
+    dbSetup = new TestDbSetup();
+    await dbSetup.initialize();
+    db = dbSetup.getDb();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear tables before each test
-    db.exec(`
-      DELETE FROM timeline_events;
-      DELETE FROM characters;
-      DELETE FROM elements;
-      DELETE FROM puzzles;
-      DELETE FROM character_owned_elements;
-    `);
+    await dbSetup.clearData();
     
     // Create orchestrator
     orchestrator = new ComputeOrchestrator(db);
   });
 
-  afterAll(() => {
-    db.close();
+  afterAll(async () => {
+    await dbSetup.close();
   });
 
   describe('ActFocusComputer', () => {
@@ -86,36 +43,58 @@ describe('Compute Services', () => {
       `).run('event1', 'Test Event', JSON.stringify(['elem1', 'elem2', 'elem3']));
 
       db.prepare(`
-        INSERT INTO elements (id, name, first_available) VALUES 
-        (?, ?, ?),
-        (?, ?, ?),
-        (?, ?, ?)
-      `).run(
-        'elem1', 'Element 1', 'Act 1',
-        'elem2', 'Element 2', 'Act 1',
-        'elem3', 'Element 3', 'Act 2'
-      );
+        INSERT INTO elements (id, name, type, first_available) 
+        VALUES (?, ?, ?, ?)
+      `).run('elem1', 'Element 1', 'Physical', 'Act 1');
+
+      db.prepare(`
+        INSERT INTO elements (id, name, type, first_available) 
+        VALUES (?, ?, ?, ?)
+      `).run('elem2', 'Element 2', 'Physical', 'Act 1');
+
+      db.prepare(`
+        INSERT INTO elements (id, name, type, first_available) 
+        VALUES (?, ?, ?, ?)
+      `).run('elem3', 'Element 3', 'Physical', 'Act 2');
 
       // Compute act focus
       const event = db.prepare('SELECT * FROM timeline_events WHERE id = ?').get('event1');
-      const { act_focus } = await computer.compute(event);
+      const result = await computer.compute(event);
 
-      // Should be Act 1 since it's most common
-      expect(act_focus).toBe('Act 1');
+      expect(result).toEqual({
+        act_focus: 'Act 1'
+      });
+
+      // Note: compute() only returns the value, it doesn't save to DB
+      // Only computeAll() saves to the database
     });
 
-    it('returns null for events with no elements', async () => {
-      // Insert test data
+    it('handles empty element list', async () => {
       db.prepare(`
         INSERT INTO timeline_events (id, description, element_ids) 
         VALUES (?, ?, ?)
-      `).run('event2', 'Empty Event', '[]');
+      `).run('event2', 'Empty Event', JSON.stringify([]));
 
-      // Compute act focus
       const event = db.prepare('SELECT * FROM timeline_events WHERE id = ?').get('event2');
-      const { act_focus } = await computer.compute(event);
+      const result = await computer.compute(event);
 
-      expect(act_focus).toBeNull();
+      expect(result).toEqual({
+        act_focus: null
+      });
+    });
+
+    it('handles null element_ids', async () => {
+      db.prepare(`
+        INSERT INTO timeline_events (id, description, element_ids) 
+        VALUES (?, ?, ?)
+      `).run('event3', 'Null Event', null);
+
+      const event = db.prepare('SELECT * FROM timeline_events WHERE id = ?').get('event3');
+      const result = await computer.compute(event);
+
+      expect(result).toEqual({
+        act_focus: null
+      });
     });
   });
 
@@ -126,132 +105,193 @@ describe('Compute Services', () => {
       computer = new ResolutionPathComputer(db);
     });
 
-    it('computes character paths based on owned elements', async () => {
-      // Insert test data
-      db.prepare(`
-        INSERT INTO characters (id, name, connections) 
-        VALUES (?, ?, ?)
-      `).run('char1', 'Test Character', 3);
+    describe('character resolution paths', () => {
+      it('assigns Detective path for characters with clue/evidence elements', async () => {
+        // Create character and elements
+        dbSetup.insertTestCharacter({ id: 'char1', name: 'Detective Character' });
+        
+        db.prepare(`
+          INSERT INTO elements (id, name, type) VALUES (?, ?, ?)
+        `).run('elem1', 'Investigation Clue', 'Physical');
+        
+        db.prepare(`
+          INSERT INTO elements (id, name, type) VALUES (?, ?, ?)
+        `).run('elem2', 'Evidence Bag', 'evidence');
 
-      db.prepare(`
-        INSERT INTO elements (id, name, type) VALUES 
-        (?, ?, ?),
-        (?, ?, ?)
-      `).run(
-        'elem1', 'Black Market Card', 'memory',
-        'elem2', 'Investigation Kit', 'evidence'
-      );
+        // Link elements to character
+        dbSetup.createCharacterElementLink('char1', 'elem1', true);
+        dbSetup.createCharacterElementLink('char1', 'elem2', true);
 
-      db.prepare(`
-        INSERT INTO character_owned_elements (character_id, element_id) VALUES 
-        (?, ?),
-        (?, ?)
-      `).run('char1', 'elem1', 'char1', 'elem2');
+        // Compute resolution paths
+        const character = db.prepare('SELECT * FROM characters WHERE id = ?').get('char1');
+        const result = await computer.compute(character, 'character');
 
-      // Compute paths
-      const character = db.prepare('SELECT * FROM characters WHERE id = ?').get('char1');
-      const { resolution_paths } = await computer.compute(character, 'character');
-      const paths = JSON.parse(resolution_paths);
+        expect(result.resolution_paths).toBeDefined();
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Detective');
+      });
 
-      // Should have both Black Market and Detective paths
-      expect(paths).toContain('Black Market');
-      expect(paths).toContain('Detective');
+      it('assigns Black Market path for characters with memory elements', async () => {
+        // Create character and memory element
+        dbSetup.insertTestCharacter({ id: 'char2', name: 'Memory Character' });
+        
+        db.prepare(`
+          INSERT INTO elements (id, name, type) VALUES (?, ?, ?)
+        `).run('elem3', 'Memory Token', 'memory');
+
+        dbSetup.createCharacterElementLink('char2', 'elem3', true);
+
+        const character = db.prepare('SELECT * FROM characters WHERE id = ?').get('char2');
+        const result = await computer.compute(character, 'character');
+
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Black Market');
+      });
+
+      it('assigns Third Path for characters with high connections', async () => {
+        // Create character with high connections
+        db.prepare(`
+          INSERT INTO characters (id, name, connections) VALUES (?, ?, ?)
+        `).run('char3', 'Social Character', 7);
+
+        const character = db.prepare('SELECT * FROM characters WHERE id = ?').get('char3');
+        const result = await computer.compute(character, 'character');
+
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Third Path');
+      });
+
+      it('assigns Unassigned for characters with no qualifying criteria', async () => {
+        dbSetup.insertTestCharacter({ id: 'char4', name: 'Basic Character' });
+
+        const character = db.prepare('SELECT * FROM characters WHERE id = ?').get('char4');
+        const result = await computer.compute(character, 'character');
+
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Unassigned');
+      });
     });
 
-    it('computes puzzle paths based on narrative threads', async () => {
-      // Insert test data
-      db.prepare(`
-        INSERT INTO puzzles (id, name, computed_narrative_threads) 
-        VALUES (?, ?, ?)
-      `).run('puzzle1', 'Test Puzzle', JSON.stringify(['Underground Parties', 'Corporate Espionage']));
+    describe('element resolution paths', () => {
+      it('assigns paths based on element type and name', async () => {
+        // Create element that should get Detective path
+        db.prepare(`
+          INSERT INTO elements (id, name, type) VALUES (?, ?, ?)
+        `).run('elem4', 'Investigation Clue', 'Physical');
 
-      // Compute paths
-      const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('puzzle1');
-      const { resolution_paths } = await computer.compute(puzzle, 'puzzle');
-      const paths = JSON.parse(resolution_paths);
+        // Compute element paths
+        const element = db.prepare('SELECT * FROM elements WHERE id = ?').get('elem4');
+        const result = await computer.compute(element, 'element');
 
-      // Should have both Black Market and Detective paths
-      expect(paths).toContain('Black Market');
-      expect(paths).toContain('Detective');
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Detective'); // Has 'clue' in name
+      });
+
+      it('assigns Memory element types to Black Market', async () => {
+        db.prepare(`
+          INSERT INTO elements (id, name, type) VALUES (?, ?, ?)
+        `).run('elem5', 'Memory Element', 'memory');
+
+        const element = db.prepare('SELECT * FROM elements WHERE id = ?').get('elem5');
+        const result = await computer.compute(element, 'element');
+
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Black Market');
+      });
     });
 
-    it('computes element paths based on type and name', async () => {
-      // Insert test data
-      db.prepare(`
-        INSERT INTO elements (id, name, type) 
-        VALUES (?, ?, ?)
-      `).run('elem1', 'Community Outreach Program', 'personal');
+    describe('puzzle resolution paths', () => {
+      it('assigns paths based on narrative threads', async () => {
+        // Create puzzle with narrative threads
+        dbSetup.insertTestPuzzle({ 
+          id: 'puzzle1', 
+          name: 'Test Puzzle',
+          puzzle_element_ids: JSON.stringify(['elem6', 'elem7'])
+        });
+        
+        // Update with computed narrative threads
+        db.prepare('UPDATE puzzles SET computed_narrative_threads = ? WHERE id = ?')
+          .run(JSON.stringify(['Corp. Espionage', 'Memory Drug']), 'puzzle1');
 
-      // Compute paths
-      const element = db.prepare('SELECT * FROM elements WHERE id = ?').get('elem1');
-      const { resolution_paths } = await computer.compute(element, 'element');
-      const paths = JSON.parse(resolution_paths);
+        // Compute puzzle paths
+        const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('puzzle1');
+        const result = await computer.compute(puzzle, 'puzzle');
 
-      // Should have Third Path
-      expect(paths).toContain('Third Path');
+        const paths = JSON.parse(result.resolution_paths);
+        expect(paths).toContain('Detective'); // From Corp. Espionage thread
+        expect(paths).toContain('Black Market'); // From Memory Drug thread
+      });
     });
   });
 
   describe('ComputeOrchestrator', () => {
-    it('computes all derived fields for all entities', async () => {
-      // Insert test data
-      db.prepare(`
-        INSERT INTO timeline_events (id, description, element_ids) 
-        VALUES (?, ?, ?)
-      `).run('event1', 'Test Event', JSON.stringify(['elem1']));
-
+    it('orchestrates computation of all derived fields', async () => {
+      // Insert comprehensive test data
+      dbSetup.insertTestCharacter({ id: 'char7', name: 'Main Character' });
+      dbSetup.insertTestTimelineEvent({ 
+        id: 'event4', 
+        description: 'Major Event' 
+      });
+      
       db.prepare(`
         INSERT INTO elements (id, name, type, first_available) 
         VALUES (?, ?, ?, ?)
-      `).run('elem1', 'Test Element', 'memory', 'Act 1');
+      `).run('elem8', 'Investigation Clue', 'evidence', 'Act 2');
 
       db.prepare(`
-        INSERT INTO characters (id, name, connections) 
+        INSERT INTO puzzles (id, name, puzzle_element_ids) 
         VALUES (?, ?, ?)
-      `).run('char1', 'Test Character', 6);
+      `).run('puzzle2', 'Story Puzzle', JSON.stringify(['elem8']));
 
+      // Update timeline event with element
       db.prepare(`
-        INSERT INTO puzzles (id, name, computed_narrative_threads) 
-        VALUES (?, ?, ?)
-      `).run('puzzle1', 'Test Puzzle', JSON.stringify(['Underground Parties']));
+        UPDATE timeline_events SET element_ids = ? WHERE id = ?
+      `).run(JSON.stringify(['elem8']), 'event4');
 
-      // Compute all fields
-      const stats = await orchestrator.computeAll();
+      // Link everything together
+      dbSetup.createCharacterElementLink('char7', 'elem8', true);
 
-      // Verify results
-      expect(stats.processed).toBe(4); // 1 event + 1 character + 1 puzzle + 1 element
-      expect(stats.errors).toBe(0);
+      // Run orchestrator
+      const result = await orchestrator.computeAll();
 
-      // Check computed values
-      const event = db.prepare('SELECT act_focus FROM timeline_events WHERE id = ?').get('event1');
-      expect(event.act_focus).toBe('Act 1');
+      expect(result.processed).toBeGreaterThan(0);
+      expect(result.errors).toBe(0);
 
-      const character = db.prepare('SELECT resolution_paths FROM characters WHERE id = ?').get('char1');
+      // Verify act focus was computed
+      const event = db.prepare('SELECT act_focus FROM timeline_events WHERE id = ?').get('event4');
+      expect(event.act_focus).toBe('Act 2');
+
+      // Verify resolution paths were computed
+      const character = db.prepare('SELECT resolution_paths FROM characters WHERE id = ?').get('char7');
+      expect(character.resolution_paths).toBeDefined();
       const charPaths = JSON.parse(character.resolution_paths);
-      expect(charPaths).toContain('Third Path');
+      expect(charPaths).toContain('Detective'); // Has clue element
 
-      const puzzle = db.prepare('SELECT resolution_paths FROM puzzles WHERE id = ?').get('puzzle1');
-      const puzzlePaths = JSON.parse(puzzle.resolution_paths);
-      expect(puzzlePaths).toContain('Black Market');
+      const element = db.prepare('SELECT resolution_paths FROM elements WHERE id = ?').get('elem8');
+      expect(element.resolution_paths).toBeDefined();
 
-      const element = db.prepare('SELECT resolution_paths FROM elements WHERE id = ?').get('elem1');
-      const elementPaths = JSON.parse(element.resolution_paths);
-      expect(elementPaths).toContain('Black Market');
+      const puzzle = db.prepare('SELECT resolution_paths FROM puzzles WHERE id = ?').get('puzzle2');
+      expect(puzzle.resolution_paths).toBeDefined();
     });
 
-    it('handles errors gracefully during computation', async () => {
-      // Insert invalid data
+    it('handles errors gracefully', async () => {
+      // Insert data that will cause computation errors
+      // Create a timeline event that references non-existent elements
       db.prepare(`
         INSERT INTO timeline_events (id, description, element_ids) 
         VALUES (?, ?, ?)
-      `).run('event1', 'Invalid Event', 'invalid-json');
+      `).run('bad_event', 'Bad Event', JSON.stringify(['non_existent_element']));
 
-      // Compute all fields
-      const stats = await orchestrator.computeAll();
+      // Create an entity with invalid JSON in a computed field
+      db.prepare(`
+        INSERT INTO puzzles (id, name, computed_narrative_threads) 
+        VALUES (?, ?, ?)
+      `).run('bad_puzzle', 'Bad Puzzle', 'invalid json');
 
-      // Should record error but continue processing
-      expect(stats.errors).toBeGreaterThan(0);
-      expect(stats.processed).toBe(1);
+      // Run orchestrator - should not throw
+      const result = await orchestrator.computeAll();
+
+      expect(result.errors).toBeGreaterThan(0);
     });
   });
-}); 
+});

@@ -1,0 +1,43 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": false,
+    "userDataDir": "./playwright-user-data",
+    "launchOptions": {
+      "headless": false,
+      "slowMo": 100
+    },
+    "contextOptions": {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "recordVideo": {
+        "dir": "./test-results/videos"
+      }
+    }
+  },
+  "server": {
+    "port": 3333,
+    "host": "localhost"
+  },
+  "capabilities": [
+    "core",
+    "tabs", 
+    "pdf",
+    "history",
+    "wait",
+    "files",
+    "install",
+    "testing"
+  ],
+  "vision": true,
+  "outputDir": "./test-results",
+  "network": {
+    "allowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
+    "blockedOrigins": []
+  }
+}

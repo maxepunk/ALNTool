@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Grid,
@@ -108,24 +108,20 @@ function CharacterDetail() {
   const [showMapper, setShowMapper] = useState(true);
   
   const queryKey = ['character', id];
-  const { data: character, isLoading, isFetching, error } = useQuery(
+  const { data: character, isLoading, isFetching, error } = useQuery({
     queryKey,
-    () => api.getCharacterById(id),
-    { 
-      enabled: !!id,
-      keepPreviousData: true,
-      refetchOnWindowFocus: false,
-    }
-  );
+    queryFn: () => api.getCharacterById(id),
+    enabled: !!id,
+    keepPreviousData: true,
+    refetchOnWindowFocus: false,
+  });
   
-  const { data: characterGraph, isLoading: isGraphLoading } = useQuery(
-    ['characterGraph', id],
-    () => api.getCharacterGraph(id, 2),
-    { 
-      enabled: !!id,
-      refetchOnWindowFocus: false,
-    }
-  );
+  const { data: characterGraph, isLoading: isGraphLoading } = useQuery({
+    queryKey: ['characterGraph', id],
+    queryFn: () => api.getCharacterGraph(id, 2),
+    enabled: !!id,
+    refetchOnWindowFocus: false,
+  });
   
   const handleTabChange = (event, newValue) => setActiveTab(newValue);
   const handleBack = () => navigate('/characters');

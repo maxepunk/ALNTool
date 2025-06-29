@@ -1,6 +1,6 @@
 import React from 'react';
 import { FormControl, InputLabel, Select, MenuItem, Box, Typography, CircularProgress } from '@mui/material';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import useJourneyStore from '../../stores/journeyStore';
 import { api } from '../../services/api';
 
@@ -8,10 +8,10 @@ const CharacterSelector = () => {
   const activeCharacterId = useJourneyStore(state => state.activeCharacterId);
   const setActiveCharacterId = useJourneyStore(state => state.setActiveCharacterId);
   
-  const { data: characters, isLoading, error } = useQuery(
-    'characters',
-    () => api.getCharacters()
-  );
+  const { data: characters, isLoading, error } = useQuery({
+    queryKey: ['characters'],
+    queryFn: () => api.getCharacters()
+  });
 
   const handleCharacterChange = (event) => {
     const characterId = event.target.value;

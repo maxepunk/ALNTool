@@ -1,7 +1,10 @@
 const notionService = require('../services/notionService');
+const logger = require('../utils/logger');
 const graphService = require('../services/graphService'); // Import the new service
 const propertyMapper = require('../utils/notionPropertyMapper');
 const { notionCache, makeCacheKey } = require('../services/notionService');
+const { getDB } = require('../db/database');
+const GameConstants = require('../config/GameConstants');
 
 /**
  * Creates a short snippet from text.
@@ -9,13 +12,17 @@ const { notionCache, makeCacheKey } = require('../services/notionService');
  * @param {number} maxLength The maximum length of the snippet.
  * @returns {string} The generated snippet.
  */
-function createSnippet(text, maxLength = 150) {
-  if (!text) return '';
+function createSnippet(text, maxLength = GameConstants.SYSTEM.UI.DEFAULT_SNIPPET_LENGTH) {
+  if (!text) {
+    return '';
+  }
   text = String(text);
-  if (text.length <= maxLength) return text;
+  if (text.length <= maxLength) {
+    return text;
+  }
   const cutPos = text.lastIndexOf(' ', maxLength - 3);
   if (cutPos > maxLength / 2 && cutPos < text.length -1) {
-      return text.substring(0, cutPos) + '...';
+    return text.substring(0, cutPos) + '...';
   }
   return text.substring(0, maxLength - 3) + '...';
 }
@@ -33,17 +40,19 @@ function buildNotionFilter(query, propertyMap) {
       if (key === 'narrativeThreadContains') { // Special handling for multi-select contains
         filterConditions.push({
           property: propertyMap[key],
-          multi_select: { contains: value },
+          multi_select: { contains: value }
         });
       } else { // Default to select equals
         filterConditions.push({
           property: propertyMap[key],
-          select: { equals: value },
+          select: { equals: value }
         });
       }
     }
   }
-  if (filterConditions.length === 0) return undefined;
+  if (filterConditions.length === 0) {
+    return undefined;
+  }
   return filterConditions.length === 1 ? filterConditions[0] : { and: filterConditions };
 }
 
@@ -55,16 +64,108 @@ const getCharacters = catchAsync(async (req, res) => {
   res.json(characters);
 });
 
+const getCharactersWithSociogramData = catchAsync(async (req, res) => {
+  const db = getDB();
+
+  // Get all characters with their computed fields and relationships
+  const characters = db.prepare(`
+    SELECT 
+      c.*,
+      (
+        SELECT COUNT(DISTINCT CASE 
+          WHEN cl.character_a_id = c.id THEN cl.character_b_id 
+          WHEN cl.character_b_id = c.id THEN cl.character_a_id 
+        END)
+        FROM character_links cl
+        WHERE cl.character_a_id = c.id OR cl.character_b_id = c.id
+      ) as relationship_count,
+      COUNT(DISTINCT coe.element_id) as owned_elements_count,
+      COUNT(DISTINCT cae.element_id) as associated_elements_count,
+      COUNT(DISTINCT cte.timeline_event_id) as timeline_events_count
+    FROM characters c
+    LEFT JOIN character_owned_elements coe ON c.id = coe.character_id
+    LEFT JOIN character_associated_elements cae ON c.id = cae.character_id
+    LEFT JOIN character_timeline_events cte ON c.id = cte.character_id
+    GROUP BY c.id
+    ORDER BY c.name
+  `).all();
+
+  // Get all character links for building edges
+  const characterLinks = db.prepare(`
+    SELECT DISTINCT
+      CASE 
+        WHEN cl.character_a_id < cl.character_b_id THEN cl.character_a_id 
+        ELSE cl.character_b_id 
+      END as char1_id,
+      CASE 
+        WHEN cl.character_a_id < cl.character_b_id THEN cl.character_b_id 
+        ELSE cl.character_a_id 
+      END as char2_id,
+      COUNT(*) as link_count
+    FROM character_links cl
+    GROUP BY char1_id, char2_id
+  `).all();
+
+  // Create a map of character data for quick lookup
+  const characterMap = new Map(characters.map(c => [c.id, c]));
+
+  // Build linkedCharacters arrays for each character
+  const linksByCharacter = new Map();
+  
+  characterLinks.forEach(link => {
+    // Add link for char1
+    if (!linksByCharacter.has(link.char1_id)) {
+      linksByCharacter.set(link.char1_id, []);
+    }
+    const char2 = characterMap.get(link.char2_id);
+    if (char2) {
+      linksByCharacter.get(link.char1_id).push({
+        id: char2.id,
+        name: char2.name,
+        linkCount: link.link_count
+      });
+    }
+
+    // Add link for char2
+    if (!linksByCharacter.has(link.char2_id)) {
+      linksByCharacter.set(link.char2_id, []);
+    }
+    const char1 = characterMap.get(link.char1_id);
+    if (char1) {
+      linksByCharacter.get(link.char2_id).push({
+        id: char1.id,
+        name: char1.name,
+        linkCount: link.link_count
+      });
+    }
+  });
+
+  // Parse JSON fields and add computed memory value data
+  const enrichedCharacters = characters.map(char => ({
+    ...char,
+    resolution_paths: char.resolution_paths ? JSON.parse(char.resolution_paths) : [],
+    resolutionPaths: char.resolution_paths ? JSON.parse(char.resolution_paths) : [], // Frontend expects this name
+    memoryValue: char.total_memory_value || 0,
+    relationshipCount: char.relationship_count,
+    elementCount: char.owned_elements_count + char.associated_elements_count,
+    timelineEventCount: char.timeline_events_count,
+    linkedCharacters: linksByCharacter.get(char.id) || [] // Add the linked characters array
+  }));
+
+  setCacheHeaders(res);
+  res.json(enrichedCharacters);
+});
+
 const getCharacterById = catchAsync(async (req, res) => {
   const { id } = req.params;
   const cacheKey = makeCacheKey('mapped-character-v1.1-sociogram', { id }); // Updated cache key
   const cachedMappedCharacter = notionCache.get(cacheKey);
   if (cachedMappedCharacter) {
-    console.log(`[CACHE HIT] ${cacheKey} (mapped character)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (mapped character)`);
     setCacheHeaders(res);
     return res.json(cachedMappedCharacter);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (mapped character)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (mapped character)`);
   const characterPage = await notionService.getPage(id);
   if (!characterPage) {
     return res.status(404).json({ error: 'Character not found' });
@@ -72,7 +173,7 @@ const getCharacterById = catchAsync(async (req, res) => {
   const mappedCharacter = await propertyMapper.mapCharacterWithNames(characterPage, notionService);
   if (mappedCharacter && !mappedCharacter.error) {
     notionCache.set(cacheKey, mappedCharacter);
-    console.log(`[CACHE SET] ${cacheKey} (mapped character)`);
+    logger.debug(`[CACHE SET] ${cacheKey} (mapped character)`);
   }
   setCacheHeaders(res);
   res.json(mappedCharacter);
@@ -81,7 +182,7 @@ const getCharacterById = catchAsync(async (req, res) => {
 const getCharacterGraph = catchAsync(async (req, res) => {
   const { id } = req.params;
   const depth = parseInt(req.query.depth || '1', 10);
-  
+
   // The cache key should probably be updated or reconsidered, but for now, we'll bypass it
   // to ensure we're hitting our new service. A proper caching layer can be added to the graphService later.
 
@@ -100,7 +201,7 @@ const getTimelineEvents = catchAsync(async (req, res) => {
   };
   const filter = buildNotionFilter(req.query, propertyMap);
   // Log the constructed filter for debugging
-  // console.log('[Timeline Controller] Constructed Filter for Notion:', JSON.stringify(filter, null, 2));
+  // logger.debug('[Timeline Controller] Constructed Filter for Notion:', JSON.stringify(filter, null, 2));
   const notionEvents = await notionService.getTimelineEvents(filter);
   const events = await Promise.all(
     notionEvents.map(event => propertyMapper.mapTimelineEventWithNames(event, notionService))
@@ -121,11 +222,11 @@ const getTimelineEventById = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('mapped-timelineevent', { id });
   const cachedMappedEvent = notionCache.get(cacheKey);
   if (cachedMappedEvent) {
-    console.log(`[CACHE HIT] ${cacheKey} (mapped event)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (mapped event)`);
     setCacheHeaders(res);
     return res.json(cachedMappedEvent);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (mapped event)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (mapped event)`);
   const eventPage = await notionService.getPage(id);
   if (!eventPage) {
     return res.status(404).json({ error: 'Timeline event not found' });
@@ -133,7 +234,7 @@ const getTimelineEventById = catchAsync(async (req, res) => {
   const mappedEvent = await propertyMapper.mapTimelineEventWithNames(eventPage, notionService);
   if (mappedEvent && !mappedEvent.error) {
     notionCache.set(cacheKey, mappedEvent);
-    console.log(`[CACHE SET] ${cacheKey} (mapped event)`);
+    logger.debug(`[CACHE SET] ${cacheKey} (mapped event)`);
   }
   setCacheHeaders(res);
   res.json(mappedEvent);
@@ -155,11 +256,11 @@ const getPuzzleById = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('mapped-puzzle-v1.1-narrative', { id }); // Updated cache key
   const cachedMappedPuzzle = notionCache.get(cacheKey);
   if (cachedMappedPuzzle) {
-    console.log(`[CACHE HIT] ${cacheKey} (mapped puzzle)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (mapped puzzle)`);
     setCacheHeaders(res);
     return res.json(cachedMappedPuzzle);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (mapped puzzle)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (mapped puzzle)`);
   const puzzlePage = await notionService.getPage(id);
   if (!puzzlePage) {
     return res.status(404).json({ error: 'Puzzle not found' });
@@ -167,26 +268,78 @@ const getPuzzleById = catchAsync(async (req, res) => {
   const mappedPuzzle = await propertyMapper.mapPuzzleWithNames(puzzlePage, notionService);
   if (mappedPuzzle && !mappedPuzzle.error) {
     notionCache.set(cacheKey, mappedPuzzle);
-    console.log(`[CACHE SET] ${cacheKey} (mapped puzzle)`);
+    logger.debug(`[CACHE SET] ${cacheKey} (mapped puzzle)`);
   }
   setCacheHeaders(res);
   res.json(mappedPuzzle);
 });
 
-// Define Memory Basic Types at a scope accessible by getElements
-const MEMORY_BASIC_TYPES = [
-  "Memory Token Video",
-  "Memory Token Audio",
-  "Memory Token Physical",
-  "Corrupted Memory RFID",
-  "Memory Fragment" // Add any other relevant types
-];
+// Use GameConstants for all business values
+const MEMORY_BASIC_TYPES = GameConstants.MEMORY_VALUE.MEMORY_ELEMENT_TYPES;
+
+// Memory value mappings (from GameConstants)
+const VALUE_RATING_MAP = GameConstants.MEMORY_VALUE.BASE_VALUES;
+
+// Use correct multipliers from GameConstants
+const TYPE_MULTIPLIER_MAP = GameConstants.MEMORY_VALUE.TYPE_MULTIPLIERS;
 
 const getElements = catchAsync(async (req, res) => {
   const { filterGroup, ...otherQueryParams } = req.query;
-  let combinedFilter;
 
-  // Base filters from propertyMap for other query params
+  // For memory types, use database with computed fields
+  if (filterGroup === 'memoryTypes') {
+    const db = getDB();
+    const elements = db.prepare(`
+      SELECT 
+        e.*,
+        c.name as owner_name,
+        ce.name as container_name
+      FROM elements e
+      LEFT JOIN characters c ON e.owner_id = c.id
+      LEFT JOIN elements ce ON e.container_id = ce.id
+      WHERE e.type IN ('Memory Token Video', 'Memory Token Audio', 'Memory Token Physical', 'Corrupted Memory RFID', 'Memory Fragment')
+      ORDER BY e.name
+    `).all();
+
+    // Transform to match frontend expectations
+    const transformedElements = elements.map(el => ({
+      ...el,
+      // Memory-specific fields with correct mappings
+      sf_value_rating: el.value_rating || 0,  // Use the actual extracted value rating
+      sf_memory_type: el.memory_type || null,  // Use null instead of 'Unknown' to match frontend
+      parsed_sf_rfid: el.rfid_tag || null,
+      sf_memory_group: el.memory_group || null,
+
+      // Computed fields - keep these for backward compatibility
+      baseValueAmount: el.value_rating ? VALUE_RATING_MAP[el.value_rating] : 0,
+      typeMultiplierValue: el.memory_type ? TYPE_MULTIPLIER_MAP[el.memory_type] : 1,
+      finalCalculatedValue: el.calculated_memory_value || 0,
+
+      // Resolution paths
+      resolutionPaths: el.resolution_paths ? JSON.parse(el.resolution_paths) : [],
+
+      // Owner info
+      ownerName: el.owner_name,
+      containerName: el.container_name,
+
+      // Legacy field for backward compatibility
+      memoryValue: el.calculated_memory_value || 0,
+
+      // Properties field to match Notion structure
+      properties: {
+        sf_value_rating: el.value_rating || 0,
+        sf_memory_type: el.memory_type || null,
+        parsed_sf_rfid: el.rfid_tag || null,
+        status: el.status || 'Unknown'
+      }
+    }));
+
+    setCacheHeaders(res);
+    return res.json(transformedElements);
+  }
+
+  // Default behavior for non-memory queries
+  let combinedFilter;
   const propertyMap = {
     type: 'Basic Type',
     status: 'Status',
@@ -194,30 +347,7 @@ const getElements = catchAsync(async (req, res) => {
     narrativeThreadContains: 'Narrative Threads'
   };
   const standardFilters = buildNotionFilter(otherQueryParams, propertyMap);
-
-  if (filterGroup === 'memoryTypes') {
-    const memoryTypeOrConditions = MEMORY_BASIC_TYPES.map(type => ({
-      property: 'Basic Type',
-      select: { equals: type },
-    }));
-
-    const memoryFilter = { or: memoryTypeOrConditions };
-
-    if (standardFilters) {
-      // If standardFilters is just one condition (not an 'and' object yet)
-      if (!standardFilters.and) {
-         combinedFilter = { and: [standardFilters, memoryFilter] };
-      } else { // If standardFilters is already an 'and' object
-         combinedFilter = { and: [...standardFilters.and, memoryFilter] };
-      }
-    } else {
-      combinedFilter = memoryFilter; // No other filters, just memory types
-    }
-    // console.log('[Elements Controller] Constructed Filter for Memory Types:', JSON.stringify(combinedFilter, null, 2));
-  } else {
-    combinedFilter = standardFilters;
-    // console.log('[Elements Controller] Constructed Standard Filter:', JSON.stringify(combinedFilter, null, 2));
-  }
+  combinedFilter = standardFilters;
 
   const notionElements = await notionService.getElements(combinedFilter);
   const elements = await Promise.all(
@@ -232,11 +362,11 @@ const getElementById = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('mapped-element', { id });
   const cachedMappedElement = notionCache.get(cacheKey);
   if (cachedMappedElement) {
-    console.log(`[CACHE HIT] ${cacheKey} (mapped element)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (mapped element)`);
     setCacheHeaders(res);
     return res.json(cachedMappedElement);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (mapped element)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (mapped element)`);
   const elementPage = await notionService.getPage(id);
   if (!elementPage) {
     return res.status(404).json({ error: 'Element not found' });
@@ -244,7 +374,7 @@ const getElementById = catchAsync(async (req, res) => {
   const mappedElement = await propertyMapper.mapElementWithNames(elementPage, notionService);
   if (mappedElement && !mappedElement.error) {
     notionCache.set(cacheKey, mappedElement);
-    console.log(`[CACHE SET] ${cacheKey} (mapped element)`);
+    logger.debug(`[CACHE SET] ${cacheKey} (mapped element)`);
   }
   setCacheHeaders(res);
   res.json(mappedElement);
@@ -256,49 +386,58 @@ const getDatabasesMetadata = catchAsync(async (req, res) => {
       characters: notionService.DB_IDS.CHARACTERS,
       timeline: notionService.DB_IDS.TIMELINE,
       puzzles: notionService.DB_IDS.PUZZLES,
-      elements: notionService.DB_IDS.ELEMENTS,
+      elements: notionService.DB_IDS.ELEMENTS
     },
     elementTypes: [
-      "Prop", 
-      "Set Dressing", 
-      "Memory Token Video", 
-      "Character Sheet"
-    ],
+      'Prop',
+      'Set Dressing',
+      'Memory Token Video',
+      'Character Sheet'
+    ]
   });
+});
+
+const getGameConstants = catchAsync(async (req, res) => {
+  const GameConstants = require('../config/GameConstants');
+
+  // Return the entire GameConstants object so frontend has access to all business rules
+  res.json(GameConstants);
 });
 
 const globalSearch = catchAsync(async (req, res) => {
   const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'Missing search query' });
+  if (!q) {
+    return res.status(400).json({ error: 'Missing search query' });
+  }
 
   const dbSearchConfigs = {
     characters: {
       serviceFn: notionService.getCharacters,
       titleProperty: 'Name',
-      mapperFn: propertyMapper.mapCharacterWithNames,
+      mapperFn: propertyMapper.mapCharacterWithNames
     },
     timeline: {
       serviceFn: notionService.getTimelineEvents,
       titleProperty: 'Description',
-      mapperFn: propertyMapper.mapTimelineEventWithNames, 
+      mapperFn: propertyMapper.mapTimelineEventWithNames
     },
     puzzles: {
       serviceFn: notionService.getPuzzles,
       titleProperty: 'Puzzle',
-      mapperFn: propertyMapper.mapPuzzleWithNames,
+      mapperFn: propertyMapper.mapPuzzleWithNames
     },
     elements: {
       serviceFn: notionService.getElements,
       titleProperty: 'Name',
-      mapperFn: propertyMapper.mapElementWithNames,
-    },
+      mapperFn: propertyMapper.mapElementWithNames
+    }
   };
 
   const results = {};
   const searchPromises = Object.entries(dbSearchConfigs).map(async ([dbKey, config]) => {
     const filter = {
       property: config.titleProperty,
-      title: { contains: q }, 
+      title: { contains: q }
     };
     try {
       const items = await config.serviceFn(filter);
@@ -306,7 +445,7 @@ const globalSearch = catchAsync(async (req, res) => {
         items.map(item => config.mapperFn(item, notionService))
       );
     } catch (e) {
-      console.error(`Error searching in ${dbKey}:`, e);
+      logger.error(`Error searching in ${dbKey}:`, e);
       results[dbKey] = [];
     }
   });
@@ -316,12 +455,12 @@ const globalSearch = catchAsync(async (req, res) => {
 });
 
 const clearCache = catchAsync(async (req, res) => {
-  notionService.clearCache(); 
-  console.log('Server cache cleared.');
+  notionService.clearCache();
+  logger.debug('Server cache cleared.');
   res.json({ message: 'Cache cleared' });
 });
 
-function setCacheHeaders(res, seconds = 300) { 
+function setCacheHeaders(res, seconds = 300) {
   res.set('Cache-Control', `public, max-age=${seconds}`);
 }
 
@@ -355,7 +494,7 @@ module.exports = {
   getCharacterGraph,
   getElementGraph,
   getPuzzleGraph,
-  getTimelineGraph,
+  getTimelineGraph
 };
 
 // --- New Endpoints for Dashboard "Needs Attention" ---
@@ -364,11 +503,11 @@ const getPuzzlesWithWarnings = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('puzzles-with-warnings-v2'); // Cache key updated
   const cachedData = notionCache.get(cacheKey);
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey}`);
+  logger.debug(`[CACHE MISS] ${cacheKey}`);
 
   const notionPuzzles = await notionService.getPuzzles(); // Get all puzzles
   const mappedPuzzles = await Promise.all(
@@ -377,7 +516,9 @@ const getPuzzlesWithWarnings = catchAsync(async (req, res) => {
 
   const puzzlesWithWarnings = [];
   for (const puzzle of mappedPuzzles) {
-    if (puzzle.error) continue; // Skip if there was an error mapping this puzzle
+    if (puzzle.error) {
+      continue;
+    } // Skip if there was an error mapping this puzzle
 
     const warnings = [];
     if (!puzzle.rewards || puzzle.rewards.length === 0) {
@@ -399,13 +540,13 @@ const getPuzzlesWithWarnings = catchAsync(async (req, res) => {
         warnings,
         // Optionally include a few key properties for quick display, like owner or timing
         owner: puzzle.owner,
-        timing: puzzle.timing || puzzle.actFocus,
+        timing: puzzle.timing || puzzle.actFocus
       });
     }
   }
 
   notionCache.set(cacheKey, puzzlesWithWarnings);
-  console.log(`[CACHE SET] ${cacheKey} - Found ${puzzlesWithWarnings.length} puzzles with warnings.`);
+  logger.debug(`[CACHE SET] ${cacheKey} - Found ${puzzlesWithWarnings.length} puzzles with warnings.`);
   setCacheHeaders(res);
   res.json(puzzlesWithWarnings);
 });
@@ -414,11 +555,11 @@ const getElementsWithWarnings = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('elements-with-warnings-v2'); // Cache key updated
   const cachedData = notionCache.get(cacheKey);
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey}`);
+  logger.debug(`[CACHE MISS] ${cacheKey}`);
 
   const notionElements = await notionService.getElements(); // Get all elements
   const mappedElements = await Promise.all(
@@ -429,7 +570,9 @@ const getElementsWithWarnings = catchAsync(async (req, res) => {
 
   const elementsWithWarnings = [];
   for (const element of mappedElements) {
-    if (element.error) continue;
+    if (element.error) {
+      continue;
+    }
 
     if (EXCLUDED_BASIC_TYPES.includes(element.basicType)) {
       continue;
@@ -462,13 +605,13 @@ const getElementsWithWarnings = catchAsync(async (req, res) => {
         basicType: element.basicType,
         status: element.status,
         owner: element.owner,
-        warnings,
+        warnings
       });
     }
   }
 
   notionCache.set(cacheKey, elementsWithWarnings);
-  console.log(`[CACHE SET] ${cacheKey} - Found ${elementsWithWarnings.length} elements with warnings.`);
+  logger.debug(`[CACHE SET] ${cacheKey} - Found ${elementsWithWarnings.length} elements with warnings.`);
   setCacheHeaders(res);
   res.json(elementsWithWarnings);
 });
@@ -479,11 +622,11 @@ const getPuzzleFlow = catchAsync(async (req, res) => {
   const cachedData = notionCache.get(cacheKey);
 
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (Puzzle Flow)`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (Puzzle Flow)`);
 
   const puzzlePage = await notionService.getPage(puzzleId);
   if (!puzzlePage) {
@@ -503,24 +646,25 @@ const getPuzzleFlow = catchAsync(async (req, res) => {
   // Add IDs from lockedItem if it's considered an output or distinct part of the flow
   (centralPuzzle.lockedItem || []).forEach(el => relatedEntityIds.add(el.id));
 
-
   const relatedPages = await notionService.getPagesByIds(Array.from(relatedEntityIds));
   const mappedRelatedEntities = new Map();
 
   for (const page of relatedPages) {
-    if (!page || !page.id) continue;
+    if (!page || !page.id) {
+      continue;
+    }
     // Determine type based on which list it came from or by querying DB type if necessary (more complex)
     // For now, assume we can infer or just map generally. The mapXWithNames includes type.
     let mappedEntity;
     // A more robust way would be to query the DB type or check properties if type isn't on the stub
     // For now, we rely on the stubs from centralPuzzle having enough info or mapElement/mapPuzzle to fill it.
     if (page.properties.Puzzle) { // Heuristic: if it has a 'Puzzle' title property, it's a puzzle
-        mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionService);
+      mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionService);
     } else if (page.properties.Name) { // Heuristic: if it has 'Name', it's likely an Element
-        mappedEntity = await propertyMapper.mapElementWithNames(page, notionService);
+      mappedEntity = await propertyMapper.mapElementWithNames(page, notionService);
     } else { // Fallback or if more types are possible
-        console.warn(`[getPuzzleFlow] Could not determine type for related page ${page.id}`);
-        continue;
+      logger.warn(`[getPuzzleFlow] Could not determine type for related page ${page.id}`);
+      continue;
     }
 
     if (mappedEntity && !mappedEntity.error) {
@@ -534,7 +678,7 @@ const getPuzzleFlow = catchAsync(async (req, res) => {
       id: elStub.id,
       name: fullEl?.name || elStub.name || 'Unknown Element', // Use full name if available
       type: 'Element', // Explicitly set type
-      basicType: fullEl?.basicType || 'Unknown',
+      basicType: fullEl?.basicType || 'Unknown'
       // Future: Add sourcePuzzleName if element is a reward from another puzzle
     };
   };
@@ -544,43 +688,42 @@ const getPuzzleFlow = catchAsync(async (req, res) => {
     return {
       id: pzStub.id,
       name: fullPz?.puzzle || pzStub.name || 'Unknown Puzzle', // Use full name if available
-      type: 'Puzzle',
+      type: 'Puzzle'
     };
   };
 
   const inputElements = (centralPuzzle.puzzleElements || []).map(formatElement);
   const outputElements = (centralPuzzle.rewards || []).map(formatElement);
-   // lockedItem can also be considered an output/unlock if it's an Element
+  // lockedItem can also be considered an output/unlock if it's an Element
   (centralPuzzle.lockedItem || []).forEach(itemStub => {
     const fullItem = mappedRelatedEntities.get(itemStub.id);
     if (fullItem && fullItem.basicType) { // Check if it's an element
-        const formattedItem = formatElement(itemStub);
-        // Avoid duplicates if already in rewards
-        if(!outputElements.find(o => o.id === formattedItem.id)) {
-            outputElements.push(formattedItem);
-        }
+      const formattedItem = formatElement(itemStub);
+      // Avoid duplicates if already in rewards
+      if(!outputElements.find(o => o.id === formattedItem.id)) {
+        outputElements.push(formattedItem);
+      }
     }
   });
-
 
   const unlocksPuzzles = (centralPuzzle.subPuzzles || []).map(formatPuzzle);
   const prerequisitePuzzles = (centralPuzzle.parentItem || []).map(formatPuzzle);
 
   const flowData = {
     centralPuzzle: {
-        id: centralPuzzle.id,
-        name: centralPuzzle.puzzle,
-        type: 'Puzzle',
-        properties: centralPuzzle // Send all mapped properties for the central puzzle
+      id: centralPuzzle.id,
+      name: centralPuzzle.puzzle,
+      type: 'Puzzle',
+      properties: centralPuzzle // Send all mapped properties for the central puzzle
     },
     inputElements,
     outputElements,
     unlocksPuzzles,
-    prerequisitePuzzles,
+    prerequisitePuzzles
   };
 
   notionCache.set(cacheKey, flowData);
-  console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow for ${centralPuzzle.puzzle})`);
+  logger.debug(`[CACHE SET] ${cacheKey} (Puzzle Flow for ${centralPuzzle.puzzle})`);
   setCacheHeaders(res);
   res.json(flowData);
 });
@@ -589,11 +732,11 @@ const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('unique-narrative-threads-v1');
   const cachedData = notionCache.get(cacheKey);
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey}`);
+  logger.debug(`[CACHE MISS] ${cacheKey}`);
 
   const allThreads = new Set();
 
@@ -607,7 +750,7 @@ const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
     ...characterPages,
     ...elementPages,
     ...puzzlePages,
-    ...timelineEventPages,
+    ...timelineEventPages
   ];
 
   // Map and extract narrative threads - using simple mappers here as we only need the threads array
@@ -628,10 +771,10 @@ const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
   const mappedEvents = await Promise.all(timelineEventPages.map(t => propertyMapper.mapTimelineEventWithNames(t, notionService)));
 
   const allMappedItems = [
-      ...mappedChars,
-      ...mappedElems,
-      ...mappedPuzzles,
-      ...mappedEvents,
+    ...mappedChars,
+    ...mappedElems,
+    ...mappedPuzzles,
+    ...mappedEvents
   ];
 
   allMappedItems.forEach(item => {
@@ -643,7 +786,7 @@ const getAllUniqueNarrativeThreads = catchAsync(async (req, res) => {
   const sortedThreads = Array.from(allThreads).sort();
 
   notionCache.set(cacheKey, sortedThreads);
-  console.log(`[CACHE SET] ${cacheKey} - Found ${sortedThreads.length} unique narrative threads.`);
+  logger.debug(`[CACHE SET] ${cacheKey} - Found ${sortedThreads.length} unique narrative threads.`);
   setCacheHeaders(res);
   res.json(sortedThreads);
 });
@@ -655,11 +798,11 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
   const cachedData = notionCache.get(cacheKey);
 
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow Graph)`);
+    logger.debug(`[CACHE HIT] ${cacheKey} (Puzzle Flow Graph)`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow Graph)`);
+  logger.debug(`[CACHE MISS] ${cacheKey} (Puzzle Flow Graph)`);
 
   try {
     const { centralPuzzle, mappedRelatedEntities } = await notionService.fetchPuzzleFlowDataStructure(puzzleId);
@@ -684,7 +827,7 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
           ...(entity.ownerName && { ownerName: entity.ownerName }),
           ...(entity.storyRevealSnippet && { storyRevealSnippet: createSnippet(entity.storyRevealSnippet) }),
           ...(entity.basicType && { basicType: entity.basicType }),
-          ...customProps,
+          ...customProps
         }
       };
       nodes.push(node);
@@ -693,7 +836,9 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
     };
 
     const addEdge = (sourceNode, targetNode, label, type, customData = {}) => {
-      if (!sourceNode || !targetNode) return;
+      if (!sourceNode || !targetNode) {
+        return;
+      }
       edges.push({
         id: `edge-${sourceNode.id}-${targetNode.id}-${type}-${Math.random().toString(16).slice(2,8)}`,
         source: sourceNode.id,
@@ -703,16 +848,16 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
           shortLabel: label, // concise label for on-path
           contextualLabel: `${sourceNode.name} (${sourceNode.type}) ${label} ${targetNode.name} (${targetNode.type})`,
           type: type, // e.g., REQUIRES, REWARDS
-          ...customData,
+          ...customData
         }
       });
     };
 
     // Add central puzzle node
     const centralPuzzleNode = addNode(centralPuzzle, 'Puzzle', {
-        timing: centralPuzzle.timing,
-        ownerName: centralPuzzle.owner?.[0]?.name, // Assuming owner is an array
-        storyRevealSnippet: createSnippet(centralPuzzle.storyReveals),
+      timing: centralPuzzle.timing,
+      ownerName: centralPuzzle.owner?.[0]?.name, // Assuming owner is an array
+      storyRevealSnippet: createSnippet(centralPuzzle.storyReveals)
     });
 
     // Process related entities
@@ -757,32 +902,31 @@ const getPuzzleFlowGraph = catchAsync(async (req, res) => {
     });
 
     (centralPuzzle.owner || []).forEach(ownerStub => {
-        const owner = mappedRelatedEntities.get(ownerStub.id);
-        if(owner) {
-            const ownerNode = addNode(owner, 'Character'); // Add minimal character props if needed
-            addEdge(ownerNode, centralPuzzleNode, 'owns', 'OWNS_PUZZLE');
-        }
+      const owner = mappedRelatedEntities.get(ownerStub.id);
+      if(owner) {
+        const ownerNode = addNode(owner, 'Character'); // Add minimal character props if needed
+        addEdge(ownerNode, centralPuzzleNode, 'owns', 'OWNS_PUZZLE');
+      }
     });
-
 
     const graphData = {
       center: { // Provide a center-like structure for consistency if frontend expects it
         id: centralPuzzle.id,
         name: centralPuzzle.puzzle,
         type: 'Puzzle',
-        properties: centralPuzzle, // Full mapped properties of the central puzzle
+        properties: centralPuzzle // Full mapped properties of the central puzzle
       },
       nodes,
-      edges,
+      edges
     };
 
     notionCache.set(cacheKey, graphData);
-    console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow Graph for ${centralPuzzle.puzzle})`);
+    logger.debug(`[CACHE SET] ${cacheKey} (Puzzle Flow Graph for ${centralPuzzle.puzzle})`);
     setCacheHeaders(res);
     res.json(graphData);
 
   } catch (error) {
-    console.error(`Error generating puzzle flow graph for ID ${puzzleId}:`, error);
+    logger.error(`Error generating puzzle flow graph for ID ${puzzleId}:`, error);
     if (!res.headersSent) {
       res.status(500).json({ error: error.message || 'Failed to generate puzzle flow graph' });
     }
@@ -793,11 +937,11 @@ const getCharactersWithWarnings = catchAsync(async (req, res) => {
   const cacheKey = makeCacheKey('characters-with-warnings-v2');
   const cachedData = notionCache.get(cacheKey);
   if (cachedData) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     setCacheHeaders(res);
     return res.json(cachedData);
   }
-  console.log(`[CACHE MISS] ${cacheKey}`);
+  logger.debug(`[CACHE MISS] ${cacheKey}`);
 
   const notionCharacters = await notionService.getCharacters(); // Get all characters
   const mappedCharacters = await Promise.all(
@@ -806,39 +950,41 @@ const getCharactersWithWarnings = catchAsync(async (req, res) => {
 
   const charactersWithWarnings = [];
   for (const character of mappedCharacters) {
-    if (character.error) continue; // Skip if there was an error mapping this character
+    if (character.error) {
+      continue;
+    } // Skip if there was an error mapping this character
 
     const warnings = [];
-    
+
     // Check if character has no elements (empty inventory/relationships)
     if (!character.elements || character.elements.length === 0) {
-      warnings.push({ 
-        warningType: 'NoElements', 
-        message: 'Character has no associated elements or inventory items.' 
+      warnings.push({
+        warningType: 'NoElements',
+        message: 'Character has no associated elements or inventory items.'
       });
     }
 
     // Check if character owns no puzzles
     if (!character.ownedPuzzles || character.ownedPuzzles.length === 0) {
-      warnings.push({ 
-        warningType: 'NoOwnedPuzzles', 
-        message: 'Character does not own any puzzles.' 
+      warnings.push({
+        warningType: 'NoOwnedPuzzles',
+        message: 'Character does not own any puzzles.'
       });
     }
 
     // Check if character has no narrative threads
     if (!character.narrativeThreads || character.narrativeThreads.length === 0) {
-      warnings.push({ 
-        warningType: 'NoNarrativeThreads', 
-        message: 'Character is not part of any narrative threads.' 
+      warnings.push({
+        warningType: 'NoNarrativeThreads',
+        message: 'Character is not part of any narrative threads.'
       });
     }
 
     // Check if character has no description
     if (!character.description || character.description.trim() === '') {
-      warnings.push({ 
-        warningType: 'NoDescription', 
-        message: 'Character has no description.' 
+      warnings.push({
+        warningType: 'NoDescription',
+        message: 'Character has no description.'
       });
     }
 
@@ -851,19 +997,20 @@ const getCharactersWithWarnings = catchAsync(async (req, res) => {
         // Include key properties for display
         description: character.description,
         location: character.location,
-        status: character.status,
+        status: character.status
       });
     }
   }
 
   notionCache.set(cacheKey, charactersWithWarnings);
-  console.log(`[CACHE SET] ${cacheKey} - Found ${charactersWithWarnings.length} characters with warnings.`);
+  logger.debug(`[CACHE SET] ${cacheKey} - Found ${charactersWithWarnings.length} characters with warnings.`);
   setCacheHeaders(res);
   res.json(charactersWithWarnings);
 });
 
 module.exports = {
   getCharacters,
+  getCharactersWithSociogramData,
   getCharacterById,
   getCharacterGraph,
   getTimelineEvents,
@@ -879,6 +1026,7 @@ module.exports = {
   getElementById,
   getElementGraph,
   getDatabasesMetadata,
+  getGameConstants,
   globalSearch,
   clearCache,
   getPuzzlesWithWarnings,

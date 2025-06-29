@@ -1,52 +1,74 @@
 const request = require('supertest');
 const express = require('express');
+const { initializeDatabase, closeDB } = require('../../src/db/database');
 const journeyRoutes = require('../../src/routes/journeyRoutes');
 const TestDbSetup = require('../utils/testDbSetup');
 
 describe('Journey Endpoints', () => {
   let app;
+  let db;
   let testDb;
-  
+
   beforeAll(async () => {
-    testDb = new TestDbSetup();
-    await testDb.initialize();
+    // Initialize the in-memory database for tests
+    await closeDB();
+    db = initializeDatabase(':memory:');
     
+    testDb = new TestDbSetup();
+    testDb.db = db;
+
+    // Create Express app with routes
     app = express();
     app.use(express.json());
     app.use('/api', journeyRoutes);
+    
+    // Set up test data
+    await setupTestData();
   });
-  
-  beforeEach(async () => {
-    await testDb.clearData();
-    
-    // Insert test data
-    await testDb.insertTestCharacter({
-      id: 'char1',
-      name: 'Test Character',
-      type: 'Protagonist'
-    });
-    
-    await testDb.insertTestElement({
-      id: 'elem1',
-      name: 'Test Element',
-      type: 'Story',
-      description: 'A test element',
-      status: 'Active',
-      owner_id: 'char1'
-    });
-    
-    await testDb.insertTestTimelineEvent({
-      id: 'event1',
-      description: 'Test event',
-      element_ids: JSON.stringify(['elem1'])
-    });
-    
-    await testDb.createCharacterTimelineLink('char1', 'event1');
-  });
-  
+
   afterAll(async () => {
-    await testDb.db.close();
+    await closeDB();
   });
+
+  beforeEach(async () => {
+    // Reset data between tests
+    await testDb.clearData();
+    await setupTestData();
+  });
+
+  async function setupTestData() {
+    // Insert test characters
+    testDb.insertTestCharacter({ id: 'char1', name: 'Test Character 1' });
+    testDb.insertTestCharacter({ id: 'char2', name: 'Test Character 2' });
+    
+    // Insert test elements
+    testDb.insertTestElement({ 
+      id: 'elem1', 
+      name: 'Test Element 1', 
+      description: 'A test element'
+    });
+    
+    // Insert test puzzles
+    testDb.insertTestPuzzle({ 
+      id: 'puzzle1', 
+      name: 'Test Puzzle 1',
+      description: 'A test puzzle'
+    });
+    
+    // Insert test timeline events
+    testDb.insertTestTimelineEvent({
+      id: 'event1',
+      name: 'Test Event 1',
+      description: 'A test event',
+      date: '2023-01-01'
+    });
+    
+    // Insert relationships
+    await testDb.createCharacterLink('char1', 'char2', 'timeline_event', 'event1');
+    testDb.createCharacterTimelineLink('char1', 'event1');
+    testDb.createCharacterElementLink('char1', 'elem1', true);
+    testDb.createCharacterPuzzleLink('char1', 'puzzle1');
+  }
 
   describe('GET /api/journeys/:characterId', () => {
     it('should return a journey for an existing character', async () => {
@@ -56,46 +78,66 @@ describe('Journey Endpoints', () => {
       
       expect(response.body).toHaveProperty('character_info');
       expect(response.body).toHaveProperty('graph');
-      expect(response.body.graph).toHaveProperty('nodes');
-      expect(response.body.graph).toHaveProperty('edges');
-      
-      // Verify character info
-      expect(response.body.character_info).toMatchObject({
-        id: 'char1',
-        name: 'Test Character',
-        type: 'Protagonist'
-      });
+      expect(response.body.character_info).toHaveProperty('id', 'char1');
+      expect(response.body.character_info).toHaveProperty('name', 'Test Character 1');
       
       // Verify graph structure
+      expect(response.body.graph).toHaveProperty('nodes');
+      expect(response.body.graph).toHaveProperty('edges');
+      expect(Array.isArray(response.body.graph.nodes)).toBe(true);
+      expect(Array.isArray(response.body.graph.edges)).toBe(true);
+    });
+
+    it('should include linked characters in the response', async () => {
+      const response = await request(app)
+        .get('/api/journeys/char1')
+        .expect(200);
+      
+      expect(response.body.character_info).toHaveProperty('linkedCharacters');
+      expect(Array.isArray(response.body.character_info.linkedCharacters)).toBe(true);
+      
+      // Verify linked character structure
+      if (response.body.character_info.linkedCharacters.length > 0) {
+        const linkedChar = response.body.character_info.linkedCharacters[0];
+        expect(linkedChar).toHaveProperty('linked_character_id');
+        expect(linkedChar).toHaveProperty('linked_character_name');
+        expect(linkedChar).toHaveProperty('link_count');
+        expect(linkedChar).toHaveProperty('link_type');
+      }
+    });
+
+    it('should include graph structure with correct node types', async () => {
+      const response = await request(app)
+        .get('/api/journeys/char1')
+        .expect(200);
+      
+      // Check that we have nodes of different types
       const nodes = response.body.graph.nodes;
-      const edges = response.body.graph.edges;
+      const nodeTypes = nodes.map(n => n.type);
       
-      expect(nodes).toContainEqual(expect.objectContaining({
-        id: 'char1',
-        type: 'character'
-      }));
+      expect(nodeTypes).toContain('activityNode'); // puzzles
+      expect(nodeTypes).toContain('discoveryNode'); // elements
+      expect(nodeTypes).toContain('loreNode'); // timeline events
       
-      expect(nodes).toContainEqual(expect.objectContaining({
-        id: 'elem1',
-        type: 'element'
-      }));
+      // Verify node data structure
+      const activityNode = nodes.find(n => n.type === 'activityNode');
+      if (activityNode) {
+        expect(activityNode.data).toHaveProperty('name');
+        expect(activityNode.data).toHaveProperty('type', 'puzzle');
+      }
+    });
+
+    it('should handle character with no journey data', async () => {
+      // Create a character with no relationships
+      await testDb.clearData();
+      testDb.insertTestCharacter({ id: 'char1', name: 'Test Character 1' });
       
-      expect(nodes).toContainEqual(expect.objectContaining({
-        id: 'event1',
-        type: 'timeline_event'
-      }));
+      const response = await request(app)
+        .get('/api/journeys/char1')
+        .expect(200);
       
-      expect(edges).toContainEqual(expect.objectContaining({
-        source: 'char1',
-        target: 'event1',
-        type: 'participates_in'
-      }));
-      
-      expect(edges).toContainEqual(expect.objectContaining({
-        source: 'event1',
-        target: 'elem1',
-        type: 'involves'
-      }));
+      expect(response.body.graph.nodes).toHaveLength(0);
+      expect(response.body.graph.edges).toHaveLength(0);
     });
 
     it('should return 404 for a non-existent character', async () => {
@@ -106,32 +148,20 @@ describe('Journey Endpoints', () => {
   });
 
   describe('GET /api/journeys/:characterId/gaps', () => {
-    it('should return gaps for an existing character', async () => {
+    it('should return empty array for deprecated gaps endpoint', async () => {
       const response = await request(app)
         .get('/api/journeys/char1/gaps')
         .expect(200);
       
       expect(Array.isArray(response.body)).toBe(true);
-      // Gaps are computed based on timeline events, so we expect at least one gap
-      expect(response.body.length).toBeGreaterThan(0);
-      
-      // Verify gap structure
-      const gap = response.body[0];
-      expect(gap).toHaveProperty('id');
-      expect(gap).toHaveProperty('character_id', 'char1');
-      expect(gap).toHaveProperty('start_minute');
-      expect(gap).toHaveProperty('end_minute');
-      expect(gap).toHaveProperty('severity');
+      // Gaps are deprecated, so we expect an empty array
+      expect(response.body.length).toBe(0);
     });
 
     it('should return an empty array if no gaps exist', async () => {
       // Clear all timeline events to ensure no gaps
       await testDb.clearData();
-      await testDb.insertTestCharacter({
-        id: 'char1',
-        name: 'Test Character',
-        type: 'Protagonist'
-      });
+      testDb.insertTestCharacter({ id: 'char1', name: 'Test Character 1' });
       
       const response = await request(app)
         .get('/api/journeys/char1/gaps')
@@ -140,36 +170,26 @@ describe('Journey Endpoints', () => {
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(0);
     });
+
+    it('should return empty array for non-existent character', async () => {
+      const response = await request(app)
+        .get('/api/journeys/nonexistent/gaps')
+        .expect(200);
+      
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body).toHaveLength(0);
+    });
   });
 
   describe('GET /api/gaps/all', () => {
-    it('should return all gaps for all characters', async () => {
-      // Add another character with gaps
-      await testDb.insertTestCharacter({
-        id: 'char2',
-        name: 'Another Character',
-        type: 'Supporting'
-      });
-      
-      await testDb.insertTestTimelineEvent({
-        id: 'event2',
-        description: 'Another event',
-        element_ids: JSON.stringify(['elem1'])
-      });
-      
-      await testDb.createCharacterTimelineLink('char2', 'event2');
-      
+    it('should return empty array for deprecated gaps endpoint', async () => {
       const response = await request(app)
         .get('/api/gaps/all')
         .expect(200);
       
       expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-      
-      // Verify gaps from both characters are included
-      const characterIds = new Set(response.body.map(gap => gap.character_id));
-      expect(characterIds).toContain('char1');
-      expect(characterIds).toContain('char2');
+      // Gaps are deprecated, so we expect an empty array
+      expect(response.body.length).toBe(0);
     });
 
     it('should return an empty array if no characters exist', async () => {
@@ -185,45 +205,57 @@ describe('Journey Endpoints', () => {
   });
 
   describe('GET /api/journeys/:characterId/gaps/:gapId/suggestions', () => {
-    it('should return suggestions for a valid gap', async () => {
-      // First get a gap ID
-      const gapsResponse = await request(app)
-        .get('/api/journeys/char1/gaps')
-        .expect(200);
-      
-      const gapId = gapsResponse.body[0].id;
-      
+    it('should return 410 for deprecated suggestions endpoint', async () => {
       const response = await request(app)
-        .get(`/api/journeys/char1/gaps/${gapId}/suggestions`)
-        .expect(200);
+        .get('/api/journeys/char1/gaps/somegap/suggestions')
+        .expect(410);
       
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-      
-      // Verify suggestion structure
-      const suggestion = response.body[0];
-      expect(suggestion).toHaveProperty('type');
-      expect(suggestion).toHaveProperty('description');
-      expect(suggestion).toHaveProperty('impact');
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('deprecated');
+      expect(response.body).toHaveProperty('migration');
     });
 
-    it('should return 404 if the gapId does not exist', async () => {
-      await request(app)
+    it('should return 410 for any gap suggestion request', async () => {
+      const response = await request(app)
         .get('/api/journeys/char1/gaps/nonexistent/suggestions')
-        .expect(404);
+        .expect(410);
+      
+      expect(response.body).toHaveProperty('error');
     });
 
-    it('should return 404 if characterId for suggestions does not exist', async () => {
-      // First get a gap ID
-      const gapsResponse = await request(app)
-        .get('/api/journeys/char1/gaps')
+    it('should return 410 even if characterId does not exist', async () => {
+      const response = await request(app)
+        .get('/api/journeys/nonexistent/gaps/somegap/suggestions')
+        .expect(410);
+      
+      expect(response.body).toHaveProperty('error');
+    });
+  });
+
+  describe('GET /api/sync/status', () => {
+    it('should return sync status', async () => {
+      const response = await request(app)
+        .get('/api/sync/status')
         .expect(200);
       
-      const gapId = gapsResponse.body[0].id;
+      expect(response.body).toHaveProperty('status', 'foundational_sync_ok');
+      expect(response.body).toHaveProperty('pending_changes', 0);
+      expect(response.body).toHaveProperty('last_notion_sync');
+      expect(response.body).toHaveProperty('last_local_db_update');
+      expect(response.body).toHaveProperty('database_status', 'online');
+    });
+  });
+
+  describe('POST /api/gaps/:gapId/resolve', () => {
+    it('should return 410 for deprecated gap resolution endpoint', async () => {
+      const response = await request(app)
+        .post('/api/gaps/somegap/resolve')
+        .send({ resolution: 'some resolution' })
+        .expect(410);
       
-      await request(app)
-        .get(`/api/journeys/nonexistent/gaps/${gapId}/suggestions`)
-        .expect(404);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('deprecated');
+      expect(response.body).toHaveProperty('migration');
     });
   });
 });

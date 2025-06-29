@@ -3,12 +3,13 @@
  */
 import { MarkerType } from '@xyflow/react';
 
+import logger from '../../utils/logger';
 /**
  * Creates a node object for the React Flow graph
  */
 const createNode = (entity, type, isCenter = false, isSecondary = false, options = {}) => {
   if (!entity || !entity.id) {
-    console.warn('Attempted to create node with invalid entity', entity);
+    logger.warn('Attempted to create node with invalid entity', entity);
     return null;
   }
   

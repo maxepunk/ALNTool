@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import ErrorBoundary from '../ErrorBoundary';
+import logger from '../../utils/logger';
 import {
   ReactFlow,
   Background, 
@@ -201,8 +203,8 @@ const RelationshipMapperContent = ({
   const dependencyAnalysis = useMemo(() => 
     analyzeDependencies(graphData, entityType), [graphData, entityType]);
 
-  // console.log('RelationshipMapper GraphData:', graphData); // Keep for debugging if needed
-  // console.log('EntityType:', entityType); // Keep for debugging if needed
+  // logger.debug('RelationshipMapper GraphData:', graphData); // Keep for debugging if needed
+  // logger.debug('EntityType:', entityType); // Keep for debugging if needed
 
   const { nodes: transformedNodes, edges: transformedEdges, error: graphError } = useGraphTransform({
     entityType,
@@ -792,9 +794,11 @@ RelationshipMapperContent.propTypes = {
 };
 
 const RelationshipMapper = (props) => (
-  <ReactFlowProvider>
-    <RelationshipMapperContent {...props} />
-  </ReactFlowProvider>
+  <ErrorBoundary level="component">
+    <ReactFlowProvider>
+      <RelationshipMapperContent {...props} />
+    </ReactFlowProvider>
+  </ErrorBoundary>
 );
 
 RelationshipMapper.propTypes = RelationshipMapperContent.propTypes; // Inherit propTypes

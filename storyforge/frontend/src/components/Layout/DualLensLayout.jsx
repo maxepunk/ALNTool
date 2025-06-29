@@ -3,10 +3,22 @@ import CommandBar from './CommandBar';
 import ContextWorkspace from './ContextWorkspace';
 import { Box, Grid, Paper } from '@mui/material';
 
-const DualLensLayout = ({ journeySpaceContent, systemSpaceContent }) => {
+const DualLensLayout = ({ 
+  journeySpaceContent, 
+  systemSpaceContent,
+  onSearch,
+  onExport,
+  exportData,
+  exportFilename
+}) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 2 }}>
-      <CommandBar />
+      <CommandBar 
+        onSearch={onSearch}
+        onExport={onExport}
+        exportData={exportData}
+        exportFilename={exportFilename}
+      />
 
       <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden', mb: 2 }}>
         <Grid container spacing={2} sx={{ flexGrow: 1 }}>
@@ -28,5 +40,4 @@ const DualLensLayout = ({ journeySpaceContent, systemSpaceContent }) => {
   );
 };
 
-// It seems I forgot to import Paper, let me add it.
 export default DualLensLayout;

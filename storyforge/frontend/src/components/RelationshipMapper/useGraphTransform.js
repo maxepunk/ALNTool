@@ -4,6 +4,7 @@ import { getDagreLayout } from './layoutUtils';
 import filterGraph from './filterGraph';
 import { MarkerType } from '@xyflow/react';
 
+import logger from '../../utils/logger';
 const edgeStyles = {
   dependency: { stroke: '#f57c00', strokeWidth: 2.5, animated: true },
   containment: { stroke: '#03a9f4', strokeWidth: 1.5, strokeDasharray: '6, 4' },
@@ -88,14 +89,14 @@ export default function useGraphTransform({
   memorySetFilter = "All",
 }) {
   const { nodes, edges, error } = useMemo(() => {
-    // console.log('[useGraphTransform DEBUG] ALL parentId assignments ENABLED (Dagre rank error testing - default state).');
+    // logger.debug('[useGraphTransform DEBUG] ALL parentId assignments ENABLED (Dagre rank error testing - default state).');
     // ADDED FOR DEBUGGING: General layout calculation log
-    // console.log(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
-    // console.log('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
+    // logger.debug(`[useGraphTransform DEBUG] Recalculating layout. Entity: ${entityName} (ID: ${entityId}), Depth: ${depth}, NodeFilters: ${JSON.stringify(nodeFilters)}, EdgeFilters: ${JSON.stringify(edgeFilters)}, ActFocus: ${actFocusFilter}, Themes: ${JSON.stringify(themeFilters)}, MemorySet: ${memorySetFilter}`);
+    // logger.debug('[useGraphTransform DEBUG] layoutOptions received:', JSON.stringify(layoutOptions));
 
 
-    // console.log('[useGraphTransform] Memo Start. Entity:', entityName, 'ID:', entityId, 'Depth:', depth); // Original log
-    // console.log('[useGraphTransform] Input graphData nodes:', graphData?.nodes?.length, 'edges:', graphData?.edges?.length); // Original log
+    // logger.debug('[useGraphTransform] Memo Start. Entity:', entityName, 'ID:', entityId, 'Depth:', depth); // Original log
+    // logger.debug('[useGraphTransform] Input graphData nodes:', graphData?.nodes?.length, 'edges:', graphData?.edges?.length); // Original log
 
     try {
       const { nodes: baseNodes, edges: baseEdges } = transformToGraphElements({
@@ -105,7 +106,7 @@ export default function useGraphTransform({
         graphData,
         viewMode,
       });
-      // console.log('[useGraphTransform] Step 1 (transformToGraphElements) Done. Base nodes:', baseNodes?.length, 'Base edges:', baseEdges?.length); // Original log
+      // logger.debug('[useGraphTransform] Step 1 (transformToGraphElements) Done. Base nodes:', baseNodes?.length, 'Base edges:', baseEdges?.length); // Original log
 
       let nodesWithParentId = baseNodes;
       if (baseNodes && baseNodes.length > 0) {
@@ -137,14 +138,14 @@ export default function useGraphTransform({
         });
         nodesWithParentId = nodesForGrouping;
       }
-      // console.log('[useGraphTransform] Step 2 (parentId assignment) Done.'); // Original log
+      // logger.debug('[useGraphTransform] Step 2 (parentId assignment) Done.'); // Original log
 
       if (nodesWithParentId && nodesWithParentId.length > 0) {
         const parentIdsFromChildren = new Set();
         nodesWithParentId.forEach(n => { if (n.data?.parentId) parentIdsFromChildren.add(n.data.parentId); });
         nodesWithParentId = nodesWithParentId.map(n => ({ ...n, data: { ...n.data, isActualParentGroup: parentIdsFromChildren.has(n.id) } }));
       }
-      // console.log('[useGraphTransform] Step 2.5 (isActualParentGroup) Done.'); // Original log
+      // logger.debug('[useGraphTransform] Step 2.5 (isActualParentGroup) Done.'); // Original log
 
       const { nodes: filteredNodes, edges: filteredEdges } = filterGraph(
         nodesWithParentId,
@@ -161,36 +162,36 @@ export default function useGraphTransform({
           memorySetFilter,
         }
       );
-      // console.log('[useGraphTransform] Step 3 (filterGraph) Done. Filtered nodes:', filteredNodes?.length, 'Filtered edges:', filteredEdges?.length); // Original log
+      // logger.debug('[useGraphTransform] Step 3 (filterGraph) Done. Filtered nodes:', filteredNodes?.length, 'Filtered edges:', filteredEdges?.length); // Original log
 
       let layoutedNodes, layoutedEdges;
       const finalNodesForLayout = filteredNodes; 
       const finalLayoutOptions = { ...layoutOptions }; // Ensure we pass a consistent copy
 
       // ADDED FOR DEBUGGING: Log inputs to getDagreLayout
-      // console.log(`[useGraphTransform DEBUG] BEFORE getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. finalNodesForLayout count: ${finalNodesForLayout?.length}.`);
+      // logger.debug(`[useGraphTransform DEBUG] BEFORE getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. finalNodesForLayout count: ${finalNodesForLayout?.length}.`);
       if (finalNodesForLayout && finalNodesForLayout.length > 0) {
         const sampleNode = finalNodesForLayout.find(n => n.id === entityId) || finalNodesForLayout[0];
-        // console.log(`[useGraphTransform DEBUG] Sample node for Dagre (ID: ${sampleNode.id}, Name: ${sampleNode.data?.label}, parentId: ${sampleNode.data?.parentId})`);
+        // logger.debug(`[useGraphTransform DEBUG] Sample node for Dagre (ID: ${sampleNode.id}, Name: ${sampleNode.data?.label}, parentId: ${sampleNode.data?.parentId})`);
       }
-      // console.log(`[useGraphTransform DEBUG] filteredEdges count: ${filteredEdges?.length}. finalLayoutOptions for Dagre:`, JSON.stringify(finalLayoutOptions));
-      // console.log('[useGraphTransform] Step 4: About to call getDagreLayout.'); // Original Log
-      // console.log('[useGraphTransform] Nodes for Dagre:', finalNodesForLayout?.length, 'Edges for Dagre:', filteredEdges?.length); // Original Log
+      // logger.debug(`[useGraphTransform DEBUG] filteredEdges count: ${filteredEdges?.length}. finalLayoutOptions for Dagre:`, JSON.stringify(finalLayoutOptions));
+      // logger.debug('[useGraphTransform] Step 4: About to call getDagreLayout.'); // Original Log
+      // logger.debug('[useGraphTransform] Nodes for Dagre:', finalNodesForLayout?.length, 'Edges for Dagre:', filteredEdges?.length); // Original Log
       // if (finalNodesForLayout && finalNodesForLayout.length > 0) { // Original Log
-      //    console.log('[useGraphTransform] Sample node for Dagre:', JSON.stringify(finalNodesForLayout[0]));
+      //    logger.debug('[useGraphTransform] Sample node for Dagre:', JSON.stringify(finalNodesForLayout[0]));
       // }
-      // console.log('[useGraphTransform] Layout options for Dagre:', JSON.stringify(finalLayoutOptions)); // Original Log
+      // logger.debug('[useGraphTransform] Layout options for Dagre:', JSON.stringify(finalLayoutOptions)); // Original Log
 
 
       ({ nodes: layoutedNodes, edges: layoutedEdges } = getDagreLayout(finalNodesForLayout, filteredEdges, finalLayoutOptions));
       
       // ADDED FOR DEBUGGING: Log outputs from getDagreLayout
-      // console.log(`[useGraphTransform DEBUG] AFTER getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. layoutedNodes count: ${layoutedNodes?.length}.`);
+      // logger.debug(`[useGraphTransform DEBUG] AFTER getDagreLayout. Is Fullscreen: ${isFullScreenForLogging}. layoutedNodes count: ${layoutedNodes?.length}.`);
       if (layoutedNodes && layoutedNodes.length > 0) {
         const sampleLayoutedNode = layoutedNodes.find(n => n.id === entityId) || layoutedNodes[0];
-        // console.log(`[useGraphTransform DEBUG] Sample layouted node (ID: ${sampleLayoutedNode.id}, Name: ${sampleLayoutedNode.data?.label}) position (x,y):`, sampleLayoutedNode.position?.x, sampleLayoutedNode.position?.y);
+        // logger.debug(`[useGraphTransform DEBUG] Sample layouted node (ID: ${sampleLayoutedNode.id}, Name: ${sampleLayoutedNode.data?.label}) position (x,y):`, sampleLayoutedNode.position?.x, sampleLayoutedNode.position?.y);
       }
-      // console.log('[useGraphTransform] getDagreLayout call completed. Layouted nodes:', layoutedNodes?.length); // Original log
+      // logger.debug('[useGraphTransform] getDagreLayout call completed. Layouted nodes:', layoutedNodes?.length); // Original log
       
       let finalReactFlowNodes = layoutedNodes.map(n => {
         // Ensure parentId refers to a node that still exists after filtering and layout
@@ -199,11 +200,11 @@ export default function useGraphTransform({
         }
         return n;
       });
-      // console.log('[useGraphTransform] parentNode mapping complete. Final nodes:', finalReactFlowNodes?.length); // Original log
+      // logger.debug('[useGraphTransform] parentNode mapping complete. Final nodes:', finalReactFlowNodes?.length); // Original log
 
       return { nodes: finalReactFlowNodes, edges: layoutedEdges, error: null };
     } catch (err) {
-      // console.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
+      // logger.error('[useGraphTransform] CRITICAL ERROR in memoized calculation:', err);
       return { nodes: [], edges: [], error: err };
     }
   }, [

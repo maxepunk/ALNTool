@@ -9,9 +9,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "verify:migrations": "cd storyforge/backend && npm run verify:migrations",
     "verify:pre-deploy": "cd storyforge/backend && npm run verify:pre-deploy",
-    "verify:all": "cd storyforge/backend && npm run verify:all",
+    "verify:all": "cd storyforge/backend && npm run verify:all && cd ../.. && npm run verify:console && npm run verify:boundaries",
     "verify:docs": "cd storyforge/backend && npm run verify-docs",
-    "check-deps": "cd storyforge/backend && npm run check-deps"
+    "check-deps": "cd storyforge/backend && npm run check-deps",
+    "verify:console": "echo 'Checking for console statements...' && result=$(grep -r 'console\\.' storyforge/frontend/src --include='*.js' --include='*.jsx' | grep -v test | grep -v logger.js | grep -v setupTests.js | wc -l) && if [ \"$result\" -eq 0 ]; then echo '✅ No console statements found'; else echo \"❌ Found $result console statements\" && exit 1; fi",
+    "verify:boundaries": "echo 'Checking error boundary implementations...' && count=$(grep -r 'ErrorBoundary' storyforge/frontend/src --include='*.jsx' --include='*.js' | grep -v 'ErrorBoundary.jsx' | wc -l) && echo \"✅ Found $count error boundary implementations (target: 7+)\" && if [ \"$count\" -lt 7 ]; then echo '❌ Below target of 7' && exit 1; fi"
   },
   "repository": {
     "type": "git",

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Chip, Typography, Paper, CircularProgress, Alert, FormControl, InputLabel, Select, MenuItem, Button,
   Box, Grid // Added Box, Grid
@@ -8,6 +8,7 @@ import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
 import { useState, useEffect, useMemo } from 'react'; // Added useEffect, useMemo
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 // Table column definitions
@@ -35,11 +36,20 @@ const columns = [
   },
 ];
 
-const MEM_TYPE_OPTIONS = ['All Types', 'Prop', 'Set Dressing', 'Memory Token Video', 'Memory Token Audio', 'Memory Token Physical', 'Corrupted Memory RFID'];
-const ACT_FOCUS_OPTIONS = ['All Acts', 'Act 1', 'Act 2', 'Act 3'];
-
 function Timeline() {
   const navigate = useNavigate();
+  
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+
+  // Early return if constants are still loading
+  if (constantsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Timeline...</Typography>
+      </Box>
+    );
+  }
 
   // State for filters
   const [memType, setMemType] = useState('All Types');
@@ -52,11 +62,11 @@ function Timeline() {
   if (memType !== 'All Types') apiFilters.memType = memType;
   if (actFocusFilter !== 'All Acts') apiFilters.actFocus = actFocusFilter; // Pass actFocus for server-side filtering
 
-  const { data: events, isLoading, error, refetch } = useQuery(
-    ['timelineEvents', apiFilters],
-    () => api.getTimelineEvents(apiFilters),
-    { staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000 }
-  );
+  const { data: events, isLoading, error, refetch } = useQuery({
+    queryKey: ['timelineEvents', apiFilters],
+    queryFn: () => api.getTimelineEvents(apiFilters),
+    staleTime: 5 * 60 * 1000, cacheTime: 10 * 60 * 1000
+  });
 
   useEffect(() => {
     if (events) {
@@ -120,7 +130,7 @@ function Timeline() {
             <FormControl fullWidth size="small">
               <InputLabel id="timeline-memtype-label">Memory/Evidence Type</InputLabel>
               <Select labelId="timeline-memtype-label" value={memType} label="Memory/Evidence Type" onChange={handleMemTypeChange}>
-                {MEM_TYPE_OPTIONS.map((t) => (<MenuItem key={t} value={t}>{t}</MenuItem>))}
+                {['All Types'].concat(getConstant(gameConstants, 'ELEMENTS.CATEGORIES', ['Prop', 'Set Dressing', 'Memory Token Video', 'Memory Token Audio', 'Memory Token Physical', 'Corrupted Memory RFID'])).map((t) => (<MenuItem key={t} value={t}>{t}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>
@@ -128,7 +138,7 @@ function Timeline() {
             <FormControl fullWidth size="small">
               <InputLabel id="timeline-actfocus-label">Act Focus</InputLabel>
               <Select labelId="timeline-actfocus-label" value={actFocusFilter} label="Act Focus" onChange={handleActFocusChange}>
-                {ACT_FOCUS_OPTIONS.map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
+                {['All Acts'].concat(getConstant(gameConstants, 'ACTS.TYPES', ['Act 1', 'Act 2'])).concat(['Act 3']).map((act) => (<MenuItem key={act} value={act}>{act}</MenuItem>))}
               </Select>
             </FormControl>
           </Grid>

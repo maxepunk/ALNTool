@@ -11,7 +11,7 @@ class TestSyncer extends BaseSyncer {
   }
 
   async fetchFromNotion() {
-    return [];
+    return this.mockFetchFromNotion();
   }
 
   async mapFromNotion(data) {
@@ -96,9 +96,12 @@ describe('BaseSyncer', () => {
       }).toThrow('BaseSyncer is an abstract class and cannot be instantiated directly');
     });
 
-    it('should require entityType to be defined by subclass', () => {
+    it('should require entityType to be defined', () => {
       class InvalidSyncer extends BaseSyncer {
-        // No entityType defined
+        constructor(dependencies) {
+          // Don't pass entityType to super
+          super({ ...dependencies });
+        }
       }
 
       expect(() => {
@@ -107,7 +110,7 @@ describe('BaseSyncer', () => {
           propertyMapper: {},
           logger: {}
         });
-      }).toThrow('InvalidSyncer must define entityType property');
+      }).toThrow('entityType is required in BaseSyncer constructor');
     });
 
     it('should store dependencies correctly', () => {
@@ -289,7 +292,9 @@ describe('BaseSyncer', () => {
 
   describe('abstract method enforcement', () => {
     class IncompleteSubclass extends BaseSyncer {
-      entityType = 'incomplete';
+      constructor(services) {
+        super({ ...services, entityType: 'incomplete' });
+      }
       // Missing required method implementations
     }
 

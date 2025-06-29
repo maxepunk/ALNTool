@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Chip, Button, Typography, Paper, Skeleton, FormControl, InputLabel, Select, MenuItem, 
   Box, Grid, Tooltip, Card, CardContent, LinearProgress, Alert, Avatar, AvatarGroup,
-  List, ListItem, ListItemText, ListItemIcon, Divider, Badge
+  List, ListItem, ListItemText, ListItemIcon, Divider, Badge, CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -23,6 +23,7 @@ import DataTable from '../components/DataTable';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
 import { useState, useMemo } from 'react';
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 
 // Enhanced table columns with production intelligence
 const columns = [
@@ -145,27 +146,35 @@ const columns = [
   },
 ];
 
-const TYPE_OPTIONS = ['All Types', 'Player', 'NPC'];
-const TIER_OPTIONS = ['All Tiers', 'Core', 'Secondary', 'Tertiary'];
-const PATH_OPTIONS = ['All Paths', 'Black Market', 'Detective', 'Third Path', 'Unassigned'];
-
 function Characters() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+  
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [tierFilter, setTierFilter] = useState('All Tiers');
   const [pathFilter, setPathFilter] = useState('All Paths');
+
+  // Early return if constants are still loading
+  if (constantsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+        <CircularProgress /> <Typography sx={{ml:2}}>Loading Characters...</Typography>
+      </Box>
+    );
+  }
   
   const filters = {};
   if (typeFilter !== 'All Types') filters.type = typeFilter;
   if (tierFilter !== 'All Tiers') filters.tier = tierFilter;
   
-  const { data: characters, isLoading, error, refetch, isFetching } = useQuery(
-    ['characters', filters],
-    () => api.getAllCharactersWithSociogramData(filters),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: characters, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['characters', filters],
+    queryFn: () => api.getAllCharactersWithSociogramData(filters),
+    staleTime: 5 * 60 * 1000
+  });
 
   // Production Intelligence Analytics
   const characterAnalytics = useMemo(() => {
@@ -192,19 +201,21 @@ function Characters() {
     const totalCharacters = filteredCharacters.length;
 
     // Path distribution analysis
-    const pathDistribution = {
-      'Black Market': filteredCharacters.filter(char => char.resolutionPaths?.includes('Black Market')).length,
-      'Detective': filteredCharacters.filter(char => char.resolutionPaths?.includes('Detective')).length,
-      'Third Path': filteredCharacters.filter(char => char.resolutionPaths?.includes('Third Path')).length,
-      'Unassigned': filteredCharacters.filter(char => !char.resolutionPaths || char.resolutionPaths.length === 0).length
-    };
+    const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
+    const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
+    
+    const pathDistribution = {};
+    knownPaths.forEach(path => {
+      pathDistribution[path] = filteredCharacters.filter(char => char.resolutionPaths?.includes(path)).length;
+    });
+    pathDistribution[unassignedPath] = filteredCharacters.filter(char => !char.resolutionPaths || char.resolutionPaths.length === 0).length;
 
     // Tier distribution
-    const tierDistribution = {
-      'Core': filteredCharacters.filter(char => char.tier === 'Core').length,
-      'Secondary': filteredCharacters.filter(char => char.tier === 'Secondary').length,
-      'Tertiary': filteredCharacters.filter(char => char.tier === 'Tertiary').length
-    };
+    const characterTiers = getConstant(gameConstants, 'CHARACTERS.TIERS', ['Core', 'Secondary', 'Tertiary']);
+    const tierDistribution = {};
+    characterTiers.forEach(tier => {
+      tierDistribution[tier] = filteredCharacters.filter(char => char.tier === tier).length;
+    });
 
     // Production readiness (characters with proper path assignments and connections)
     const ready = filteredCharacters.filter(char => 
@@ -230,16 +241,22 @@ function Characters() {
 
     // Identify production issues
     const issues = [];
-    if (pathDistribution['Unassigned'] > totalCharacters * 0.2) {
+    const unassignedWarningThreshold = getConstant(gameConstants, 'CHARACTERS.UNASSIGNED_WARNING_THRESHOLD', 0.2);
+    const isolatedWarningThreshold = getConstant(gameConstants, 'CHARACTERS.ISOLATED_WARNING_THRESHOLD', 0.15);
+    const pathImbalanceThreshold = getConstant(gameConstants, 'CHARACTERS.PATH_IMBALANCE_THRESHOLD', 0.4);
+    const memoryWarningThreshold = getConstant(gameConstants, 'ELEMENTS.MEMORY_TOKEN_WARNING_THRESHOLD', 45);
+    const targetTokenCount = getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55);
+
+    if (pathDistribution[unassignedPath] > totalCharacters * unassignedWarningThreshold) {
       issues.push({
         type: 'path-assignment',
         severity: 'warning',
-        message: `${pathDistribution['Unassigned']} characters need resolution path assignment`,
+        message: `${pathDistribution[unassignedPath]} characters need resolution path assignment`,
         action: 'Assign characters to narrative paths'
       });
     }
 
-    if (isolated > totalCharacters * 0.15) {
+    if (isolated > totalCharacters * isolatedWarningThreshold) {
       issues.push({
         type: 'social-isolation',
         severity: 'warning', 
@@ -250,7 +267,7 @@ function Characters() {
 
     const maxPath = Math.max(...Object.values(pathDistribution));
     const minPath = Math.min(...Object.values(pathDistribution));
-    if (maxPath - minPath > totalCharacters * 0.4) {
+    if (maxPath - minPath > totalCharacters * pathImbalanceThreshold) {
       issues.push({
         type: 'path-imbalance',
         severity: 'info',
@@ -259,11 +276,11 @@ function Characters() {
       });
     }
 
-    if (totalMemoryTokens < 45) {
+    if (totalMemoryTokens < memoryWarningThreshold) {
       issues.push({
         type: 'memory-economy',
         severity: 'info',
-        message: 'Memory token count below target (55 tokens)',
+        message: `Memory token count below target (${targetTokenCount} tokens)`,
         action: 'Add more memory tokens to character inventories'
       });
     }
@@ -498,7 +515,7 @@ function Characters() {
                 label="Type"
                 onChange={(e) => setTypeFilter(e.target.value)}
               >
-                {TYPE_OPTIONS.map((t) => (
+                {['All Types'].concat(getConstant(gameConstants, 'CHARACTERS.TYPES', ['Player', 'NPC'])).map((t) => (
                   <MenuItem key={t} value={t}>{t}</MenuItem>
                 ))}
               </Select>
@@ -513,7 +530,7 @@ function Characters() {
                 label="Tier"
                 onChange={(e) => setTierFilter(e.target.value)}
               >
-                {TIER_OPTIONS.map((t) => (
+                {['All Tiers'].concat(getConstant(gameConstants, 'CHARACTERS.TIERS', ['Core', 'Secondary', 'Tertiary'])).map((t) => (
                   <MenuItem key={t} value={t}>{t}</MenuItem>
                 ))}
               </Select>
@@ -528,7 +545,7 @@ function Characters() {
                 label="Resolution Path"
                 onChange={(e) => setPathFilter(e.target.value)}
               >
-                {PATH_OPTIONS.map((t) => (
+                {['All Paths'].concat(getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path'])).concat([getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned')]).map((t) => (
                   <MenuItem key={t} value={t}>{t}</MenuItem>
                 ))}
               </Select>

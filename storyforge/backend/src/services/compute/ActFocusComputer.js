@@ -1,5 +1,8 @@
 const DerivedFieldComputer = require('./DerivedFieldComputer');
+const GameConstants = require('../../config/GameConstants');
+const ValidationUtils = require('../../utils/ValidationUtils');
 
+const logger = require('../../utils/logger');
 /**
  * Computes Act Focus for timeline events based on related elements
  * Act Focus is determined by the most common act from related elements
@@ -19,7 +22,7 @@ class ActFocusComputer extends DerivedFieldComputer {
   async compute(event) {
     try {
       this.validateRequiredFields(event, this.requiredFields);
-      
+
       // Handle malformed JSON gracefully
       let elementIds;
       try {
@@ -27,7 +30,7 @@ class ActFocusComputer extends DerivedFieldComputer {
       } catch (parseError) {
         return { act_focus: null };
       }
-      
+
       if (elementIds.length === 0) {
         return { act_focus: null };
       }
@@ -46,13 +49,24 @@ class ActFocusComputer extends DerivedFieldComputer {
         }
       });
 
-      // Return most common act, with lexicographic ordering as tiebreaker
+      // Return most common act, with act sequence ordering as tiebreaker
       const sortedActs = Object.entries(actCounts)
         .sort(([actA, countA], [actB, countB]) => {
-          if (countB !== countA) return countB - countA; // Primary: sort by count desc
-          return actA.localeCompare(actB); // Secondary: sort by act name asc
+          if (countB !== countA) {
+            return countB - countA;
+          } // Primary: sort by count desc
+          // Secondary: sort by act sequence from GameConstants
+          const seqA = GameConstants.ACTS.SEQUENCE[actA] || 999;
+          const seqB = GameConstants.ACTS.SEQUENCE[actB] || 999;
+          return seqA - seqB;
         });
       const actFocus = sortedActs[0]?.[0] || null;
+
+      // Validate the computed act
+      if (actFocus && !ValidationUtils.isValidAct(actFocus)) {
+        logger.warn(`Invalid act computed: ${actFocus}, returning null`);
+        return { act_focus: null };
+      }
 
       return { act_focus: actFocus };
     } catch (error) {
@@ -66,21 +80,21 @@ class ActFocusComputer extends DerivedFieldComputer {
    */
   async computeAll() {
     const stats = { processed: 0, errors: 0 };
-    
+
     try {
       const events = this.db.prepare('SELECT * FROM timeline_events').all();
-      
+
       for (const event of events) {
         try {
           const { act_focus } = await this.compute(event);
           await this.updateDatabase('timeline_events', 'id', event, { act_focus });
           stats.processed++;
         } catch (error) {
-          console.error(`Error processing event ${event.id}:`, error);
+          logger.error(`Error processing event ${event.id}:`, error);
           stats.errors++;
         }
       }
-      
+
       return stats;
     } catch (error) {
       throw new Error(`Failed to compute all act focus values: ${error.message}`);
@@ -88,4 +102,4 @@ class ActFocusComputer extends DerivedFieldComputer {
   }
 }
 
-module.exports = ActFocusComputer; 
+module.exports = ActFocusComputer;

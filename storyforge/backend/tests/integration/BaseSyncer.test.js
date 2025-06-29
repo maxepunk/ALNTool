@@ -1,37 +1,72 @@
 const BaseSyncer = require('../../src/services/sync/entitySyncers/BaseSyncer');
 const TestDbSetup = require('../utils/testDbSetup');
-const { mockNotionService } = require('../mocks/notionService');
+const SyncLogger = require('../../src/services/sync/SyncLogger');
 
 // Create a concrete test class that extends BaseSyncer
 class TestSyncer extends BaseSyncer {
-  constructor() {
-    super('test', mockNotionService);
+  constructor(dependencies) {
+    super({ ...dependencies, entityType: 'test' });
   }
 
-  async mapEntity(notionEntity) {
-    return {
-      id: notionEntity.id,
-      name: notionEntity.name,
-      type: notionEntity.type
-    };
-  }
-
-  async validateEntity(mappedEntity) {
-    return true;
+  async fetchFromNotion() {
+    // Override in tests
+    return [];
   }
 
   async clearExistingData() {
-    // No-op for testing
+    // Clear test table
+    const db = this.initDB();
+    
+    // Create table if it doesn't exist
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS test_entities (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        type TEXT
+      )
+    `);
+    
+    db.prepare('DELETE FROM test_entities').run();
   }
 
-  async processEntity(entity) {
-    return entity;
+  async mapData(notionItem) {
+    return {
+      id: notionItem.id,
+      name: notionItem.properties?.name?.title?.[0]?.text?.content || notionItem.name,
+      type: notionItem.properties?.type?.select?.name || notionItem.type
+    };
+  }
+
+  async insertData(mappedData) {
+    const db = this.initDB();
+    
+    // Insert data
+    const stmt = db.prepare('INSERT INTO test_entities (id, name, type) VALUES (?, ?, ?)');
+    stmt.run(mappedData.id, mappedData.name, mappedData.type);
+  }
+
+  async getCurrentRecordCount() {
+    const db = this.initDB();
+    
+    // Create table if it doesn't exist
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS test_entities (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        type TEXT
+      )
+    `);
+    
+    const result = db.prepare('SELECT COUNT(*) as count FROM test_entities').get();
+    return result.count;
   }
 }
 
-describe('BaseSyncer', () => {
+describe('BaseSyncer Integration', () => {
   let dbSetup;
   let testSyncer;
+  let mockNotionService;
+  let logger;
 
   beforeAll(async () => {
     // Initialize test database with migrations
@@ -43,12 +78,21 @@ describe('BaseSyncer', () => {
     // Clear any existing data
     await dbSetup.clearData();
     
-    // Reset mocks
-    mockNotionService.fetchEntities.mockReset();
-    mockNotionService.fetchEntityRelationships.mockReset();
+    // Create mock Notion service
+    mockNotionService = {
+      getDatabaseId: jest.fn().mockReturnValue('test-db-id'),
+      queryDatabase: jest.fn()
+    };
+    
+    // Create logger
+    logger = new SyncLogger(dbSetup.getDb());
     
     // Create new test syncer instance
-    testSyncer = new TestSyncer();
+    testSyncer = new TestSyncer({
+      notionService: mockNotionService,
+      propertyMapper: {},
+      logger
+    });
   });
 
   afterAll(async () => {
@@ -58,177 +102,110 @@ describe('BaseSyncer', () => {
   describe('sync', () => {
     it('should sync entities successfully', async () => {
       // Mock Notion data
-      const notionEntities = [
-        { id: 'test1', name: 'Test Entity 1', type: 'Test' },
-        { id: 'test2', name: 'Test Entity 2', type: 'Test' }
+      const notionData = [
+        { 
+          id: 'test1', 
+          properties: {
+            name: { title: [{ text: { content: 'Test Entity 1' } }] },
+            type: { select: { name: 'Test' } }
+          }
+        },
+        { 
+          id: 'test2',
+          properties: {
+            name: { title: [{ text: { content: 'Test Entity 2' } }] },
+            type: { select: { name: 'Test' } }
+          }
+        }
       ];
 
-      mockNotionService.fetchEntities.mockResolvedValue(notionEntities);
+      // Override fetchFromNotion
+      testSyncer.fetchFromNotion = jest.fn().mockResolvedValue(notionData);
 
       // Perform sync
       const result = await testSyncer.sync();
 
       // Verify results
-      expect(result.success).toBe(true);
+      expect(result.fetched).toBe(2);
       expect(result.synced).toBe(2);
-      expect(result.failed).toBe(0);
-      expect(result.errors).toHaveLength(0);
+      expect(result.errors).toBe(0);
 
       // Verify database state
-      const db = dbSetup.getDb();
-      const entities = db.prepare('SELECT * FROM test_entities').all();
-      expect(entities).toHaveLength(2);
-      expect(entities[0].id).toBe('test1');
-      expect(entities[1].id).toBe('test2');
+      const count = await testSyncer.getCurrentRecordCount();
+      expect(count).toBe(2);
     });
 
-    it('should handle validation failures', async () => {
-      // Override validateEntity to fail for specific entity
-      testSyncer.validateEntity = async (entity) => {
-        return entity.id !== 'test2';
-      };
-
-      // Mock Notion data
-      const notionEntities = [
-        { id: 'test1', name: 'Test Entity 1', type: 'Test' },
-        { id: 'test2', name: 'Test Entity 2', type: 'Test' }
+    it('should handle mapping errors with continueOnError=true', async () => {
+      // Mock Notion data with one bad entity
+      const notionData = [
+        { 
+          id: 'test1', 
+          properties: {
+            name: { title: [{ text: { content: 'Test Entity 1' } }] },
+            type: { select: { name: 'Test' } }
+          }
+        },
+        { 
+          id: 'test2',
+          // Missing properties - will cause mapping error
+        }
       ];
 
-      mockNotionService.fetchEntities.mockResolvedValue(notionEntities);
+      // Override fetchFromNotion
+      testSyncer.fetchFromNotion = jest.fn().mockResolvedValue(notionData);
+      
+      // Override mapData to throw on bad data
+      const originalMapData = testSyncer.mapData.bind(testSyncer);
+      testSyncer.mapData = jest.fn().mockImplementation(async (item) => {
+        if (!item.properties) {
+          throw new Error('Missing properties');
+        }
+        return originalMapData(item);
+      });
 
-      // Perform sync
-      const result = await testSyncer.sync();
+      // Perform sync with continueOnError
+      const result = await testSyncer.sync({ continueOnError: true });
 
       // Verify results
-      expect(result.success).toBe(true);
+      expect(result.fetched).toBe(2);
       expect(result.synced).toBe(1);
-      expect(result.failed).toBe(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].entityId).toBe('test2');
+      expect(result.errors).toBe(1);
 
-      // Verify database state
-      const db = dbSetup.getDb();
-      const entities = db.prepare('SELECT * FROM test_entities').all();
-      expect(entities).toHaveLength(1);
-      expect(entities[0].id).toBe('test1');
+      // Verify database state - only good entity should be saved
+      const count = await testSyncer.getCurrentRecordCount();
+      expect(count).toBe(1);
     });
 
-    it('should handle Notion API errors', async () => {
-      // Mock Notion API error
-      mockNotionService.fetchEntities.mockRejectedValue(new Error('Notion API error'));
-
-      // Perform sync
-      const result = await testSyncer.sync();
-
-      // Verify results
-      expect(result.success).toBe(false);
-      expect(result.synced).toBe(0);
-      expect(result.failed).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('Notion API error');
-
-      // Verify database state
-      const db = dbSetup.getDb();
-      const entities = db.prepare('SELECT * FROM test_entities').all();
-      expect(entities).toHaveLength(0);
-    });
-
-    it('should handle database errors', async () => {
+    it('should handle dry run without modifying database', async () => {
+      // Clear any existing data first
+      await testSyncer.clearExistingData();
+      
       // Mock Notion data
-      const notionEntities = [
-        { id: 'test1', name: 'Test Entity 1', type: 'Test' }
+      const notionData = [
+        { 
+          id: 'test1', 
+          properties: {
+            name: { title: [{ text: { content: 'Test Entity 1' } }] },
+            type: { select: { name: 'Test' } }
+          }
+        }
       ];
 
-      mockNotionService.fetchEntities.mockResolvedValue(notionEntities);
+      // Override fetchFromNotion
+      testSyncer.fetchFromNotion = jest.fn().mockResolvedValue(notionData);
 
-      // Force database error by dropping table
-      const db = dbSetup.getDb();
-      db.prepare('DROP TABLE test_entities').run();
-
-      // Perform sync
-      const result = await testSyncer.sync();
+      // Perform dry run
+      const result = await testSyncer.dryRun();
 
       // Verify results
-      expect(result.success).toBe(false);
-      expect(result.synced).toBe(0);
-      expect(result.failed).toBe(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('no such table');
+      expect(result.fetched).toBe(1);
+      expect(result.wouldSync).toBe(1);
+      expect(result.wouldDelete).toBe(0);
+      expect(result.wouldError).toBe(0);
+
+      // Verify database was not modified
+      const count = await testSyncer.getCurrentRecordCount();
+      expect(count).toBe(0);
     });
   });
-
-  describe('syncRelationships', () => {
-    it('should sync relationships successfully', async () => {
-      // Insert test entities first
-      const db = dbSetup.getDb();
-      db.prepare('INSERT INTO test_entities (id, name, type) VALUES (?, ?, ?)').run('test1', 'Test Entity 1', 'Test');
-      db.prepare('INSERT INTO test_entities (id, name, type) VALUES (?, ?, ?)').run('test2', 'Test Entity 2', 'Test');
-
-      // Mock Notion relationships
-      const notionRelationships = [
-        { source_id: 'test1', target_id: 'test2', type: 'RELATED_TO' }
-      ];
-
-      mockNotionService.fetchEntityRelationships.mockResolvedValue(notionRelationships);
-
-      // Perform relationship sync
-      const result = await testSyncer.syncRelationships();
-
-      // Verify results
-      expect(result.success).toBe(true);
-      expect(result.synced).toBe(1);
-      expect(result.failed).toBe(0);
-      expect(result.errors).toHaveLength(0);
-
-      // Verify database state
-      const relationships = db.prepare('SELECT * FROM test_relationships').all();
-      expect(relationships).toHaveLength(1);
-      expect(relationships[0].source_id).toBe('test1');
-      expect(relationships[0].target_id).toBe('test2');
-    });
-
-    it('should handle missing entities in relationships', async () => {
-      // Mock Notion relationships with non-existent entity
-      const notionRelationships = [
-        { source_id: 'test1', target_id: 'nonexistent', type: 'RELATED_TO' }
-      ];
-
-      mockNotionService.fetchEntityRelationships.mockResolvedValue(notionRelationships);
-
-      // Perform relationship sync
-      const result = await testSyncer.syncRelationships();
-
-      // Verify results
-      expect(result.success).toBe(true);
-      expect(result.synced).toBe(0);
-      expect(result.failed).toBe(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('foreign key constraint failed');
-
-      // Verify database state
-      const db = dbSetup.getDb();
-      const relationships = db.prepare('SELECT * FROM test_relationships').all();
-      expect(relationships).toHaveLength(0);
-    });
-
-    it('should handle Notion API errors during relationship sync', async () => {
-      // Mock Notion API error
-      mockNotionService.fetchEntityRelationships.mockRejectedValue(new Error('Notion API error'));
-
-      // Perform relationship sync
-      const result = await testSyncer.syncRelationships();
-
-      // Verify results
-      expect(result.success).toBe(false);
-      expect(result.synced).toBe(0);
-      expect(result.failed).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toContain('Notion API error');
-
-      // Verify database state
-      const db = dbSetup.getDb();
-      const relationships = db.prepare('SELECT * FROM test_relationships').all();
-      expect(relationships).toHaveLength(0);
-    });
-  });
-}); 
+});

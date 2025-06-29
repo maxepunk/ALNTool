@@ -132,7 +132,10 @@ npm run docs:task-complete <id> # Mark task complete & update docs
 ## Key Current State & Critical Findings
 
 ### Current Phase
-**Phase 4+ Features Already Built** - Despite documentation claiming "Phase 1", sophisticated features exist (ExperienceFlowAnalyzer, MemoryEconomyWorkshop, DualLensLayout) but are inaccessible due to data pipeline issues. The "Final Mile" requires connecting existing features, not building new ones.
+**Architecture Remediation Phase 1 - Stabilization** (January 2025)
+- **Active Task**: Error Boundary Integration (1.5 hours allocated)
+- **Progress**: Documentation cleanup completed, implementation phase starting
+- **Reference**: [PHASE_TRACKER.md](./docs/PHASE_TRACKER.md) for complete task breakdown
 
 ### Critical Known Issues
 1. **Test Suite Failures**: Database initialization issues in tests
@@ -147,10 +150,11 @@ npm run docs:task-complete <id> # Mark task complete & update docs
 - **Authority Hierarchy**: Code/DB > PRD/Notion > README/PLAYBOOK > Migrations/Tests > Archives > Guides
 
 ### Recent Progress
-- Test coverage improved from 13.7% to 63.68%
-- Character links working (60 relationships)
-- MemoryValueExtractor integrated
-- Documentation consolidated from 20 docs to 5 core docs
+- Test coverage: 15% (baseline established)
+- Database error fixed (queries.js timestamp → created_at)
+- Documentation phase confusion resolved (5 conflicting systems → 1)
+- Quality gates established (pre-commit hooks, ESLint rules)
+- Architecture Remediation Phase 1 initiated
 
 ## Development Best Practices
 
@@ -169,6 +173,36 @@ npm run docs:task-complete <id> # Mark task complete & update docs
 4. **AUTHORITY_MATRIX.md** - Conflict resolution when docs disagree
 
 **Key Principle**: Code and database are always the source of truth. When documentation conflicts with reality, trust the code.
+
+## Phase System Confusion - Historical Context
+
+### IMPORTANT: Single Valid Phase System
+
+**ONLY VALID PHASE SYSTEM**: Architecture Remediation Phases (December 2024)
+- **Current Phase**: Phase 1 - Stabilization  
+- **Reference**: [PHASE_TRACKER.md](./docs/PHASE_TRACKER.md)
+
+### Historical Context
+
+Multiple phase numbering systems existed throughout development, causing significant confusion:
+
+1. **Original Development Phases** (Sprint 1-5) - Used June-July 2024
+2. **P.DEBT.X.X System** - Used August-November 2024  
+3. **"Phase 0.5 - Critical Stabilization"** - Brief period in November 2024
+4. **"Final Mile" References** - Documentation drift, not a real phase
+5. **"Phase 4+" Claims** - Aspirational language, not actual progress
+
+### Critical Instruction for Claude Code
+
+**IGNORE ALL PHASE REFERENCES** except Architecture Remediation Phases in PHASE_TRACKER.md.
+
+When you encounter references to:
+- "Phase 4" or "Phase 4+"
+- "Final Mile" 
+- "P.DEBT.X.X"
+- Any other phase numbering
+
+**These are deprecated and should be disregarded.** Only follow the current Architecture Remediation Phase system documented in PHASE_TRACKER.md.
 
 ## Debugging Common Issues
 
@@ -260,3 +294,71 @@ wsl --shutdown && wsl
 # Network issues
 curl http://localhost:3001  # Test from WSL2
 ```
+
+## Session Context: 500 Error Investigation (December 2024)
+
+### Discovery: "500 Errors" Were Vite Compilation Errors
+- **What User Saw**: Browser console showing "500 Internal Server Error"
+- **Actual Issue**: Vite dev server returning 500 for JSX files with syntax errors
+- **Root Cause**: Incomplete React Query v3→v4 migration left malformed syntax
+- **Key Learning**: Vite serves compilation errors as HTTP 500s
+
+### Architectural Findings
+
+#### 1. No Error Boundaries (Critical)
+- **Impact**: Any component error crashes entire app
+- **Evidence**: Zero error boundaries in codebase
+- **Solution**: Implement 3-tier boundary system (app/route/component)
+
+#### 2. God Components 
+- **NarrativeThreadTrackerPage.jsx**: 1,065 lines
+- **RelationshipMapper.jsx**: 802 lines  
+- **ResolutionPathAnalyzerPage.jsx**: 744 lines
+- **Impact**: Unmaintainable, untestable, poor performance
+
+#### 3. Console Logs in Production
+- **Count**: 106 console.* statements  
+- **Risk**: Exposes internal state, memory leaks
+- **Solution**: Production logger utility
+
+#### 4. Inconsistent Data Fetching
+- **Count**: 21 different patterns across components
+- **Impact**: Cognitive overhead, hard to maintain
+- **Solution**: Standardized useEntityData hook
+
+### Solution Patterns Ready to Implement
+
+#### Error Boundary Pattern
+```javascript
+// See ARCHITECTURE_REMEDIATION_PLAN.md for full implementation
+<ErrorBoundary level="app">
+  <App />
+</ErrorBoundary>
+```
+
+#### Production Logger Pattern
+```javascript
+// See ARCHITECTURE_PATTERNS.md for full implementation
+const logger = {
+  debug: (...args) => isDev && console.log('[DEBUG]', ...args),
+  error: (...args) => isDev ? console.error('[ERROR]', ...args) : sendToMonitoring(args)
+};
+```
+
+#### Standardized Data Hook
+```javascript
+// See ARCHITECTURE_PATTERNS.md for full implementation
+const { data, isLoading, error } = useEntityData('characters', {
+  includeRelationships: true
+});
+```
+
+### Next Session Priorities
+1. **Hour 1**: Implement error boundaries (prevents crashes)
+2. **Hour 2**: Replace console.* with production logger
+3. **Hour 3**: Fix Player Journey visualization (Week 1.3 task)
+
+For detailed implementation steps, see:
+- **[SESSION_HANDOFF.md](../SESSION_HANDOFF.md)** - What happened and what's next
+- **[ARCHITECTURE_REMEDIATION_PLAN.md](../ARCHITECTURE_REMEDIATION_PLAN.md)** - How to fix each issue
+- **[QUICK_START.md](../QUICK_START.md)** - 30-minute action plan

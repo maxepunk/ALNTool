@@ -22,7 +22,7 @@ let allTestsPassed = true;
 for (const testFile of testFiles) {
   console.log(`\n📋 Running tests for ${testFile}...`);
   console.log('━'.repeat(50));
-  
+
   try {
     execSync(`npm test -- --testPathPattern="${testFile}"`, {
       stdio: 'inherit',

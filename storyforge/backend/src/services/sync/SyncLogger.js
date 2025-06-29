@@ -1,5 +1,6 @@
 const { getDB } = require('../../db/database');
 
+const logger = require('../../utils/logger');
 /**
  * Centralized logging service for sync operations.
  * Provides consistent logging interface and tracks sync progress in the database.
@@ -27,18 +28,18 @@ class SyncLogger {
    */
   startSync(entityType) {
     this.initDB();
-    
+
     const stmt = this.db.prepare(
       'INSERT INTO sync_log (start_time, status, entity_type) VALUES (?, ?, ?)'
     );
-    
+
     const { lastInsertRowid } = stmt.run(
-      new Date().toISOString(), 
-      'started', 
+      new Date().toISOString(),
+      'started',
       entityType
     );
-    
-    console.log(`🔄 Starting sync for ${entityType}...`);
+
+    logger.debug(`🔄 Starting sync for ${entityType}...`);
     return lastInsertRowid;
   }
 
@@ -52,28 +53,28 @@ class SyncLogger {
    */
   completeSync(logId, stats = {}) {
     this.initDB();
-    
+
     const { fetched = 0, synced = 0, errors = 0 } = stats;
-    
+
     this.db.prepare(
       `UPDATE sync_log 
        SET end_time = ?, status = 'completed', 
            records_fetched = ?, records_synced = ?, errors = ?
        WHERE id = ?`
     ).run(
-      new Date().toISOString(), 
-      fetched, 
-      synced, 
-      errors, 
+      new Date().toISOString(),
+      fetched,
+      synced,
+      errors,
       logId
     );
-    
+
     // Get entity type for logging
     const { entity_type } = this.db.prepare(
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
-    
-    console.log(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` + 
+
+    logger.debug(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` +
                 (errors > 0 ? ` (${errors} errors)` : ''));
   }
 
@@ -85,28 +86,28 @@ class SyncLogger {
    */
   failSync(logId, error, stats = {}) {
     this.initDB();
-    
+
     const { fetched = 0, synced = 0 } = stats;
-    
+
     this.db.prepare(
       `UPDATE sync_log 
        SET end_time = ?, status = 'failed', 
            error_details = ?, records_fetched = ?, records_synced = ?
        WHERE id = ?`
     ).run(
-      new Date().toISOString(), 
-      error.message || String(error), 
-      fetched, 
-      synced, 
+      new Date().toISOString(),
+      error.message || String(error),
+      fetched,
+      synced,
       logId
     );
-    
+
     // Get entity type for logging
     const { entity_type } = this.db.prepare(
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
-    
-    console.error(`❌ ${entity_type} sync failed:`, error.message);
+
+    logger.error(`❌ ${entity_type} sync failed:`, error.message);
   }
 
   /**
@@ -115,7 +116,7 @@ class SyncLogger {
    * @param {*} details - Additional details to log
    */
   warn(message, details = null) {
-    console.warn(`⚠️  ${message}`, details || '');
+    logger.warn(`⚠️  ${message}`, details || '');
   }
 
   /**
@@ -125,9 +126,9 @@ class SyncLogger {
    */
   error(message, error = null) {
     if (error instanceof Error) {
-      console.error(`❌ ${message}:`, error.message);
+      logger.error(`❌ ${message}:`, error.message);
     } else {
-      console.error(`❌ ${message}`, error || '');
+      logger.error(`❌ ${message}`, error || '');
     }
   }
 
@@ -136,7 +137,7 @@ class SyncLogger {
    * @param {string} message - Info message
    */
   info(message) {
-    console.log(`📝 ${message}`);
+    logger.debug(`📝 ${message}`);
   }
 
   /**
@@ -146,7 +147,7 @@ class SyncLogger {
    */
   getRecentSyncHistory(limit = 10) {
     this.initDB();
-    
+
     return this.db.prepare(
       `SELECT * FROM sync_log 
        ORDER BY start_time DESC 
@@ -161,7 +162,7 @@ class SyncLogger {
    */
   getSyncStats(entityType) {
     this.initDB();
-    
+
     const stats = this.db.prepare(
       `SELECT 
         COUNT(*) as total_syncs,
@@ -172,7 +173,7 @@ class SyncLogger {
        FROM sync_log 
        WHERE entity_type = ?`
     ).get(entityType);
-    
+
     return stats;
   }
 }

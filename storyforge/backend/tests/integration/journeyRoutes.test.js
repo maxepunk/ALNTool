@@ -2,14 +2,19 @@ const request = require('supertest');
 const express = require('express');
 const journeyRoutes = require('../../src/routes/journeyRoutes');
 const TestDbSetup = require('../utils/testDbSetup');
+const { initializeDatabase, closeDB, getDB } = require('../../src/db/database');
 
 describe('Journey Routes', () => {
   let app;
   let testDb;
   
   beforeAll(async () => {
+    // Initialize the shared database instance
+    await closeDB();
+    const db = initializeDatabase(':memory:');
+    
     testDb = new TestDbSetup();
-    await testDb.initialize();
+    testDb.db = db; // Use the shared database instance
     
     app = express();
     app.use(express.json());
@@ -45,93 +50,124 @@ describe('Journey Routes', () => {
   });
   
   afterAll(async () => {
-    await testDb.db.close();
+    await closeDB();
   });
 
-  describe('POST /api/gaps/:gapId/resolve', () => {
-    it('should resolve a gap successfully with status and comment', async () => {
-      // First get a gap ID
-      const gapsResponse = await request(app)
+  describe('GET /api/journeys/:characterId', () => {
+    it('should return a journey for an existing character', async () => {
+      // Verify character exists in test db
+      const char = testDb.db.prepare('SELECT * FROM characters WHERE id = ?').get('char1');
+      expect(char).toBeDefined();
+      expect(char.name).toBe('Test Character');
+      
+      const response = await request(app)
+        .get('/api/journeys/char1')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('character_info');
+      expect(response.body).toHaveProperty('graph');
+      expect(response.body.character_info).toHaveProperty('id', 'char1');
+      expect(response.body.character_info).toHaveProperty('name', 'Test Character');
+    });
+
+    it('should return 404 for a non-existent character', async () => {
+      await request(app)
+        .get('/api/journeys/nonexistent')
+        .expect(404);
+    });
+  });
+
+  describe('GET /api/journeys/:characterId/gaps', () => {
+    it('should return empty array for deprecated gaps endpoint', async () => {
+      const response = await request(app)
         .get('/api/journeys/char1/gaps')
         .expect(200);
       
-      const gapId = gapsResponse.body[0].id;
-      
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0);
+    });
+  });
+
+  describe('GET /api/gaps/all', () => {
+    it('should return empty array for deprecated all gaps endpoint', async () => {
       const response = await request(app)
-        .post(`/api/gaps/${gapId}/resolve`)
+        .get('/api/gaps/all')
+        .expect(200);
+      
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(0);
+    });
+  });
+
+  describe('GET /api/sync/status', () => {
+    it('should return sync status', async () => {
+      const response = await request(app)
+        .get('/api/sync/status')
+        .expect(200);
+      
+      expect(response.body).toHaveProperty('status');
+      expect(response.body).toHaveProperty('pending_changes');
+      expect(response.body).toHaveProperty('last_notion_sync');
+      expect(response.body).toHaveProperty('last_local_db_update');
+      expect(response.body).toHaveProperty('database_status');
+    });
+  });
+
+  describe('GET /api/journeys/:characterId/gaps/:gapId/suggestions', () => {
+    it('should return 410 for deprecated gap suggestions endpoint', async () => {
+      const response = await request(app)
+        .get('/api/journeys/char1/gaps/somegap/suggestions')
+        .expect(410);
+      
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('deprecated');
+      expect(response.body).toHaveProperty('migration');
+    });
+  });
+
+  describe('POST /api/gaps/:gapId/resolve', () => {
+    it('should return 410 for deprecated gap resolution endpoint', async () => {
+      const response = await request(app)
+        .post('/api/gaps/somegap/resolve')
         .send({
           status: 'Resolved',
           comment: 'Test resolution'
         })
-        .expect(200);
+        .expect(410);
       
-      expect(response.body).toMatchObject({
-        id: gapId,
-        status: 'Resolved',
-        resolution_comment: 'Test resolution'
-      });
-      
-      // Verify the gap is updated in the database
-      const updatedGap = testDb.db.prepare(`
-        SELECT * FROM cached_journey_graphs 
-        WHERE character_id = ? AND graph_nodes LIKE ?
-      `).get('char1', `%${gapId}%`);
-      
-      expect(updatedGap).toBeDefined();
-      const nodes = JSON.parse(updatedGap.graph_nodes);
-      const gapNode = nodes.find(n => n.id === gapId);
-      expect(gapNode).toMatchObject({
-        status: 'Resolved',
-        resolution_comment: 'Test resolution'
-      });
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('deprecated');
+      expect(response.body).toHaveProperty('migration');
     });
 
-    it('should return 404 if gap not found', async () => {
+    it('should return 410 for any gap ID', async () => {
       await request(app)
         .post('/api/gaps/nonexistent/resolve')
         .send({
           status: 'Resolved',
           comment: 'Test comment'
         })
-        .expect(404);
+        .expect(410);
     });
 
-    it('should return 400 if status is missing in payload', async () => {
-      // First get a gap ID
-      const gapsResponse = await request(app)
-        .get('/api/journeys/char1/gaps')
-        .expect(200);
-      
-      const gapId = gapsResponse.body[0].id;
-      
+    it('should return 410 even without valid payload', async () => {
       await request(app)
-        .post(`/api/gaps/${gapId}/resolve`)
+        .post('/api/gaps/gap123/resolve')
         .send({
           comment: 'Test comment'
         })
-        .expect(400);
+        .expect(410);
     });
 
-    it('should resolve a gap successfully with only status (comment is optional)', async () => {
-      // First get a gap ID
-      const gapsResponse = await request(app)
-        .get('/api/journeys/char1/gaps')
-        .expect(200);
-      
-      const gapId = gapsResponse.body[0].id;
-      
+    it('should return 410 for any gap resolution attempt', async () => {
       const response = await request(app)
-        .post(`/api/gaps/${gapId}/resolve`)
+        .post('/api/gaps/gap456/resolve')
         .send({
           status: 'Resolved'
         })
-        .expect(200);
+        .expect(410);
       
-      expect(response.body).toMatchObject({
-        id: gapId,
-        status: 'Resolved',
-        resolution_comment: null
-      });
+      expect(response.body).toHaveProperty('error');
     });
   });
 });

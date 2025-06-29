@@ -29,17 +29,17 @@ describe('RelationshipSyncer Integration Tests', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
-    
+
     // Get test database
     db = getDB();
-    
+
     // Setup mock responses
     mockNotionService.getCharacters.mockResolvedValue([
       { id: 'char1', properties: { Name: { title: [{ plain_text: 'Sarah' }] } } },
       { id: 'char2', properties: { Name: { title: [{ plain_text: 'Alex' }] } } },
       { id: 'char3', properties: { Name: { title: [{ plain_text: 'Marcus' }] } } }
     ]);
-    
+
     mockPropertyMapper.mapCharacterWithNames.mockImplementation(async (character) => {
       // Return different relationships for different characters to test processing
       if (character.id === 'char1') {
@@ -71,7 +71,7 @@ describe('RelationshipSyncer Integration Tests', () => {
         };
       }
     });
-    
+
     // Create syncer instance
     syncer = new RelationshipSyncer({
       notionService: mockNotionService,
@@ -82,7 +82,7 @@ describe('RelationshipSyncer Integration Tests', () => {
 
     // Setup test data
     db.prepare('BEGIN TRANSACTION').run();
-    
+
     // Insert test characters
     db.prepare(`
       INSERT INTO characters (id, name, type) VALUES 
@@ -190,7 +190,7 @@ describe('RelationshipSyncer Integration Tests', () => {
 
       expect(links).toHaveLength(1);
       const link = links[0];
-      
+
       // Calculate expected strength:
       // - 2 shared events * 30 = 60
       // - 1 shared puzzle * 25 = 25
@@ -257,4 +257,4 @@ describe('RelationshipSyncer Integration Tests', () => {
       expect(oldLinks).toHaveLength(0);
     });
   });
-}); 
+});

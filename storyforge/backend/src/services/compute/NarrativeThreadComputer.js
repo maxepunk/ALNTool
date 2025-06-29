@@ -1,5 +1,8 @@
 const DerivedFieldComputer = require('./DerivedFieldComputer');
+const GameConstants = require('../../config/GameConstants');
+const ValidationUtils = require('../../utils/ValidationUtils');
 
+const logger = require('../../utils/logger');
 /**
  * Computes Narrative Threads for puzzles based on their rewards and story reveals
  * Narrative threads are story themes that connect puzzles together
@@ -41,14 +44,18 @@ class NarrativeThreadComputer extends DerivedFieldComputer {
             for (const elementId of rewardIds) {
               const element = this.db.prepare('SELECT * FROM elements WHERE id = ?').get(elementId);
               if (element) {
-                if (element.name) this._extractThreadsFromText(element.name, threads);
-                if (element.description) this._extractThreadsFromText(element.description, threads);
+                if (element.name) {
+                  this._extractThreadsFromText(element.name, threads);
+                }
+                if (element.description) {
+                  this._extractThreadsFromText(element.description, threads);
+                }
               }
             }
           }
         } catch (e) {
           // If JSON parsing fails, just skip reward elements
-          console.warn(`Failed to parse reward_ids for puzzle ${puzzle.id}: ${e.message}`);
+          logger.warn(`Failed to parse reward_ids for puzzle ${puzzle.id}: ${e.message}`);
         }
       }
 
@@ -59,7 +66,7 @@ class NarrativeThreadComputer extends DerivedFieldComputer {
 
       // If no threads found, mark as unassigned
       if (threads.size === 0) {
-        threads.add('Unassigned');
+        threads.add(GameConstants.NARRATIVE_THREADS.DEFAULT_CATEGORY);
       }
 
       return {
@@ -67,10 +74,10 @@ class NarrativeThreadComputer extends DerivedFieldComputer {
         computed_narrative_threads: JSON.stringify(Array.from(threads))
       };
     } catch (error) {
-      console.error(`Failed to compute narrative threads for puzzle ${puzzle.id}: ${error.message}`);
+      logger.error(`Failed to compute narrative threads for puzzle ${puzzle.id}: ${error.message}`);
       return {
         ...puzzle,
-        computed_narrative_threads: JSON.stringify(['Unassigned'])
+        computed_narrative_threads: JSON.stringify([GameConstants.NARRATIVE_THREADS.DEFAULT_CATEGORY])
       };
     }
   }
@@ -80,25 +87,51 @@ class NarrativeThreadComputer extends DerivedFieldComputer {
    * @private
    */
   _extractThreadsFromText(text, threads) {
+    // Map keywords to narrative thread categories from GameConstants
     const keywordMap = {
-      'underground': ['Underground Parties', 'Black Market'],
-      'party': ['Underground Parties', 'Community'],
-      'memory': ['Memory Drug', 'Black Market'],
-      'drug': ['Memory Drug', 'Black Market'],
-      'corporate': ['Corporate Espionage', 'Detective'],
-      'espionage': ['Corporate Espionage', 'Detective'],
-      'investigation': ['Detective', 'Corporate Espionage'],
-      'evidence': ['Detective', 'Corporate Espionage'],
-      'community': ['Community', 'Third Path'],
-      'gathering': ['Community', 'Third Path']
+      // Corporate Espionage keywords
+      'corporate': GameConstants.NARRATIVE_THREADS.CATEGORIES[0], // 'Corporate Espionage'
+      'espionage': GameConstants.NARRATIVE_THREADS.CATEGORIES[0],
+      'business': GameConstants.NARRATIVE_THREADS.CATEGORIES[0],
+      'company': GameConstants.NARRATIVE_THREADS.CATEGORIES[0],
+
+      // Memory Technology keywords
+      'memory': GameConstants.NARRATIVE_THREADS.CATEGORIES[1], // 'Memory Technology'
+      'rfid': GameConstants.NARRATIVE_THREADS.CATEGORIES[1],
+      'token': GameConstants.NARRATIVE_THREADS.CATEGORIES[1],
+      'technology': GameConstants.NARRATIVE_THREADS.CATEGORIES[1],
+
+      // Personal Relationships keywords
+      'relationship': GameConstants.NARRATIVE_THREADS.CATEGORIES[2], // 'Personal Relationships'
+      'marriage': GameConstants.NARRATIVE_THREADS.CATEGORIES[2],
+      'affair': GameConstants.NARRATIVE_THREADS.CATEGORIES[2],
+      'personal': GameConstants.NARRATIVE_THREADS.CATEGORIES[2],
+
+      // Environmental Crimes keywords
+      'environmental': GameConstants.NARRATIVE_THREADS.CATEGORIES[3], // 'Environmental Crimes'
+      'pollution': GameConstants.NARRATIVE_THREADS.CATEGORIES[3],
+      'crime': GameConstants.NARRATIVE_THREADS.CATEGORIES[3],
+
+      // AI Consciousness keywords
+      'ai': GameConstants.NARRATIVE_THREADS.CATEGORIES[4], // 'AI Consciousness'
+      'consciousness': GameConstants.NARRATIVE_THREADS.CATEGORIES[4],
+      'artificial': GameConstants.NARRATIVE_THREADS.CATEGORIES[4],
+      'intelligence': GameConstants.NARRATIVE_THREADS.CATEGORIES[4]
     };
 
     const lowerText = text.toLowerCase();
-    for (const [keyword, themes] of Object.entries(keywordMap)) {
-      if (lowerText.includes(keyword.toLowerCase())) {
-        themes.forEach(theme => threads.add(theme));
+    for (const [keyword, category] of Object.entries(keywordMap)) {
+      if (lowerText.includes(keyword)) {
+        threads.add(category);
       }
     }
+
+    // Also check for exact category names in the text
+    GameConstants.NARRATIVE_THREADS.CATEGORIES.forEach(category => {
+      if (lowerText.includes(category.toLowerCase())) {
+        threads.add(category);
+      }
+    });
   }
 
   /**
@@ -121,17 +154,17 @@ class NarrativeThreadComputer extends DerivedFieldComputer {
           `).run(result.computed_narrative_threads, puzzle.id);
           processed++;
         } catch (error) {
-          console.error(`Error processing puzzle ${puzzle.id}: ${error.message}`);
+          logger.error(`Error processing puzzle ${puzzle.id}: ${error.message}`);
           errors++;
         }
       }
 
       return { processed, errors };
     } catch (error) {
-      console.error(`Failed to compute all narrative threads: ${error.message}`);
+      logger.error(`Failed to compute all narrative threads: ${error.message}`);
       throw new Error(`Failed to compute all narrative threads: ${error.message}`);
     }
   }
 }
 
-module.exports = NarrativeThreadComputer; 
+module.exports = NarrativeThreadComputer;

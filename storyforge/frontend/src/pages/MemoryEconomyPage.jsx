@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Box, 
   Container, 
@@ -45,52 +45,40 @@ import InfoIcon from '@mui/icons-material/Info';
 import PageHeader from '../components/PageHeader';
 import DataTable from '../components/DataTable';
 import { api } from '../services/api';
-
-const VALUE_RATING_MAP = {
-  1: 100,
-  2: 500,
-  3: 1000,
-  4: 5000,
-  5: 10000,
-};
-
-const TYPE_MULTIPLIER_MAP = {
-  Personal: 1,
-  Business: 3,
-  Technical: 5,
-};
-
-const MEMORY_TYPE_KEYWORDS = ['memory', 'rfid', 'corrupted']; // For client-side filtering
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 
 function MemoryEconomyWorkshop() {
   const [workshopMode, setWorkshopMode] = useState(true);
   const [selectedResolutionPath, setSelectedResolutionPath] = useState('All');
   
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+  
   // Fetch all necessary data for comprehensive memory economy analysis
-  const { data: memoryElementsData, isLoading: elementsLoading, error: elementsError } = useQuery(
-    'memoryTypeElementsForEconomy',
-    () => api.getElements({ filterGroup: 'memoryTypes' }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: memoryElementsData, isLoading: elementsLoading, error: elementsError } = useQuery({
+    queryKey: ['memoryTypeElementsForEconomy'],
+    queryFn: () => api.getElements({ filterGroup: 'memoryTypes' }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: charactersData, isLoading: charactersLoading } = useQuery(
-    'charactersForMemoryEconomy',
-    () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: charactersData, isLoading: charactersLoading } = useQuery({
+    queryKey: ['charactersForMemoryEconomy'],
+    queryFn: () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery(
-    'puzzlesForMemoryEconomy',
-    () => api.getPuzzles({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery({
+    queryKey: ['puzzlesForMemoryEconomy'],
+    queryFn: () => api.getPuzzles({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const isLoading = elementsLoading || charactersLoading || puzzlesLoading;
+  const isLoading = elementsLoading || charactersLoading || puzzlesLoading || constantsLoading;
   const error = elementsError;
 
   // Memory Economy Analysis
   const memoryEconomyAnalysis = useMemo(() => {
-    if (!memoryElementsData || !charactersData || !puzzlesData) return {
+    if (!memoryElementsData || !charactersData || !puzzlesData || !gameConstants) return {
       processedMemoryData: [],
       economyStats: { totalTokens: 0, completedTokens: 0, totalValue: 0 },
       pathDistribution: { 'Black Market': 0, 'Detective': 0, 'Third Path': 0, 'Unassigned': 0 },
@@ -103,9 +91,10 @@ function MemoryEconomyWorkshop() {
       const valueRating = properties.sf_value_rating;
       const memoryType = properties.sf_memory_type;
 
-      const baseValueAmount = VALUE_RATING_MAP[valueRating] || 0;
-      const typeMultiplierValue = TYPE_MULTIPLIER_MAP[memoryType] || 1;
-      const finalCalculatedValue = baseValueAmount * typeMultiplierValue;
+      // Use backend-calculated values instead of recalculating
+      const baseValueAmount = element.baseValueAmount || 0;
+      const typeMultiplierValue = element.typeMultiplierValue || 1;
+      const finalCalculatedValue = element.finalCalculatedValue || 0;
 
       // Enhanced discovery analysis
       let discoveredVia = 'Direct Discovery';
@@ -166,19 +155,24 @@ function MemoryEconomyWorkshop() {
       return acc;
     }, { toDesign: 0, toBuild: 0, ready: 0 });
 
-    // Balance analysis
+    // Balance analysis using game constants
     const issues = [];
     const recommendations = [];
     
-    if (totalTokens < 50) {
-      issues.push('Token count below target (55 tokens)');
+    const targetTokens = getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55);
+    const minTokens = getConstant(gameConstants, 'MEMORY_VALUE.MIN_TOKEN_COUNT', 50);
+    const maxTokens = getConstant(gameConstants, 'MEMORY_VALUE.MAX_TOKEN_COUNT', 60);
+    const balanceThreshold = getConstant(gameConstants, 'MEMORY_VALUE.BALANCE_WARNING_THRESHOLD', 0.3);
+    
+    if (totalTokens < minTokens) {
+      issues.push(`Token count below target (${targetTokens} tokens)`);
       recommendations.push('Add more memory tokens to reach economy target');
-    } else if (totalTokens > 60) {
+    } else if (totalTokens > maxTokens) {
       issues.push('Token count above target - may overwhelm players');
       recommendations.push('Consider reducing token count or increasing variety');
     }
     
-    if (pathDistribution['Unassigned'] > totalTokens * 0.3) {
+    if (pathDistribution['Unassigned'] > totalTokens * balanceThreshold) {
       issues.push('Too many unassigned tokens');
       recommendations.push('Assign tokens to resolution paths for better balance');
     }
@@ -202,7 +196,7 @@ function MemoryEconomyWorkshop() {
       productionStatus,
       balanceAnalysis: { issues, recommendations }
     };
-  }, [memoryElementsData, charactersData, puzzlesData]);
+  }, [memoryElementsData, charactersData, puzzlesData, gameConstants]);
 
   const columns = useMemo(() => [
     {
@@ -272,9 +266,8 @@ function MemoryEconomyWorkshop() {
       sortable: true,
       width: '10%',
       format: (value) => {
-        const color = value === 'Black Market' ? 'warning' :
-                      value === 'Detective' ? 'error' :
-                      value === 'Third Path' ? 'secondary' : 'default';
+        const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+        const color = pathThemes[value]?.color || 'default';
         return <Chip label={value} size="small" color={color} variant="outlined" />;
       }
     },
@@ -284,13 +277,12 @@ function MemoryEconomyWorkshop() {
       sortable: true,
       width: '8%',
       format: (value) => {
-        const color = value === 'Ready' || value === 'Complete' ? 'success' :
-                      value === 'To Build' ? 'info' :
-                      value === 'To Design' ? 'warning' : 'default';
+        const statusColors = getConstant(gameConstants, 'PRODUCTION_STATUS.COLORS', {});
+        const color = statusColors[value] || statusColors['Unknown'] || 'default';
         return <Chip label={value || 'Unknown'} size="small" color={color} />;
       }
     }
-  ] : []), [workshopMode]);
+  ] : []), [workshopMode, gameConstants]);
 
   if (isLoading) {
     return (
@@ -337,12 +329,18 @@ function MemoryEconomyWorkshop() {
                     <Typography variant="h6">Token Economy</Typography>
                   </Box>
                   <Typography variant="h3" color="primary">{economyStats.totalTokens}</Typography>
-                  <Typography variant="body2" color="text.secondary">of 55 target tokens</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    of {getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55)} target tokens
+                  </Typography>
                   <LinearProgress 
                     variant="determinate" 
-                    value={(economyStats.totalTokens / 55) * 100} 
+                    value={(economyStats.totalTokens / getConstant(gameConstants, 'MEMORY_VALUE.TARGET_TOKEN_COUNT', 55)) * 100} 
                     sx={{ mt: 1, height: 8, borderRadius: 4 }}
-                    color={economyStats.totalTokens >= 50 && economyStats.totalTokens <= 60 ? 'success' : 'warning'}
+                    color={
+                      economyStats.totalTokens >= getConstant(gameConstants, 'MEMORY_VALUE.MIN_TOKEN_COUNT', 50) && 
+                      economyStats.totalTokens <= getConstant(gameConstants, 'MEMORY_VALUE.MAX_TOKEN_COUNT', 60) ? 
+                      'success' : 'warning'
+                    }
                   />
                 </CardContent>
               </Card>
@@ -410,34 +408,29 @@ function MemoryEconomyWorkshop() {
                   Resolution Path Distribution
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.light', borderRadius: 1, color: 'warning.contrastText' }}>
-                      <AccountBalanceIcon sx={{ fontSize: 24, mb: 1 }} />
-                      <Typography variant="h5">{pathDistribution['Black Market']}</Typography>
-                      <Typography variant="caption">Black Market</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'error.light', borderRadius: 1, color: 'error.contrastText' }}>
-                      <SearchIcon sx={{ fontSize: 24, mb: 1 }} />
-                      <Typography variant="h5">{pathDistribution['Detective']}</Typography>
-                      <Typography variant="caption">Detective</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'secondary.light', borderRadius: 1, color: 'secondary.contrastText' }}>
-                      <GroupsIcon sx={{ fontSize: 24, mb: 1 }} />
-                      <Typography variant="h5">{pathDistribution['Third Path']}</Typography>
-                      <Typography variant="caption">Third Path</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.400', borderRadius: 1, color: 'common.white' }}>
-                      <WarningIcon sx={{ fontSize: 24, mb: 1 }} />
-                      <Typography variant="h5">{pathDistribution['Unassigned']}</Typography>
-                      <Typography variant="caption">Unassigned</Typography>
-                    </Box>
-                  </Grid>
+                  {getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']).concat(['Unassigned']).map(path => {
+                    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+                    const theme = pathThemes[path] || { color: 'default', icon: 'Help' };
+                    const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
+                                         path === 'Detective' ? SearchIcon :
+                                         path === 'Third Path' ? GroupsIcon : WarningIcon;
+                    
+                    return (
+                      <Grid key={path} item xs={6}>
+                        <Box sx={{ 
+                          textAlign: 'center', 
+                          p: 2, 
+                          bgcolor: `${theme.color}.light`, 
+                          borderRadius: 1, 
+                          color: `${theme.color}.contrastText` 
+                        }}>
+                          <IconComponent sx={{ fontSize: 24, mb: 1 }} />
+                          <Typography variant="h5">{pathDistribution[path] || 0}</Typography>
+                          <Typography variant="caption">{path}</Typography>
+                        </Box>
+                      </Grid>
+                    );
+                  })}
                 </Grid>
               </Paper>
             </Grid>

@@ -34,6 +34,12 @@ pnpm-debug.log*
 coverage
 /test-results/
 
+# Playwright
+/playwright-report/
+/playwright-user-data/
+/screenshots/
+playwright/.cache/
+
 # Misc
 .DS_Store
 Thumbs.db

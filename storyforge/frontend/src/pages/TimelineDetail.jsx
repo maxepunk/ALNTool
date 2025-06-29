@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -39,22 +39,20 @@ function TimelineDetail() {
   
   // Fetch timeline event data with the queryKey for refreshing
   const queryKey = ['timelineEvent', id];
-  const { data: event, isLoading, isFetching, error } = useQuery(
+  const { data: event, isLoading, isFetching, error } = useQuery({
     queryKey,
-    () => api.getTimelineEventById(id),
-    {
-      enabled: !!id,
-      // Keep previous data while refetching for a smoother UX
-      keepPreviousData: true,
-    }
-  );
+    queryFn: () => api.getTimelineEventById(id),
+    enabled: !!id,
+    // Keep previous data while refetching for a smoother UX
+    keepPreviousData: true,
+  });
   
   // Fetch timeline graph data
-  const { data: timelineGraph, isLoading: isGraphLoading } = useQuery(
-    ['timelineGraph', id],
-    () => api.getTimelineGraph(id, 2),
-    { enabled: !!id }
-  );
+  const { data: timelineGraph, isLoading: isGraphLoading } = useQuery({
+    queryKey: ['timelineGraph', id],
+    queryFn: () => api.getTimelineGraph(id, 2),
+    enabled: !!id
+  });
   
   // Handler for tab changes
   const handleTabChange = (event, newValue) => {

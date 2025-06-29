@@ -8,7 +8,7 @@ describe('NarrativeThreadComputer', () => {
   beforeEach(() => {
     // Create in-memory database for testing
     db = new Database(':memory:');
-    
+
     // Create required tables
     db.exec(`
       CREATE TABLE puzzles (
@@ -53,7 +53,7 @@ describe('NarrativeThreadComputer', () => {
     it('should compute threads from story reveals', async () => {
       const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('p1');
       const result = await computer.compute(puzzle);
-      
+
       const threads = JSON.parse(result.computed_narrative_threads);
       expect(threads).toContain('Underground Parties');
       expect(threads).toContain('Black Market');
@@ -62,7 +62,7 @@ describe('NarrativeThreadComputer', () => {
     it('should compute threads from reward elements', async () => {
       const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('p2');
       const result = await computer.compute(puzzle);
-      
+
       const threads = JSON.parse(result.computed_narrative_threads);
       expect(threads).toContain('Corporate Espionage');
       expect(threads).toContain('Detective');
@@ -71,7 +71,7 @@ describe('NarrativeThreadComputer', () => {
     it('should compute threads from puzzle name', async () => {
       const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('p3');
       const result = await computer.compute(puzzle);
-      
+
       const threads = JSON.parse(result.computed_narrative_threads);
       expect(threads).toContain('Community');
       expect(threads).toContain('Third Path');
@@ -80,7 +80,7 @@ describe('NarrativeThreadComputer', () => {
     it('should handle puzzles with no data', async () => {
       const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('p4');
       const result = await computer.compute(puzzle);
-      
+
       const threads = JSON.parse(result.computed_narrative_threads);
       expect(threads).toEqual(['Unassigned']);
     });
@@ -98,7 +98,7 @@ describe('NarrativeThreadComputer', () => {
 
       const puzzle = db.prepare('SELECT * FROM puzzles WHERE id = ?').get('p5');
       const result = await computer.compute(puzzle);
-      
+
       const threads = JSON.parse(result.computed_narrative_threads);
       expect(threads).toEqual(['Unassigned']);
     });
@@ -107,7 +107,7 @@ describe('NarrativeThreadComputer', () => {
   describe('computeAll', () => {
     it('should compute threads for all puzzles', async () => {
       const stats = await computer.computeAll();
-      
+
       expect(stats.processed).toBe(4); // All puzzles processed
       expect(stats.errors).toBe(0); // No errors
 
@@ -123,7 +123,7 @@ describe('NarrativeThreadComputer', () => {
     it('should handle database errors gracefully', async () => {
       // Force a database error by dropping the table
       db.exec('DROP TABLE puzzles');
-      
+
       await expect(computer.computeAll()).rejects.toThrow('Failed to compute all narrative threads');
     });
   });
@@ -132,7 +132,7 @@ describe('NarrativeThreadComputer', () => {
     it('should extract multiple threads from text', () => {
       const threads = new Set();
       computer._extractThreadsFromText('underground party with memory drugs', threads);
-      
+
       expect(Array.from(threads)).toContain('Underground Parties');
       expect(Array.from(threads)).toContain('Memory Drug');
       expect(Array.from(threads)).toContain('Black Market');
@@ -141,7 +141,7 @@ describe('NarrativeThreadComputer', () => {
     it('should handle case-insensitive matching', () => {
       const threads = new Set();
       computer._extractThreadsFromText('CORPORATE ESPIONAGE', threads);
-      
+
       expect(Array.from(threads)).toContain('Corporate Espionage');
       expect(Array.from(threads)).toContain('Detective');
     });
@@ -149,8 +149,8 @@ describe('NarrativeThreadComputer', () => {
     it('should not add threads for non-matching text', () => {
       const threads = new Set();
       computer._extractThreadsFromText('random text with no keywords', threads);
-      
+
       expect(threads.size).toBe(0);
     });
   });
-}); 
+});

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import logger from '../utils/logger';
 import {
   AppBar,
   Box,
@@ -37,8 +38,15 @@ import ExtensionIcon from '@mui/icons-material/Extension';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import SearchIcon from '@mui/icons-material/Search';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'; // Import chosen icon
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import RouteIcon from '@mui/icons-material/Route';
+import HubIcon from '@mui/icons-material/Hub';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { Link as RouterLink } from 'react-router-dom';
 import { api } from '../services/api';
+import BreadcrumbNavigation from '../components/Layout/BreadcrumbNavigation';
+import ContextIndicator from '../components/Layout/ContextIndicator';
 
 const drawerWidth = 240;
 
@@ -49,6 +57,11 @@ const navItems = [
   { text: 'Puzzles', icon: <ExtensionIcon />, path: '/puzzles' },
   { text: 'Elements', icon: <InventoryIcon />, path: '/elements' },
   { text: 'Memory Economy', icon: <MonetizationOnIcon />, path: '/memory-economy' },
+  { text: 'Player Journey', icon: <RouteIcon />, path: '/player-journey' },
+  { text: 'Character Sociogram', icon: <HubIcon />, path: '/character-sociogram' },
+  { text: 'Narrative Threads', icon: <AutoStoriesIcon />, path: '/narrative-thread-tracker' },
+  { text: 'Resolution Paths', icon: <AnalyticsIcon />, path: '/resolution-path-analyzer' },
+  { text: 'Element-Puzzle Flow', icon: <AccountTreeIcon />, path: '/element-puzzle-economy' },
 ];
 
 const getIconForType = (type) => {
@@ -149,7 +162,7 @@ export default function AppLayout({ children }) {
         const results = await api.globalSearch(searchValue.trim());
         setSearchResults(results);
       } catch (err) {
-        console.error("Search error:", err);
+        logger.error("Search error:", err);
         setSearchError(err.message || 'Error searching. Please try again.');
       } finally {
         setSearchLoading(false);
@@ -276,6 +289,8 @@ export default function AppLayout({ children }) {
 
       <Main open={open} isMobile={isMobile}>
         <Toolbar sx={{display: {xs: 'block', sm: 'block'}}} /> {/* Spacer for fixed AppBar */}
+        <BreadcrumbNavigation />
+        <ContextIndicator />
         <Box sx={{ flexGrow:1, p: { xs: 1.5, sm: 2, md: 2.5 } }}> 
             {children}
         </Box>

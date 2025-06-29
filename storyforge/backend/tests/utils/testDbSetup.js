@@ -18,11 +18,27 @@ class TestDbSetup {
       'character_owned_elements',
       'character_associated_elements',
       'puzzle_elements',
-      'puzzle_characters',
+      'character_puzzles',
       'cached_gaps',
       'schema_migrations',
       'sync_log'
     ];
+  }
+
+  /**
+   * Run migrations on the test database
+   */
+  async runMigrations() {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    try {
+      // Run migrations with transaction support
+      const result = runMigrations(this.db, { useTransaction: true });
+      return result;
+    } catch (error) {
+      console.error('Error running migrations in test:', error);
+      throw error;
+    }
   }
 
   /**
@@ -58,14 +74,14 @@ class TestDbSetup {
               )
             `);
             break;
-          case 'puzzle_characters':
+          case 'character_puzzles':
             this.db.exec(`
-              CREATE TABLE puzzle_characters (
-                puzzle_id TEXT NOT NULL,
+              CREATE TABLE character_puzzles (
                 character_id TEXT NOT NULL,
-                PRIMARY KEY (puzzle_id, character_id),
-                FOREIGN KEY (puzzle_id) REFERENCES puzzles(id) ON DELETE CASCADE,
-                FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+                puzzle_id TEXT NOT NULL,
+                PRIMARY KEY (character_id, puzzle_id),
+                FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+                FOREIGN KEY (puzzle_id) REFERENCES puzzles(id) ON DELETE CASCADE
               )
             `);
             break;
@@ -122,10 +138,10 @@ class TestDbSetup {
     const clearOrder = [
       'cached_journey_graphs',
       'character_links',
+      'character_puzzles',
       'character_timeline_events',
       'character_owned_elements',
       'character_associated_elements',
-      'puzzle_elements',
       'timeline_events',
       'elements',
       'puzzles',
@@ -136,7 +152,19 @@ class TestDbSetup {
     this.db.prepare('BEGIN').run();
     try {
       for (const table of clearOrder) {
-        this.db.prepare(`DELETE FROM ${table}`).run();
+        // Check if table exists before trying to delete
+        const tableExists = this.db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+        ).get(table);
+        
+        if (tableExists) {
+          try {
+            this.db.prepare(`DELETE FROM ${table}`).run();
+          } catch (tableError) {
+            console.error(`Failed to clear table ${table}:`, tableError.message);
+            throw tableError;
+          }
+        }
       }
       this.db.prepare('COMMIT').run();
     } catch (error) {
@@ -263,6 +291,20 @@ class TestDbSetup {
         character_a_id, character_b_id, link_type, link_source_id
       ) VALUES (?, ?, ?, ?)
     `).run(characterAId, characterBId, linkType, linkSourceId);
+  }
+
+  /**
+   * Create a character-puzzle relationship
+   * @param {string} characterId Character ID
+   * @param {string} puzzleId Puzzle ID
+   */
+  createCharacterPuzzleLink(characterId, puzzleId) {
+    const stmt = this.db.prepare(`
+      INSERT INTO character_puzzles (character_id, puzzle_id)
+      VALUES (?, ?)
+      ON CONFLICT(character_id, puzzle_id) DO NOTHING
+    `);
+    stmt.run(characterId, puzzleId);
   }
 
   /**

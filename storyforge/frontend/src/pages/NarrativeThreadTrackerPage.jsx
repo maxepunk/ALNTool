@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
+import ErrorBoundary from '../components/ErrorBoundary';
 import {
   Box,
   Container,
@@ -121,65 +122,67 @@ function NarrativeThreadTrackerPage() {
   const [coherenceMode, setCoherenceMode] = useState(true);
   
   // Fetch all data needed for comprehensive narrative analysis
-  const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useQuery(
-    'charactersForNarrativeAnalysis',
-    () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useQuery({
+    queryKey: ['charactersForNarrativeAnalysis'],
+    queryFn: () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: elementsData, isLoading: elementsLoading } = useQuery(
-    'elementsForNarrativeAnalysis',
-    () => api.getElements({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: elementsData, isLoading: elementsLoading } = useQuery({
+    queryKey: ['elementsForNarrativeAnalysis'],
+    queryFn: () => api.getElements({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery(
-    'puzzlesForNarrativeAnalysis',
-    () => api.getPuzzles({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery({
+    queryKey: ['puzzlesForNarrativeAnalysis'],
+    queryFn: () => api.getPuzzles({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery(
-    'timelineEventsForNarrativeAnalysis',
-    () => api.getTimelineEvents({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery({
+    queryKey: ['timelineEventsForNarrativeAnalysis'],
+    queryFn: () => api.getTimelineEvents({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
 
   // Legacy support - fetch unique narrative threads for the dropdown
-  const { data: threadsData, isLoading: isLoadingThreads, error: threadsError } = useQuery(
-    'uniqueNarrativeThreads',
-    api.getUniqueNarrativeThreads,
-    {
-      onSuccess: (data) => {
-        setUniqueThreads(data || []);
-      },
+  const { data: threadsData, isLoading: isLoadingThreads, error: threadsError } = useQuery({
+    queryKey: ['uniqueNarrativeThreads'],
+    queryFn: () => api.getUniqueNarrativeThreads()
+  });
+
+  // Update unique threads when data changes
+  useEffect(() => {
+    if (threadsData) {
+      setUniqueThreads(threadsData);
     }
-  );
+  }, [threadsData]);
 
   // Legacy support - fetch data for selected thread
-  const { data: legacyCharactersData, isLoading: isLoadingCharacters } = useQuery(
-    ['charactersByThread', selectedThread],
-    () => api.getCharacters({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
+  const { data: legacyCharactersData, isLoading: isLoadingCharacters } = useQuery({
+    queryKey: ['charactersByThread', selectedThread],
+    queryFn: () => api.getCharacters({ narrativeThreadContains: selectedThread }),
+    enabled: !!selectedThread
+  });
 
-  const { data: legacyElementsData, isLoading: isLoadingElements } = useQuery(
-    ['elementsByThread', selectedThread],
-    () => api.getElements({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
+  const { data: legacyElementsData, isLoading: isLoadingElements } = useQuery({
+    queryKey: ['elementsByThread', selectedThread],
+    queryFn: () => api.getElements({ narrativeThreadContains: selectedThread }),
+    enabled: !!selectedThread
+  });
 
-  const { data: legacyPuzzlesData, isLoading: isLoadingPuzzles } = useQuery(
-    ['puzzlesByThread', selectedThread],
-    () => api.getPuzzles({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
+  const { data: legacyPuzzlesData, isLoading: isLoadingPuzzles } = useQuery({
+    queryKey: ['puzzlesByThread', selectedThread],
+    queryFn: () => api.getPuzzles({ narrativeThreadContains: selectedThread }),
+    enabled: !!selectedThread
+  });
 
-  const { data: legacyTimelineEventsData, isLoading: isLoadingTimelineEvents } = useQuery(
-    ['timelineEventsByThread', selectedThread],
-    () => api.getTimelineEvents({ narrativeThreadContains: selectedThread }),
-    { enabled: !!selectedThread }
-  );
+  const { data: legacyTimelineEventsData, isLoading: isLoadingTimelineEvents } = useQuery({
+    queryKey: ['timelineEventsByThread', selectedThread],
+    queryFn: () => api.getTimelineEvents({ narrativeThreadContains: selectedThread }),
+    enabled: !!selectedThread
+  });
 
   const handleThreadChange = (event) => {
     setSelectedThread(event.target.value);
@@ -541,7 +544,8 @@ function NarrativeThreadTrackerPage() {
       </Typography>
 
       {/* Overall Narrative Health */}
-      <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
+      <ErrorBoundary level="component">
+        <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
         <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
           <AutoStoriesIcon sx={{ mr: 1 }} />
           Narrative Coherence Overview
@@ -587,10 +591,12 @@ function NarrativeThreadTrackerPage() {
             </Box>
           </Grid>
         </Grid>
-      </Paper>
+        </Paper>
+      </ErrorBoundary>
 
       {/* Narrative Thread Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <ErrorBoundary level="component">
+        <Grid container spacing={3} sx={{ mb: 3 }}>
         {Object.keys(NARRATIVE_THREADS).map(thread => {
           const threadConfig = NARRATIVE_THREADS[thread];
           const metrics = coherenceMetrics[thread] || {};
@@ -678,7 +684,8 @@ function NarrativeThreadTrackerPage() {
             </Grid>
           );
         })}
-      </Grid>
+        </Grid>
+      </ErrorBoundary>
 
       {coherenceMode && (
         <>

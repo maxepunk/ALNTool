@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
 import {
-  Box, Typography, CircularProgress, Alert, Paper, Drawer, IconButton, Chip, List, ListItem, ListItemText, Divider, Tooltip,
+  Box, Typography, CircularProgress, Alert, Paper, Drawer, IconButton, Chip, List, ListItem, ListItemText, ListItemButton, Divider, Tooltip, Button
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PageHeader from '../components/PageHeader';
@@ -23,10 +23,10 @@ const edgeTypes = {
 
 const CharacterSociogramPage = () => {
   const navigate = useNavigate();
-  const { data: charactersData, isLoading, error } = useQuery(
-    'allCharactersSociogram',
-    api.getAllCharactersWithSociogramData
-  );
+  const { data: charactersData, isLoading, error } = useQuery({
+    queryKey: ['allCharactersSociogram'],
+    queryFn: () => api.getAllCharactersWithSociogramData()
+  });
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);

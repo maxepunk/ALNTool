@@ -9,6 +9,7 @@ const notionService = require('../notionService');
 const propertyMapper = require('../../utils/notionPropertyMapper');
 const { invalidateJourneyCache, clearExpiredJourneyCache } = require('../../db/queries');
 
+const logger = require('../../utils/logger');
 /**
  * SyncOrchestrator coordinates the multi-phase sync process:
  * 1. Entity Phase: Sync base entities (characters, elements, puzzles, timeline)
@@ -18,24 +19,26 @@ const { invalidateJourneyCache, clearExpiredJourneyCache } = require('../../db/q
  */
 class SyncOrchestrator {
   constructor(db) {
-    if (!db) throw new Error('Database connection required');
+    if (!db) {
+      throw new Error('Database connection required');
+    }
     this.db = db;
     this.logger = new SyncLogger(db);
-    
+
     // Prepare dependencies for entity syncers
     const dependencies = {
       notionService,
       propertyMapper,
       logger: this.logger
     };
-    
+
     // Initialize entity syncers with proper dependencies
     this.characterSyncer = new CharacterSyncer(dependencies);
     this.elementSyncer = new ElementSyncer(dependencies);
     this.puzzleSyncer = new PuzzleSyncer(dependencies);
     this.timelineEventSyncer = new TimelineEventSyncer(dependencies);
     this.relationshipSyncer = new RelationshipSyncer(dependencies);
-    
+
     // Initialize compute orchestrator
     this.computeOrchestrator = new ComputeOrchestrator(db);
   }
@@ -50,55 +53,55 @@ class SyncOrchestrator {
   async syncAll(options = {}) {
     const startTime = Date.now();
     const phases = {};
-    
+
     try {
-      console.log('🚀 Starting sync orchestration...');
-      
+      logger.debug('🚀 Starting sync orchestration...');
+
       // Phase 1: Entity Sync
-      console.log('\n📋 Phase 1: Syncing base entities...');
+      logger.debug('\n📋 Phase 1: Syncing base entities...');
       const entityStartTime = Date.now();
-      
+
       phases.entities = await this.syncEntities();
       phases.entities.duration = Date.now() - entityStartTime;
-      console.log(`✅ Entity sync completed in ${phases.entities.duration}ms`);
-      
+      logger.debug(`✅ Entity sync completed in ${phases.entities.duration}ms`);
+
       // Phase 2: Relationship Sync
-      console.log('\n🔗 Phase 2: Syncing relationships...');
+      logger.debug('\n🔗 Phase 2: Syncing relationships...');
       const relationshipStartTime = Date.now();
-      
+
       phases.relationships = await this.syncRelationships();
       phases.relationships.duration = Date.now() - relationshipStartTime;
-      console.log(`✅ Relationship sync completed in ${phases.relationships.duration}ms`);
-      
+      logger.debug(`✅ Relationship sync completed in ${phases.relationships.duration}ms`);
+
       // Phase 3: Compute Derived Fields (unless skipped)
       if (!options.skipCompute) {
-        console.log('\n🧮 Phase 3: Computing derived fields...');
+        logger.debug('\n🧮 Phase 3: Computing derived fields...');
         const computeStartTime = Date.now();
-        
+
         phases.compute = await this.computeDerivedFields();
         phases.compute.duration = Date.now() - computeStartTime;
-        console.log(`✅ Compute phase completed in ${phases.compute.duration}ms`);
+        logger.debug(`✅ Compute phase completed in ${phases.compute.duration}ms`);
       } else {
-        console.log('\n⏭️  Phase 3: Skipped compute phase');
+        logger.debug('\n⏭️  Phase 3: Skipped compute phase');
         phases.compute = { skipped: true };
       }
-      
+
       // Phase 4: Cache Management (unless skipped)
       if (!options.skipCache) {
-        console.log('\n🗄️  Phase 4: Managing cache...');
+        logger.debug('\n🗄️  Phase 4: Managing cache...');
         const cacheStartTime = Date.now();
-        
+
         phases.cache = await this.manageCaches();
         phases.cache.duration = Date.now() - cacheStartTime;
-        console.log(`✅ Cache management completed in ${phases.cache.duration}ms`);
+        logger.debug(`✅ Cache management completed in ${phases.cache.duration}ms`);
       } else {
-        console.log('\n⏭️  Phase 4: Skipped cache management');
+        logger.debug('\n⏭️  Phase 4: Skipped cache management');
         phases.cache = { skipped: true };
       }
-      
+
       const totalDuration = Date.now() - startTime;
-      console.log(`\n🎉 Sync orchestration completed successfully in ${totalDuration}ms`);
-      
+      logger.debug(`\n🎉 Sync orchestration completed successfully in ${totalDuration}ms`);
+
       return {
         success: true,
         status: 'completed',
@@ -107,11 +110,11 @@ class SyncOrchestrator {
         startTime: new Date(startTime).toISOString(),
         endTime: new Date().toISOString()
       };
-      
+
     } catch (error) {
       const totalDuration = Date.now() - startTime;
-      console.error('❌ Sync orchestration failed:', error.message);
-      
+      logger.error('❌ Sync orchestration failed:', error.message);
+
       return {
         success: false,
         status: 'failed',
@@ -130,34 +133,34 @@ class SyncOrchestrator {
    */
   async syncEntities() {
     const results = {};
-    
+
     try {
       // Sync entities sequentially to avoid transaction conflicts
       // Each syncer uses its own transaction, so they cannot run in parallel
-      
-      console.log('🔄 Starting characters sync...');
+
+      logger.debug('🔄 Starting characters sync...');
       results.characters = await this.characterSyncer.sync();
-      
-      console.log('🔄 Starting elements sync...');
+
+      logger.debug('🔄 Starting elements sync...');
       results.elements = await this.elementSyncer.sync();
-      
-      console.log('🔄 Starting timeline events sync...');
+
+      logger.debug('🔄 Starting timeline events sync...');
       results.timeline_events = await this.timelineEventSyncer.sync();
-      
-      console.log('🔄 Starting puzzles sync...');
+
+      logger.debug('🔄 Starting puzzles sync...');
       results.puzzles = await this.puzzleSyncer.sync();
-      
+
       // Calculate totals
       results.totalRecords = Object.values(results).reduce((sum, result) => {
         return sum + (result.recordsProcessed || 0);
       }, 0);
-      
+
       results.totalErrors = Object.values(results).reduce((sum, result) => {
         return sum + (result.errors || 0);
       }, 0);
-      
+
       return results;
-      
+
     } catch (error) {
       throw new Error(`Entity sync failed: ${error.message}`);
     }
@@ -181,7 +184,7 @@ class SyncOrchestrator {
    */
   async computeDerivedFields() {
     try {
-      console.log('🧮 Computing derived fields...');
+      logger.debug('🧮 Computing derived fields...');
       return await this.computeOrchestrator.computeAll();
     } catch (error) {
       throw new Error(`Compute phase failed: ${error.message}`);
@@ -195,23 +198,23 @@ class SyncOrchestrator {
   async manageCaches() {
     try {
       const startTime = Date.now();
-      
+
       // Invalidate all journey cache entries since data has changed
-      console.log('♻️  Invalidating journey cache...');
+      logger.debug('♻️  Invalidating journey cache...');
       const db = this.db;
       const invalidateResult = db.prepare('DELETE FROM cached_journey_graphs').run();
-      console.log(`Journey cache invalidated (${invalidateResult.changes} entries removed)`);
-      
+      logger.debug(`Journey cache invalidated (${invalidateResult.changes} entries removed)`);
+
       // Clear expired cache entries
-      console.log('🧹 Clearing expired cache entries...');
+      logger.debug('🧹 Clearing expired cache entries...');
       const clearResult = clearExpiredJourneyCache();
-      
+
       return {
         cacheInvalidated: invalidateResult.changes,
         expiredEntriesCleared: clearResult?.changes || 0,
         duration: Date.now() - startTime
       };
-      
+
     } catch (error) {
       throw new Error(`Cache management failed: ${error.message}`);
     }
@@ -232,7 +235,7 @@ class SyncOrchestrator {
         details: result.value
       };
     } else {
-      console.error(`❌ ${entityType} sync failed:`, result.reason.message);
+      logger.error(`❌ ${entityType} sync failed:`, result.reason.message);
       return {
         success: false,
         error: result.reason.message,
@@ -247,7 +250,7 @@ class SyncOrchestrator {
    * @returns {Promise<Object>} Entity sync results
    */
   async syncEntitiesOnly() {
-    console.log('📋 Running entity sync only...');
+    logger.debug('📋 Running entity sync only...');
     return await this.syncEntities();
   }
 
@@ -256,7 +259,7 @@ class SyncOrchestrator {
    * @returns {Promise<Object>} Compute results
    */
   async computeOnly() {
-    console.log('🧮 Running compute phase only...');
+    logger.debug('🧮 Running compute phase only...');
     return await this.computeDerivedFields();
   }
 
@@ -265,7 +268,7 @@ class SyncOrchestrator {
    * @returns {Promise<Object>} Relationship sync results
    */
   async syncRelationshipsOnly() {
-    console.log('🔗 Running relationship sync only...');
+    logger.debug('🔗 Running relationship sync only...');
     return await this.syncRelationships();
   }
 

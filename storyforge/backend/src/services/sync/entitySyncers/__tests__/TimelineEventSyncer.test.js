@@ -112,11 +112,21 @@ describe('TimelineEventSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
-        if (sql.includes('UPDATE elements SET timeline_event_id = NULL')) return mockStmts.updateElements;
-        if (sql.includes('DELETE FROM timeline_events')) return mockStmts.deleteEvents;
-        if (sql.includes('INSERT INTO timeline_events')) return mockStmts.insertEvent;
-        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) return mockStmts.insertCharEventRel;
+        if (sql.includes('DELETE FROM character_timeline_events')) {
+          return mockStmts.deleteCharEvents;
+        }
+        if (sql.includes('UPDATE elements SET timeline_event_id = NULL')) {
+          return mockStmts.updateElements;
+        }
+        if (sql.includes('DELETE FROM timeline_events')) {
+          return mockStmts.deleteEvents;
+        }
+        if (sql.includes('INSERT INTO timeline_events')) {
+          return mockStmts.insertEvent;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) {
+          return mockStmts.insertCharEventRel;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -334,11 +344,11 @@ describe('TimelineEventSyncer Integration Tests', () => {
   describe('error handling', () => {
     it('should rollback on critical error', async () => {
       mockNotionService.getTimelineEvents.mockResolvedValue([{ id: 'event1' }]);
-      mockPropertyMapper.mapTimelineEventWithNames.mockResolvedValue({ 
-        id: 'event1', 
-        description: 'Test Event' 
+      mockPropertyMapper.mapTimelineEventWithNames.mockResolvedValue({
+        id: 'event1',
+        description: 'Test Event'
       });
-      
+
       // Simulate database error during clearing
       mockDB.prepare.mockImplementation((sql) => {
         if (sql.includes('DELETE FROM character_timeline_events')) {
@@ -364,7 +374,7 @@ describe('TimelineEventSyncer Integration Tests', () => {
       });
 
       const mockInsertStmt = { run: jest.fn() };
-      const mockCharEventStmt = { 
+      const mockCharEventStmt = {
         run: jest.fn().mockImplementation(() => {
           throw new Error('Character does not exist');
         })

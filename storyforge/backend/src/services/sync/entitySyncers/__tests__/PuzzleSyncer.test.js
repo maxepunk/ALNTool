@@ -40,7 +40,13 @@ describe('PuzzleSyncer Integration Tests', () => {
     };
 
     mockPropertyMapper = {
-      mapPuzzleWithNames: jest.fn()
+      mapPuzzleWithNames: jest.fn(),
+      extractTitle: jest.fn((prop) => {
+        if (prop && prop.title && prop.title[0] && prop.title[0].plain_text) {
+          return prop.title[0].plain_text;
+        }
+        return 'Unknown';
+      })
     };
 
     mockLogger = {
@@ -118,9 +124,22 @@ describe('PuzzleSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
-        if (sql.includes('DELETE FROM puzzles')) return mockStmts.deletePuzzles;
-        if (sql.includes('INSERT INTO puzzles')) return mockStmts.insertPuzzle;
+        if (sql.includes('DELETE FROM character_puzzles')) {
+          return mockStmts.deleteCharPuzzles;
+        }
+        if (sql.includes('DELETE FROM puzzles')) {
+          return mockStmts.deletePuzzles;
+        }
+        if (sql.includes('INSERT INTO puzzles')) {
+          return mockStmts.insertPuzzle;
+        }
+        // Mock foreign key validation queries
+        if (sql.includes('SELECT 1 FROM characters WHERE id = ?')) {
+          return { get: jest.fn().mockReturnValue({ 1: 1 }) }; // Character exists
+        }
+        if (sql.includes('SELECT 1 FROM elements WHERE id = ?')) {
+          return { get: jest.fn().mockReturnValue({ 1: 1 }) }; // Element exists
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -145,10 +164,10 @@ describe('PuzzleSyncer Integration Tests', () => {
       // Verify puzzle insertion with JSON arrays
       expect(mockStmts.insertPuzzle.run).toHaveBeenCalledTimes(2);
       expect(mockStmts.insertPuzzle.run).toHaveBeenCalledWith(
-        'puzzle1', 
-        'Safe Combination', 
-        'Act 1', 
-        'char1', 
+        'puzzle1',
+        'Safe Combination',
+        'Act 1',
+        'char1',
         'elem1',
         JSON.stringify(['elem2', 'elem3']), // reward_ids
         JSON.stringify(['elem4', 'elem5']), // puzzle_element_ids
@@ -250,7 +269,7 @@ describe('PuzzleSyncer Integration Tests', () => {
       const mockNotionPuzzles = [{ id: 'puzzle1' }];
       const mockMappedPuzzle = {
         id: 'puzzle1',
-        name: 'Test Puzzle',
+        name: 'Test Puzzle'
         // No timing specified
       };
 
@@ -297,7 +316,7 @@ describe('PuzzleSyncer Integration Tests', () => {
         deletePuzzleRewards: { run: jest.fn() },
         deletePuzzleCharacters: { run: jest.fn() },
         deletePuzzles: { run: jest.fn() },
-        insertPuzzle: { 
+        insertPuzzle: {
           run: jest.fn().mockImplementation(() => {
             const error = new Error('FOREIGN KEY constraint failed');
             error.code = 'SQLITE_CONSTRAINT_FOREIGNKEY';
@@ -311,14 +330,30 @@ describe('PuzzleSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM puzzle_elements')) return mockStmts.deletePuzzleElements;
-        if (sql.includes('DELETE FROM puzzle_rewards')) return mockStmts.deletePuzzleRewards;
-        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deletePuzzleCharacters;
-        if (sql.includes('DELETE FROM puzzles')) return mockStmts.deletePuzzles;
-        if (sql.includes('INSERT INTO puzzles')) return mockStmts.insertPuzzle;
-        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) return mockStmts.insertPuzzleElement;
-        if (sql.includes('INSERT OR IGNORE INTO puzzle_rewards')) return mockStmts.insertPuzzleReward;
-        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) return mockStmts.insertPuzzleCharacter;
+        if (sql.includes('DELETE FROM puzzle_elements')) {
+          return mockStmts.deletePuzzleElements;
+        }
+        if (sql.includes('DELETE FROM puzzle_rewards')) {
+          return mockStmts.deletePuzzleRewards;
+        }
+        if (sql.includes('DELETE FROM character_puzzles')) {
+          return mockStmts.deletePuzzleCharacters;
+        }
+        if (sql.includes('DELETE FROM puzzles')) {
+          return mockStmts.deletePuzzles;
+        }
+        if (sql.includes('INSERT INTO puzzles')) {
+          return mockStmts.insertPuzzle;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_elements')) {
+          return mockStmts.insertPuzzleElement;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO puzzle_rewards')) {
+          return mockStmts.insertPuzzleReward;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) {
+          return mockStmts.insertPuzzleCharacter;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -377,17 +412,26 @@ describe('PuzzleSyncer Integration Tests', () => {
   describe('error handling', () => {
     it('should handle database errors during puzzle insertion', async () => {
       mockNotionService.getPuzzles.mockResolvedValue([{ id: 'puzzle1' }]);
-      mockPropertyMapper.mapPuzzleWithNames.mockResolvedValue({ 
-        id: 'puzzle1', 
-        name: 'Test Puzzle' 
+      mockPropertyMapper.mapPuzzleWithNames.mockResolvedValue({
+        id: 'puzzle1',
+        name: 'Test Puzzle'
       });
-      
-      const mockStmt = { 
-        run: jest.fn().mockImplementation(() => {
-          throw new Error('Foreign key constraint violation');
-        })
-      };
-      mockDB.prepare.mockReturnValue(mockStmt);
+
+      // Mock different behaviors for different SQL statements
+      mockDB.prepare.mockImplementation((sql) => {
+        if (sql.includes('DELETE')) {
+          // Allow deletes to succeed
+          return { run: jest.fn() };
+        } else if (sql.includes('INSERT')) {
+          // Make insert fail
+          return {
+            run: jest.fn().mockImplementation(() => {
+              throw new Error('Foreign key constraint violation');
+            })
+          };
+        }
+        return { run: jest.fn() };
+      });
 
       const result = await syncer.sync();
 

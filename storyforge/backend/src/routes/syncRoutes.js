@@ -1,17 +1,20 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const dataSyncService = require('../services/dataSyncService');
 
 // Helper to format dates consistently
 const formatDate = (date) => {
-  if (!date) return null;
+  if (!date) {
+    return null;
+  }
   const d = new Date(date);
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
 };
 
 /**
  * POST /api/sync/data - Trigger full data sync
- * 
+ *
  * Response:
  * - 200: Sync completed successfully
  * - 409: Sync already in progress
@@ -24,7 +27,7 @@ router.post('/data', async (req, res) => {
     if (!status || typeof status.isRunning !== 'boolean') {
       throw new Error('Invalid sync status');
     }
-    
+
     if (status.isRunning) {
       return res.status(409).json({
         success: false,
@@ -33,9 +36,9 @@ router.post('/data', async (req, res) => {
       });
     }
 
-    console.log('🔄 API sync request received');
+    logger.debug('🔄 API sync request received');
     const result = await dataSyncService.syncAll();
-    
+
     if (!result || !result.phases) {
       throw new Error('Invalid sync result');
     }
@@ -50,8 +53,8 @@ router.post('/data', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Sync API error:', error);
-    
+    logger.error('❌ Sync API error:', error);
+
     // Handle specific error types
     if (error.message === 'Sync already in progress') {
       return res.status(409).json({
@@ -71,7 +74,7 @@ router.post('/data', async (req, res) => {
 
 /**
  * GET /api/sync/status - Get current sync status
- * 
+ *
  * Response:
  * - 200: Status retrieved successfully
  * - 500: Internal server error
@@ -79,7 +82,7 @@ router.post('/data', async (req, res) => {
 router.get('/status', (req, res) => {
   try {
     const status = dataSyncService.getSyncStatus();
-    
+
     if (!status || typeof status.isRunning !== 'boolean') {
       throw new Error('Invalid sync status');
     }
@@ -96,7 +99,7 @@ router.get('/status', (req, res) => {
       status: enhancedStatus
     });
   } catch (error) {
-    console.error('❌ Status API error:', error);
+    logger.error('❌ Status API error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get status',
@@ -107,7 +110,7 @@ router.get('/status', (req, res) => {
 
 /**
  * POST /api/sync/cancel - Cancel current sync operation
- * 
+ *
  * Response:
  * - 200: Cancellation successful or no sync running
  * - 500: Internal server error
@@ -115,11 +118,11 @@ router.get('/status', (req, res) => {
 router.post('/cancel', async (req, res) => {
   try {
     const status = dataSyncService.getSyncStatus();
-    
+
     if (!status || typeof status.isRunning !== 'boolean') {
       throw new Error('Invalid sync status');
     }
-    
+
     if (!status.isRunning) {
       return res.json({
         success: true,
@@ -138,7 +141,7 @@ router.post('/cancel', async (req, res) => {
       message: cancelled ? 'Sync cancellation requested' : 'No sync operation to cancel'
     });
   } catch (error) {
-    console.error('❌ Cancel API error:', error);
+    logger.error('❌ Cancel API error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to cancel',
@@ -147,4 +150,4 @@ router.post('/cancel', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

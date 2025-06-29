@@ -1,4 +1,5 @@
 const path = require('path');
+const logger = require('./utils/logger');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
@@ -13,6 +14,7 @@ const syncRoutes = require('./routes/syncRoutes');
 
 // Import database migration function
 const { initializeDatabase } = require('./db/database');
+const GameConstants = require('./config/GameConstants');
 
 // Create Express app
 const app = express();
@@ -28,8 +30,8 @@ app.use(morgan('dev')); // Log HTTP requests
 // TODO: Re-enable with appropriate limits for production
 if (process.env.NODE_ENV === 'production') {
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // requests per window
+    windowMs: GameConstants.SYSTEM.RATE_LIMIT.WINDOW_MS,
+    max: GameConstants.SYSTEM.RATE_LIMIT.MAX_REQUESTS,
     standardHeaders: true,
     legacyHeaders: false,
     message: 'Too many requests, please try again later.',
@@ -39,9 +41,9 @@ if (process.env.NODE_ENV === 'production') {
     }
   });
   app.use(limiter);
-  console.log('Rate limiting enabled for production');
+  logger.debug('Rate limiting enabled for production');
 } else {
-  console.log('Rate limiting DISABLED for development');
+  logger.debug('Rate limiting DISABLED for development');
 }
 
 // Routes
@@ -56,7 +58,7 @@ app.get('/health', (req, res) => {
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
@@ -66,27 +68,27 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'test') {
     try {
       initializeDatabase(); // This will connect and then run migrations
-      console.log('Database ready.');
+      logger.debug('Database ready.');
 
       // Only start listening if the script is executed directly (not imported as a module for testing)
       if (require.main === module) { // No need to check NODE_ENV again here
         app.listen(PORT, () => {
-          console.log(`Server running on port ${PORT}`);
-          console.log(`- Health check: http://localhost:${PORT}/health`);
-          console.log(`- API endpoints: http://localhost:${PORT}/api/*`);
+          logger.debug(`Server running on port ${PORT}`);
+          logger.debug(`- Health check: http://localhost:${PORT}/health`);
+          logger.debug(`- API endpoints: http://localhost:${PORT}/api/*`);
         });
       }
     } catch (error) {
-      console.error('Failed to initialize or migrate database:', error);
+      logger.error('Failed to initialize or migrate database:', error);
       process.exit(1); // Exit if database setup fails
     }
   } else {
     // In test environment, we might not want to auto-start the server or connect DB here.
     // Tests will typically manage their own server instance and DB connection (e.g., in-memory).
-    console.log('Running in TEST environment. Database initialization and server auto-start skipped in index.js.');
+    logger.debug('Running in TEST environment. Database initialization and server auto-start skipped in index.js.');
   }
 }
 
 startServer();
 
-module.exports = app; // Export the app for testing purposes 
+module.exports = app; // Export the app for testing purposes

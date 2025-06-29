@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import ErrorBoundary from '../components/ErrorBoundary';
 import {
   Box, Typography, CircularProgress, Alert, Paper, Grid, List, ListItem, ListItemText,
   Chip, Divider, Tabs, Tab, ListItemIcon, ListItemButton, Container, Card, CardContent,
@@ -12,6 +13,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PageHeader from '../components/PageHeader';
 import { api } from '../services/api';
+import { useGameConstants, getConstant } from '../hooks/useGameConstants';
 import PeopleIcon from '@mui/icons-material/People';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -30,60 +32,41 @@ import InfoIcon from '@mui/icons-material/Info';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import BuildIcon from '@mui/icons-material/Build';
 
-const KNOWN_RESOLUTION_PATHS = ["Black Market", "Detective", "Third Path"];
-const UNASSIGNED_PATH = "Unassigned";
 
-const PATH_COLORS = {
-  'Black Market': { color: 'warning', icon: AccountBalanceIcon, theme: 'Wealth & Power' },
-  'Detective': { color: 'error', icon: SearchIcon, theme: 'Truth & Justice' },
-  'Third Path': { color: 'secondary', icon: GroupsIcon, theme: 'Community & Cooperation' }
-};
-
-const VALUE_RATING_MAP = {
-  1: 100,
-  2: 500,
-  3: 1000,
-  4: 5000,
-  5: 10000,
-};
-
-const TYPE_MULTIPLIER_MAP = {
-  Personal: 1,
-  Business: 3,
-  Technical: 5,
-};
-
-const ResolutionPathAnalyzerPage = () => {
+const ResolutionPathAnalyzerPageContent = () => {
   const navigate = useNavigate();
   const [selectedPathTab, setSelectedPathTab] = useState(0);
   const [analysisMode, setAnalysisMode] = useState(true);
   
+  // Fetch game constants from backend
+  const { data: gameConstants, isLoading: constantsLoading } = useGameConstants();
+  
   // Fetch all data needed for comprehensive path analysis
-  const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useQuery(
-    'charactersForPathAnalysis',
-    () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useQuery({
+    queryKey: ['charactersForPathAnalysis'],
+    queryFn: () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: elementsData, isLoading: elementsLoading } = useQuery(
-    'elementsForPathAnalysis',
-    () => api.getElements({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: elementsData, isLoading: elementsLoading } = useQuery({
+    queryKey: ['elementsForPathAnalysis'],
+    queryFn: () => api.getElements({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery(
-    'puzzlesForPathAnalysis',
-    () => api.getPuzzles({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: puzzlesData, isLoading: puzzlesLoading } = useQuery({
+    queryKey: ['puzzlesForPathAnalysis'],
+    queryFn: () => api.getPuzzles({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery(
-    'timelineEventsForPathAnalysis',
-    () => api.getTimelineEvents({ limit: 1000 }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: timelineEventsData, isLoading: timelineLoading } = useQuery({
+    queryKey: ['timelineEventsForPathAnalysis'],
+    queryFn: () => api.getTimelineEvents({ limit: 1000 }),
+    staleTime: 5 * 60 * 1000
+  });
   
-  const isLoading = charactersLoading || elementsLoading || puzzlesLoading || timelineLoading;
+  const isLoading = charactersLoading || elementsLoading || puzzlesLoading || timelineLoading || constantsLoading;
   const error = charactersError;
 
   const characters = charactersData || [];
@@ -93,7 +76,7 @@ const ResolutionPathAnalyzerPage = () => {
 
   // Comprehensive Path Analysis for Production Intelligence
   const pathAnalysis = useMemo(() => {
-    if (!characters || !elements || !puzzles || !timelineEvents) return {
+    if (!characters || !elements || !puzzles || !timelineEvents || !gameConstants) return {
       pathDistribution: {},
       pathResources: {},
       crossPathDependencies: [],
@@ -101,21 +84,27 @@ const ResolutionPathAnalyzerPage = () => {
       recommendations: []
     };
 
+    // Get constants from game config
+    const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
+    const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
+    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+    const baseValues = getConstant(gameConstants, 'MEMORY_VALUE.BASE_VALUES', {});
+    const typeMultipliers = getConstant(gameConstants, 'MEMORY_VALUE.TYPE_MULTIPLIERS', {});
+
     // Character path distribution
     const charactersWithPaths = characters.filter(char => 
       char.resolutionPaths && char.resolutionPaths.length > 0
     );
     
-    const pathDistribution = {
-      'Black Market': charactersWithPaths.filter(char => char.resolutionPaths.includes('Black Market')),
-      'Detective': charactersWithPaths.filter(char => char.resolutionPaths.includes('Detective')),
-      'Third Path': charactersWithPaths.filter(char => char.resolutionPaths.includes('Third Path')),
-      'Unassigned': characters.filter(char => !char.resolutionPaths || char.resolutionPaths.length === 0)
-    };
+    const pathDistribution = {};
+    knownPaths.forEach(path => {
+      pathDistribution[path] = charactersWithPaths.filter(char => char.resolutionPaths.includes(path));
+    });
+    pathDistribution[unassignedPath] = characters.filter(char => !char.resolutionPaths || char.resolutionPaths.length === 0);
 
     // Resource allocation per path (elements, puzzles, timeline events)
     const pathResources = {};
-    Object.keys(PATH_COLORS).forEach(path => {
+    knownPaths.forEach(path => {
       const pathElements = elements.filter(el => 
         el.resolutionPaths && el.resolutionPaths.includes(path)
       );
@@ -136,8 +125,8 @@ const ResolutionPathAnalyzerPage = () => {
       const totalValue = pathElements.reduce((sum, el) => {
         const valueRating = el.properties?.sf_value_rating || 0;
         const memoryType = el.properties?.sf_memory_type || 'Personal';
-        const baseValue = VALUE_RATING_MAP[valueRating] || 0;
-        const multiplier = TYPE_MULTIPLIER_MAP[memoryType] || 1;
+        const baseValue = baseValues[valueRating] || 0;
+        const multiplier = typeMultipliers[memoryType] || 1;
         return sum + (baseValue * multiplier);
       }, 0);
 
@@ -188,14 +177,14 @@ const ResolutionPathAnalyzerPage = () => {
 
     // Balance metrics calculation
     const totalCharacters = Object.values(pathDistribution).reduce((sum, chars) => sum + (chars?.length || 0), 0);
-    const pathCounts = Object.keys(PATH_COLORS).map(path => pathResources[path].characters);
+    const pathCounts = knownPaths.map(path => pathResources[path].characters);
     const maxCount = Math.max(...pathCounts);
     const minCount = Math.min(...pathCounts);
     const balanceScore = totalCharacters > 0 ? Math.max(0, 100 - ((maxCount - minCount) / totalCharacters * 100)) : 0;
 
     const balanceMetrics = {
       characterBalance: balanceScore,
-      resourceBalance: Object.keys(PATH_COLORS).reduce((acc, path) => {
+      resourceBalance: knownPaths.reduce((acc, path) => {
         acc[path] = {
           completion: pathResources[path].elements > 0 ? 
             (pathResources[path].readyElements / pathResources[path].elements * 100) : 0,
@@ -207,10 +196,14 @@ const ResolutionPathAnalyzerPage = () => {
       crossPathComplexity: crossPathDependencies.length
     };
 
-    // Generate recommendations
+    // Generate recommendations using configurable thresholds
     const recommendations = [];
     
-    if (balanceScore < 70) {
+    // Use balance threshold from game constants or default
+    const balanceThreshold = getConstant(gameConstants, 'MEMORY_VALUE.BALANCE_WARNING_THRESHOLD', 0.3) * 100; // Convert to percentage
+    const balanceScore70 = 70; // Could be configured in game constants in future
+    
+    if (balanceScore < balanceScore70) {
       recommendations.push({
         type: 'character-balance',
         severity: 'warning',
@@ -219,18 +212,22 @@ const ResolutionPathAnalyzerPage = () => {
       });
     }
 
-    if (pathDistribution['Unassigned'].length > totalCharacters * 0.2) {
+    const unassignedThreshold = getConstant(gameConstants, 'MEMORY_VALUE.BALANCE_WARNING_THRESHOLD', 0.3);
+    if (pathDistribution[unassignedPath].length > totalCharacters * unassignedThreshold) {
       recommendations.push({
         type: 'unassigned-characters',
         severity: 'info',
-        message: `${pathDistribution['Unassigned'].length} characters not assigned to resolution paths`,
+        message: `${pathDistribution[unassignedPath].length} characters not assigned to resolution paths`,
         action: 'Assign characters to appropriate resolution paths'
       });
     }
 
-    Object.keys(PATH_COLORS).forEach(path => {
+    knownPaths.forEach(path => {
       const metrics = balanceMetrics.resourceBalance[path];
-      if (metrics.completion < 50) {
+      const completionThreshold = 50; // Could be configured in game constants
+      const memoryDensityThreshold = 2; // Could be configured in game constants
+      
+      if (metrics.completion < completionThreshold) {
         recommendations.push({
           type: 'production-readiness',
           severity: 'warning',
@@ -239,7 +236,7 @@ const ResolutionPathAnalyzerPage = () => {
         });
       }
       
-      if (metrics.memoryDensity < 2) {
+      if (metrics.memoryDensity < memoryDensityThreshold) {
         recommendations.push({
           type: 'memory-economy',
           severity: 'info',
@@ -249,7 +246,8 @@ const ResolutionPathAnalyzerPage = () => {
       }
     });
 
-    if (crossPathDependencies.length > 8) {
+    const complexityThreshold = 8; // Could be configured in game constants
+    if (crossPathDependencies.length > complexityThreshold) {
       recommendations.push({
         type: 'complexity',
         severity: 'warning',
@@ -265,16 +263,21 @@ const ResolutionPathAnalyzerPage = () => {
       balanceMetrics,
       recommendations
     };
-  }, [characters, elements, puzzles, timelineEvents]);
+  }, [characters, elements, puzzles, timelineEvents, gameConstants]);
 
   // Legacy compatibility for existing UI
   const pathData = useMemo(() => {
+    if (!gameConstants) return {};
+    
     const aggregator = {};
-    [...KNOWN_RESOLUTION_PATHS, UNASSIGNED_PATH].forEach(path => {
-      if (path === UNASSIGNED_PATH) {
+    const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
+    const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
+    
+    [...knownPaths, unassignedPath].forEach(path => {
+      if (path === unassignedPath) {
         aggregator[path] = { 
-          count: pathAnalysis.pathDistribution?.['Unassigned']?.length || 0, 
-          characters: pathAnalysis.pathDistribution?.['Unassigned'] || [],
+          count: pathAnalysis.pathDistribution?.[unassignedPath]?.length || 0, 
+          characters: pathAnalysis.pathDistribution?.[unassignedPath] || [],
           puzzles: [],
           elements: []
         };
@@ -289,13 +292,15 @@ const ResolutionPathAnalyzerPage = () => {
       }
     });
     return aggregator;
-  }, [pathAnalysis]);
+  }, [pathAnalysis, gameConstants]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedPathTab(newValue);
   };
 
-  const allPathsForTabs = [...KNOWN_RESOLUTION_PATHS, UNASSIGNED_PATH];
+  const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
+  const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
+  const allPathsForTabs = [...knownPaths, unassignedPath];
   const currentSelectedPathName = allPathsForTabs[selectedPathTab];
   const currentPathData = pathData[currentSelectedPathName];
 
@@ -366,9 +371,12 @@ const ResolutionPathAnalyzerPage = () => {
               Three-Path Balance Overview
             </Typography>
             <Grid container spacing={2}>
-              {Object.keys(PATH_COLORS).map(path => {
-                const pathConfig = PATH_COLORS[path];
-                const IconComponent = pathConfig.icon;
+              {knownPaths.map(path => {
+                const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+                const pathConfig = pathThemes[path] || { color: 'default', theme: 'Unknown' };
+                const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
+                                     path === 'Detective' ? SearchIcon :
+                                     path === 'Third Path' ? GroupsIcon : HelpOutlineIcon;
                 const resources = pathResources[path] || {};
                 
                 return (
@@ -487,9 +495,13 @@ const ResolutionPathAnalyzerPage = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {Object.keys(PATH_COLORS).map(path => {
+                      {knownPaths.map(path => {
                         const resources = pathResources[path] || {};
-                        const pathConfig = PATH_COLORS[path];
+                        const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+                        const pathConfig = pathThemes[path] || { color: 'default' };
+                        const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
+                                             path === 'Detective' ? SearchIcon :
+                                             path === 'Third Path' ? GroupsIcon : HelpOutlineIcon;
                         
                         return (
                           <TableRow key={path}>
@@ -497,7 +509,7 @@ const ResolutionPathAnalyzerPage = () => {
                               <Chip 
                                 label={path} 
                                 color={pathConfig.color}
-                                icon={React.createElement(pathConfig.icon)}
+                                icon={React.createElement(IconComponent)}
                               />
                             </TableCell>
                             <TableCell align="right">{resources.characters || 0}</TableCell>
@@ -550,15 +562,18 @@ const ResolutionPathAnalyzerPage = () => {
                               <Box>
                                 <Typography variant="body2">{dependency.description}</Typography>
                                 <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                                  {dependency.paths.map(path => (
-                                    <Chip 
-                                      key={path}
-                                      label={path} 
-                                      size="small" 
-                                      color={PATH_COLORS[path]?.color || 'default'}
-                                      variant="outlined"
-                                    />
-                                  ))}
+                                  {dependency.paths.map(path => {
+                                    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+                                    return (
+                                      <Chip 
+                                        key={path}
+                                        label={path} 
+                                        size="small" 
+                                        color={pathThemes[path]?.color || 'default'}
+                                        variant="outlined"
+                                      />
+                                    );
+                                  })}
                                 </Box>
                               </Box>
                             }
@@ -577,16 +592,20 @@ const ResolutionPathAnalyzerPage = () => {
               <Box sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>Character Path Assignments</Typography>
                 
-                {pathDistribution['Unassigned']?.length > 0 && (
+                {pathDistribution[unassignedPath]?.length > 0 && (
                   <Alert severity="warning" sx={{ mb: 2 }}>
-                    {pathDistribution['Unassigned'].length} characters need resolution path assignment
+                    {pathDistribution[unassignedPath].length} characters need resolution path assignment
                   </Alert>
                 )}
                 
                 <Grid container spacing={2}>
-                  {Object.keys(PATH_COLORS).concat(['Unassigned']).map(path => {
+                  {knownPaths.concat([unassignedPath]).map(path => {
                     const characters = pathDistribution[path] || [];
-                    const pathConfig = PATH_COLORS[path];
+                    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
+                    const pathConfig = pathThemes[path];
+                    const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
+                                         path === 'Detective' ? SearchIcon :
+                                         path === 'Third Path' ? GroupsIcon : WarningIcon;
                     
                     return (
                       <Grid item xs={12} md={6} lg={3} key={path}>
@@ -594,7 +613,7 @@ const ResolutionPathAnalyzerPage = () => {
                           <Typography variant="subtitle1" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
                             {pathConfig ? (
                               <>
-                                <pathConfig.icon sx={{ mr: 1, fontSize: 20 }} />
+                                <IconComponent sx={{ mr: 1, fontSize: 20 }} />
                                 {path}
                               </>
                             ) : (
@@ -722,5 +741,11 @@ const ResolutionPathAnalyzerPage = () => {
     </Container>
   );
 };
+
+const ResolutionPathAnalyzerPage = () => (
+  <ErrorBoundary level="component">
+    <ResolutionPathAnalyzerPageContent />
+  </ErrorBoundary>
+);
 
 export default ResolutionPathAnalyzerPage;

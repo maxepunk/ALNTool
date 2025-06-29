@@ -1,32 +1,27 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import ContextWorkspace from './ContextWorkspace';
 import useJourneyStore from '../../stores/journeyStore';
 
 // Mock the useJourneyStore hook
 jest.mock('../../stores/journeyStore');
 
+// Mock react-router-dom's useNavigate
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
 describe('ContextWorkspace', () => {
-  let mockSelectedGapDetails;
-  let mockCurrentGapSuggestions;
-  let mockLoadingSuggestions;
-  let mockSuggestionError;
+  let mockSelectedNode;
 
   // Helper to setup mock implementations
   const setupMockStore = () => {
     useJourneyStore.mockImplementation(selector => {
-      // This simplified mock directly calls the selector with a snapshot of the state.
-      // It assumes selectors are functions like `state => state.property`.
-      // For selectors that are themselves functions like `state => () => state.property()`
-      // or `state => param => state.property[param]`, this needs adjustment.
-      // Given the component code:
-      // `useJourneyStore(state => state.selectedGapDetails())`
-      // The selector is `state => state.selectedGapDetails`, and it's called, so the selector should return a function.
       const mockState = {
-        selectedGapDetails: () => mockSelectedGapDetails,
-        currentGapSuggestions: () => mockCurrentGapSuggestions,
-        loadingSuggestions: mockLoadingSuggestions,
-        suggestionError: mockSuggestionError,
+        selectedNode: mockSelectedNode,
       };
       return selector(mockState);
     });
@@ -34,10 +29,8 @@ describe('ContextWorkspace', () => {
 
   beforeEach(() => {
     // Reset mocks for each test
-    mockSelectedGapDetails = null;
-    mockCurrentGapSuggestions = [];
-    mockLoadingSuggestions = false;
-    mockSuggestionError = null;
+    mockSelectedNode = null;
+    mockNavigate.mockClear();
     setupMockStore(); // Apply default mocks
   });
 
@@ -45,80 +38,234 @@ describe('ContextWorkspace', () => {
     jest.clearAllMocks();
   });
 
-  test('displays "Select a gap..." when selectedGap is null', () => {
-    render(<ContextWorkspace />);
-    expect(screen.getByText(/Select a gap in the timeline to see details and suggestions here./i)).toBeInTheDocument();
+  test('displays "Select a node..." when selectedNode is null', () => {
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    expect(screen.getByText(/Select a node in the journey graph to see its details./i)).toBeInTheDocument();
   });
 
-  test('displays gap details when a gap is selected', () => {
-    const fullId = 'gap123abcdeffedcba321';
-    mockSelectedGapDetails = {
-      id: fullId,
-      start_minute: 10,
-      end_minute: 25,
-      severity: 'high',
+  test('displays activity node details when selected', () => {
+    mockSelectedNode = {
+      id: 'puzzle-123',
+      type: 'activityNode',
+      data: {
+        label: 'Locked Safe Puzzle',
+        timing: 'Act 1',
+        prerequisiteIds: ['elem-1', 'elem-2'],
+        rewardIds: ['elem-3'],
+        difficulty: 'Medium'
+      }
     };
-    setupMockStore(); // Re-apply mocks with new values
-
-    render(<ContextWorkspace />);
-    const expectedIdDisplay = `${fullId.slice(0, 8)}...${fullId.slice(-8)}`;
-    expect(screen.getByText(`ID: ${expectedIdDisplay}`)).toBeInTheDocument();
-    expect(screen.getByText(/Minutes: 10 - 25 \(Duration: 15 min\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Severity:/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('high')).toBeInTheDocument(); // Chip label used for severity
-  });
-
-  test('displays "Loading suggestions..." when loadingSuggestions is true and a gap is selected', () => {
-    mockSelectedGapDetails = { id: 'gap123', start_minute: 10, end_minute: 25, severity: 'high' };
-    mockLoadingSuggestions = true;
     setupMockStore();
 
-    render(<ContextWorkspace />);
-    expect(screen.getByText(/Loading suggestions.../i)).toBeInTheDocument();
-    expect(screen.getByRole('progressbar')).toBeInTheDocument(); // MUI CircularProgress
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText('Locked Safe Puzzle')).toBeInTheDocument();
+    expect(screen.getByText('Activity')).toBeInTheDocument(); // Chip label
+    expect(screen.getByText(/Timing:/)).toBeInTheDocument();
+    expect(screen.getByText('Act 1')).toBeInTheDocument();
+    expect(screen.getByText(/Prerequisites:/)).toBeInTheDocument();
+    expect(screen.getByText('2 items')).toBeInTheDocument();
+    expect(screen.getByText(/Rewards:/)).toBeInTheDocument();
+    expect(screen.getByText('1 items')).toBeInTheDocument();
+    expect(screen.getByText(/Difficulty:/)).toBeInTheDocument();
+    expect(screen.getByText('Medium')).toBeInTheDocument();
   });
 
-  test('displays suggestions when gapSuggestions are provided', () => {
-    mockSelectedGapDetails = { id: 'gap123', start_minute: 10, end_minute: 25, severity: 'high' };
-    mockCurrentGapSuggestions = [
-      { id: 'sug1', description: 'First amazing suggestion', type: 'content' },
-      { id: 'sug2', description: 'Second brilliant idea', type: 'system' },
-    ];
+  test('displays discovery node details when selected', () => {
+    mockSelectedNode = {
+      id: 'element-456',
+      type: 'discoveryNode',
+      data: {
+        label: 'CEO Badge',
+        type: 'Evidence',
+        memoryType: 'Business',
+        memoryValue: 5,
+        owner: 'Marcus Blackwood',
+        container: 'Briefcase'
+      }
+    };
     setupMockStore();
 
-    render(<ContextWorkspace />);
-    expect(screen.getByText(/First amazing suggestion/i)).toBeInTheDocument();
-    expect(screen.getByText(/Type: content/i)).toBeInTheDocument();
-    expect(screen.getByText(/Second brilliant idea/i)).toBeInTheDocument();
-    expect(screen.getByText(/Type: system/i)).toBeInTheDocument();
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText('CEO Badge')).toBeInTheDocument();
+    expect(screen.getByText('Discovery')).toBeInTheDocument(); // Chip label
+    expect(screen.getByText(/Element Type:/)).toBeInTheDocument();
+    expect(screen.getByText('Evidence')).toBeInTheDocument();
+    expect(screen.getByText(/Memory Type:/)).toBeInTheDocument();
+    expect(screen.getByText('Business')).toBeInTheDocument();
+    expect(screen.getByText(/Memory Value:/)).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText(/Owner:/)).toBeInTheDocument();
+    expect(screen.getByText('Marcus Blackwood')).toBeInTheDocument();
+    expect(screen.getByText(/Container:/)).toBeInTheDocument();
+    expect(screen.getByText('Briefcase')).toBeInTheDocument();
   });
 
-  test('displays "No suggestions available..." when gapSuggestions is empty, not loading, and no error, and a gap is selected', () => {
-    mockSelectedGapDetails = { id: 'gap123', start_minute: 10, end_minute: 25, severity: 'high' };
-    mockLoadingSuggestions = false;
-    mockCurrentGapSuggestions = [];
-    mockSuggestionError = null;
+  test('displays lore node details when selected', () => {
+    mockSelectedNode = {
+      id: 'event-789',
+      type: 'loreNode',
+      data: {
+        label: 'Marcus and Sarah Wedding',
+        date: '2020-06-15',
+        actFocus: 'Act 2',
+        characterCount: 5,
+        description: 'A lavish wedding ceremony attended by all major characters'
+      }
+    };
     setupMockStore();
 
-    render(<ContextWorkspace />);
-    expect(screen.getByText(/No suggestions available for this gap./i)).toBeInTheDocument();
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText('Marcus and Sarah Wedding')).toBeInTheDocument();
+    expect(screen.getByText('Lore')).toBeInTheDocument(); // Chip label
+    expect(screen.getByText(/Date:/)).toBeInTheDocument();
+    expect(screen.getByText('2020-06-15')).toBeInTheDocument();
+    expect(screen.getByText(/Act Focus:/)).toBeInTheDocument();
+    expect(screen.getByText('Act 2')).toBeInTheDocument();
+    expect(screen.getByText(/Characters Involved:/)).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText(/Description:/)).toBeInTheDocument();
+    expect(screen.getByText(/A lavish wedding ceremony/)).toBeInTheDocument();
   });
 
-  test('displays error message when suggestionError is present and a gap is selected', () => {
-    mockSelectedGapDetails = { id: 'gap123', start_minute: 10, end_minute: 25, severity: 'high' };
-    mockSuggestionError = 'Failed to load suggestions.';
+  test('displays node connections when present', () => {
+    mockSelectedNode = {
+      id: 'puzzle-123',
+      type: 'activityNode',
+      data: {
+        label: 'Test Puzzle',
+        incomingEdges: [
+          { source: 'elem-1', sourceLabel: 'UV Light', label: 'requires' },
+          { source: 'elem-2', sourceLabel: 'Key Card', label: 'requires' }
+        ],
+        outgoingEdges: [
+          { target: 'elem-3', targetLabel: 'Secret Document', label: 'rewards' }
+        ]
+      }
+    };
     setupMockStore();
 
-    render(<ContextWorkspace />);
-    expect(screen.getByText(/Failed to load suggestions./i)).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toBeInTheDocument(); // MUI Alert
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText('Connections')).toBeInTheDocument();
+    expect(screen.getByText(/Incoming \(2\)/)).toBeInTheDocument();
+    expect(screen.getByText('UV Light')).toBeInTheDocument();
+    expect(screen.getByText('Key Card')).toBeInTheDocument();
+    expect(screen.getByText(/Outgoing \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('Secret Document')).toBeInTheDocument();
   });
 
-  test('does not display suggestions section if no gap is selected', () => {
-    // mockSelectedGapDetails is null by default
-    render(<ContextWorkspace />);
-    expect(screen.queryByText(/Loading suggestions.../i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Suggestions:/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/No suggestions available for this gap./i)).not.toBeInTheDocument();
+  test('truncates long connection lists', () => {
+    mockSelectedNode = {
+      id: 'puzzle-123',
+      type: 'activityNode',
+      data: {
+        label: 'Test Puzzle',
+        incomingEdges: [
+          { source: 'elem-1', sourceLabel: 'Item 1', label: 'requires' },
+          { source: 'elem-2', sourceLabel: 'Item 2', label: 'requires' },
+          { source: 'elem-3', sourceLabel: 'Item 3', label: 'requires' },
+          { source: 'elem-4', sourceLabel: 'Item 4', label: 'requires' },
+          { source: 'elem-5', sourceLabel: 'Item 5', label: 'requires' }
+        ]
+      }
+    };
+    setupMockStore();
+
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText(/Incoming \(5\)/)).toBeInTheDocument();
+    expect(screen.getByText('Item 1')).toBeInTheDocument();
+    expect(screen.getByText('Item 2')).toBeInTheDocument();
+    expect(screen.getByText('Item 3')).toBeInTheDocument();
+    expect(screen.queryByText('Item 4')).not.toBeInTheDocument();
+    expect(screen.getByText(/\.\.\.and 2 more/)).toBeInTheDocument();
+  });
+
+  test('navigates to detail view when View Details is clicked', () => {
+    mockSelectedNode = {
+      id: 'puzzle-abc-123',
+      type: 'activityNode',
+      data: {
+        label: 'Test Puzzle'
+      }
+    };
+    setupMockStore();
+
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    const viewDetailsButton = screen.getByRole('button', { name: /View Details/i });
+    fireEvent.click(viewDetailsButton);
+    
+    expect(mockNavigate).toHaveBeenCalledWith('/puzzles/abc-123');
+  });
+
+  test('detects node type from ID prefix when type field is missing', () => {
+    mockSelectedNode = {
+      id: 'element-456',
+      // no type field
+      data: {
+        label: 'Test Element'
+      }
+    };
+    setupMockStore();
+
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    // Should detect as discovery node from 'element-' prefix
+    expect(screen.getByText('Discovery')).toBeInTheDocument();
+  });
+
+  test('shows node ID in the details', () => {
+    mockSelectedNode = {
+      id: 'puzzle-complex-id-123',
+      type: 'activityNode',
+      data: {
+        label: 'Test Node'
+      }
+    };
+    setupMockStore();
+
+    render(
+      <BrowserRouter>
+        <ContextWorkspace />
+      </BrowserRouter>
+    );
+    
+    expect(screen.getByText(/ID: puzzle-complex-id-123/)).toBeInTheDocument();
   });
 });

@@ -4,25 +4,11 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Polyfills for MSW v2 compatibility
-import { TextEncoder, TextDecoder } from 'util';
-
-// Make TextEncoder and TextDecoder available globally for MSW
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
-
 // MSW setup for API mocking in tests
-import { server } from './mocks/server.js'; // Assuming mocks are in src/mocks/
+import { setupMockServer } from './test-utils/mocks/server.js';
 
-// Establish API mocking before all tests.
-beforeAll(() => server.listen());
-
-// Reset any request handlers that we may add during the tests,
-// so they don't affect other tests.
-afterEach(() => server.resetHandlers());
-
-// Clean up after the tests are finished.
-afterAll(() => server.close());
+// Setup MSW server for all tests
+setupMockServer();
 
 // Optional: Mock global browser APIs if needed (e.g., fetch, localStorage)
 /*

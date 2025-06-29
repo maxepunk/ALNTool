@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Box, Container, CircularProgress, Typography, Button } from '@mui/material';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppLayout from './layouts/AppLayout';
 import Dashboard from './pages/Dashboard';
 import Characters from './pages/Characters';
@@ -22,35 +23,32 @@ import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // 
 import NotFound from './pages/NotFound';
 import PlayerJourneyPage from './pages/PlayerJourneyPage'; // Import the new page
 import DualLensLayout from './components/Layout/DualLensLayout'; // Import DualLensLayout
+import TestErrorComponent from './components/TestErrorComponent'; // Import TestErrorComponent
 import { api } from './services/api';
+import { WorkflowProvider } from './contexts/WorkflowContext';
 
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
   
   // Fetch database metadata on app load
-  const { data: metadata, error: metadataError } = useQuery(
-    'metadata',
-    () => api.getDatabasesMetadata(),
-    {
-      retry: (failureCount, error) => {
-        // Don't retry on 429 rate limit errors or 404/403 client errors
-        if (error?.status === 429 || error?.status === 404 || error?.status === 403) {
-          return false;
-        }
-        // Only retry once for other errors (reduced from 2)
-        return failureCount < 1;
-      },
-      retryDelay: 2000, // Wait 2 seconds between retries
-      staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-      cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-      onSettled: () => {
-        setInitialLoading(false);
-      },
-      onError: (error) => {
-        console.error('Metadata fetch error:', error);
+  const { data: metadata, error: metadataError } = useQuery({
+    queryKey: ['metadata'],
+    queryFn: () => api.getDatabasesMetadata(),
+    retry: (failureCount, error) => {
+      // Don't retry on 429 rate limit errors or 404/403 client errors
+      if (error?.status === 429 || error?.status === 404 || error?.status === 403) {
+        return false;
       }
+      // Only retry once for other errors (reduced from 2)
+      return failureCount < 1;
+    },
+    retryDelay: 2000, // Wait 2 seconds between retries
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (v4 uses gcTime)
+    onSettled: () => {
+      setInitialLoading(false);
     }
-  );
+  });
 
   // If metadata fails to load after retries, show a more persistent error
   if (metadataError && initialLoading === false) {
@@ -99,55 +97,62 @@ function App() {
   }
 
   return (
-    <AppLayout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        
-        {/* Characters routes */}
-        <Route path="/characters" element={<Characters />} />
-        <Route path="/characters/:id" element={<CharacterDetail />} />
-        
-        {/* Timeline routes */}
-        <Route path="/timelines" element={<Timeline />} />
-        <Route path="/timelines/:id" element={<TimelineDetail />} />
-        
-        {/* Puzzles routes */}
-        <Route path="/puzzles" element={<Puzzles />} />
-        <Route path="/puzzles/:id" element={<PuzzleDetail />} />
-        <Route path="/puzzles/:id/flow" element={<PuzzleFlowPageWrapper />} /> {/* Corrected to use Wrapper */}
-        
-        {/* Elements routes */}
-        <Route path="/elements" element={<Elements />} />
-        <Route path="/elements/:id" element={<ElementDetail />} />
+    <WorkflowProvider>
+      <AppLayout>
+        <ErrorBoundary level="route">
+          <Routes>
+          <Route path="/" element={<Dashboard />} />
+          
+          {/* Characters routes */}
+          <Route path="/characters" element={<Characters />} />
+          <Route path="/characters/:id" element={<CharacterDetail />} />
+          
+          {/* Timeline routes */}
+          <Route path="/timelines" element={<Timeline />} />
+          <Route path="/timelines/:id" element={<TimelineDetail />} />
+          
+          {/* Puzzles routes */}
+          <Route path="/puzzles" element={<Puzzles />} />
+          <Route path="/puzzles/:id" element={<PuzzleDetail />} />
+          <Route path="/puzzles/:id/flow" element={<PuzzleFlowPageWrapper />} /> {/* Corrected to use Wrapper */}
+          
+          {/* Elements routes */}
+          <Route path="/elements" element={<Elements />} />
+          <Route path="/elements/:id" element={<ElementDetail />} />
 
-        {/* Memory Economy Page Route */}
-        <Route path="/memory-economy" element={<MemoryEconomyPage />} />
-        <Route path="/element-puzzle-economy" element={<ElementPuzzleEconomyPage />} />
-        <Route path="/character-sociogram" element={<CharacterSociogramPage />} />
-        <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
-        <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
-        
-        {/* Route using DualLensLayout */}
-        <Route
-          path="/player-journey"
-          element={<PlayerJourneyPage />}
-        />
+          {/* Memory Economy Page Route */}
+          <Route path="/memory-economy" element={<MemoryEconomyPage />} />
+          <Route path="/element-puzzle-economy" element={<ElementPuzzleEconomyPage />} />
+          <Route path="/character-sociogram" element={<CharacterSociogramPage />} />
+          <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
+          <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
+          
+          {/* Test route for error boundaries */}
+          <Route path="/test-error" element={<TestErrorComponent />} />
+          
+          {/* Route using DualLensLayout */}
+          <Route
+            path="/player-journey"
+            element={<PlayerJourneyPage />}
+          />
 
-        {/* Test route for DualLensLayout */}
-        <Route
-          path="/dual-view-test"
-          element={
-            <DualLensLayout
-              journeySpaceContent={<p style={{padding: '10px', backgroundColor: '#eee', border: '1px solid #ddd', borderRadius: '4px'}}>Journey Space Placeholder (Test Route)</p>}
-              systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#e0e0e0', border: '1px solid #d0d0d0', borderRadius: '4px'}}>System Space Placeholder (Test Route)</p>}
-            />
-          }
-        />
+          {/* Test route for DualLensLayout */}
+          <Route
+            path="/dual-view-test"
+            element={
+              <DualLensLayout
+                journeySpaceContent={<p style={{padding: '10px', backgroundColor: '#eee', border: '1px solid #ddd', borderRadius: '4px'}}>Journey Space Placeholder (Test Route)</p>}
+                systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#e0e0e0', border: '1px solid #d0d0d0', borderRadius: '4px'}}>System Space Placeholder (Test Route)</p>}
+              />
+            }
+          />
 
-        {/* 404 route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AppLayout>
+          {/* 404 route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        </ErrorBoundary>
+      </AppLayout>
+    </WorkflowProvider>
   );
 }
 

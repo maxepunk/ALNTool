@@ -3,11 +3,11 @@ const BaseSyncer = require('./BaseSyncer');
 /**
  * Syncer for Timeline Event entities.
  * Handles fetching from Notion, mapping, and inserting timeline event data.
- * 
+ *
  * Timeline Events have many-to-many relationships with:
  * - Characters (characters involved)
  * - Elements (memory/evidence)
- * 
+ *
  * @extends BaseSyncer
  */
 class TimelineEventSyncer extends BaseSyncer {
@@ -36,10 +36,10 @@ class TimelineEventSyncer extends BaseSyncer {
   async clearExistingData() {
     // Clear tables that have foreign key to timeline_events, in correct order
     this.db.prepare('DELETE FROM character_timeline_events').run();
-    
+
     // Also update elements that reference timeline events
     this.db.prepare('UPDATE elements SET timeline_event_id = NULL').run();
-    
+
     // Finally, clear the timeline_events table
     this.db.prepare('DELETE FROM timeline_events').run();
   }
@@ -52,21 +52,21 @@ class TimelineEventSyncer extends BaseSyncer {
   async mapData(notionEvent) {
     try {
       const mapped = await this.propertyMapper.mapTimelineEventWithNames(
-        notionEvent, 
+        notionEvent,
         this.notionService
       );
-      
+
       if (mapped.error) {
         return { error: mapped.error };
       }
 
       // Convert arrays to JSON strings
-      const characterIds = mapped.charactersInvolved 
-        ? JSON.stringify(mapped.charactersInvolved.map(c => c.id)) 
+      const characterIds = mapped.charactersInvolved
+        ? JSON.stringify(mapped.charactersInvolved.map(c => c.id))
         : '[]';
-      
-      const elementIds = mapped.memoryEvidence 
-        ? JSON.stringify(mapped.memoryEvidence.map(e => e.id)) 
+
+      const elementIds = mapped.memoryEvidence
+        ? JSON.stringify(mapped.memoryEvidence.map(e => e.id))
         : '[]';
 
       return {
@@ -95,14 +95,14 @@ class TimelineEventSyncer extends BaseSyncer {
   async insertData(mappedData) {
     // Extract relationships before inserting
     const { _relationships, ...eventData } = mappedData;
-    
+
     const stmt = this.db.prepare(`
       INSERT INTO timeline_events (
         id, description, date, character_ids, element_ids, notes
       )
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       eventData.id,
       eventData.description,
@@ -111,7 +111,7 @@ class TimelineEventSyncer extends BaseSyncer {
       eventData.element_ids,
       eventData.notes
     );
-    
+
     // Store relationships for post-processing
     if (!this._pendingRelationships) {
       this._pendingRelationships = [];
@@ -141,12 +141,12 @@ class TimelineEventSyncer extends BaseSyncer {
     // Process all pending relationships
     for (const pending of this._pendingRelationships) {
       const { eventId, relationships } = pending;
-      
+
       // Process character relationships
       if (relationships.characters && Array.isArray(relationships.characters)) {
         for (const character of relationships.characters) {
           let charId = character.id || character;
-          
+
           // If no ID but we have a name, look up the character ID
           if (!charId && character.name) {
             const foundChar = this.db.prepare('SELECT id FROM characters WHERE name = ?').get(character.name);
@@ -157,13 +157,13 @@ class TimelineEventSyncer extends BaseSyncer {
               continue;
             }
           }
-          
+
           if (charId) {
             insertCharEventRel.run(charId, eventId);
           }
         }
       }
-      
+
       // Note: Element relationships are stored as JSON in the timeline_events table
       // No separate junction table needed for elements
     }

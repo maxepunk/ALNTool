@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -39,22 +39,20 @@ function ElementDetail() {
   
   // Fetch element data with the queryKey for refreshing
   const queryKey = ['element', id];
-  const { data: element, isLoading, isFetching, error } = useQuery(
+  const { data: element, isLoading, isFetching, error } = useQuery({
     queryKey,
-    () => api.getElementById(id),
-    {
-      enabled: !!id,
-      // Keep previous data while refetching for a smoother UX
-      keepPreviousData: true,
-    }
-  );
+    queryFn: () => api.getElementById(id),
+    enabled: !!id,
+    // Keep previous data while refetching for a smoother UX
+    keepPreviousData: true,
+  });
   
   // Fetch element graph data
-  const { data: elementGraph, isLoading: isGraphLoading } = useQuery(
-    ['elementGraph', id],
-    () => api.getElementGraph(id, 2),
-    { enabled: !!id }
-  );
+  const { data: elementGraph, isLoading: isGraphLoading } = useQuery({
+    queryKey: ['elementGraph', id],
+    queryFn: () => api.getElementGraph(id, 2),
+    enabled: !!id
+  });
   
   // Handler for tab changes
   const handleTabChange = (event, newValue) => {

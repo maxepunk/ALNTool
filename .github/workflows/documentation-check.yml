@@ -1,0 +1,62 @@
+name: Documentation Authority Check
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+  push:
+    branches: [ main, master, develop ]
+
+jobs:
+  verify-documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: storyforge/backend/package-lock.json
+    
+    - name: Install backend dependencies
+      working-directory: storyforge/backend
+      run: npm ci
+    
+    - name: Run documentation verification
+      working-directory: storyforge/backend
+      run: |
+        echo "🔍 Verifying documentation alignment..."
+        npm run docs:verify-sync
+    
+    - name: Run all verification checks
+      working-directory: storyforge/backend
+      run: |
+        echo "🔍 Running comprehensive verification..."
+        npm run verify:all
+    
+    - name: Check for documentation conflicts
+      run: |
+        echo "🔍 Checking for authority conflicts..."
+        # Check for TODO or FIXME without tracking
+        if grep -r "TODO\|FIXME" --include="*.md" . | grep -v "id:"; then
+          echo "❌ Found untracked TODOs or FIXMEs in documentation"
+          exit 1
+        fi
+        echo "✅ No untracked issues found"
+    
+    - name: Documentation update reminder
+      if: failure()
+      run: |
+        echo "❌ Documentation checks failed!"
+        echo ""
+        echo "Please ensure:"
+        echo "1. All documentation is in sync (run: npm run docs:verify-sync)"
+        echo "2. Code changes have corresponding doc updates (see AUTHORITY_MATRIX.md)"
+        echo "3. No authority conflicts exist between documents"
+        echo ""
+        echo "To fix, run from storyforge/backend:"
+        echo "  npm run docs:task-complete <task-id>  # If completing a task"
+        echo "  npm run docs:init                     # To reinitialize markers"

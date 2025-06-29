@@ -124,17 +124,39 @@ describe('CharacterSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM character_links')) return mockStmts.deleteCharLinks;
-        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
-        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
-        if (sql.includes('DELETE FROM characters')) return mockStmts.deleteCharacters;
-        if (sql.includes('INSERT INTO characters')) return mockStmts.insertCharacter;
-        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) return mockStmts.insertEventRel;
-        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertOwnedElem;
-        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertAssocElem;
-        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) return mockStmts.insertPuzzleRel;
+        if (sql.includes('DELETE FROM character_links')) {
+          return mockStmts.deleteCharLinks;
+        }
+        if (sql.includes('DELETE FROM character_timeline_events')) {
+          return mockStmts.deleteCharEvents;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwnedElems;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssocElems;
+        }
+        if (sql.includes('DELETE FROM character_puzzles')) {
+          return mockStmts.deleteCharPuzzles;
+        }
+        if (sql.includes('DELETE FROM characters')) {
+          return mockStmts.deleteCharacters;
+        }
+        if (sql.includes('INSERT INTO characters')) {
+          return mockStmts.insertCharacter;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) {
+          return mockStmts.insertEventRel;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) {
+          return mockStmts.insertOwnedElem;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) {
+          return mockStmts.insertAssocElem;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) {
+          return mockStmts.insertPuzzleRel;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -169,11 +191,12 @@ describe('CharacterSyncer Integration Tests', () => {
         'char2', 'Alex', 'Player', 'Core', 'Tech genius', 3
       );
 
-      // Verify relationship insertion (only char1 has relationships)
-      expect(mockStmts.insertEventRel.run).toHaveBeenCalledWith('char1', 'event1');
-      expect(mockStmts.insertPuzzleRel.run).toHaveBeenCalledWith('char1', 'puzzle1');
-      expect(mockStmts.insertOwnedElem.run).toHaveBeenCalledWith('char1', 'elem1');
-      expect(mockStmts.insertAssocElem.run).toHaveBeenCalledWith('char1', 'elem2');
+      // Relationships are now handled by RelationshipSyncer in Phase 2
+      // Verify that relationship statements were NOT called by CharacterSyncer
+      expect(mockStmts.insertEventRel.run).not.toHaveBeenCalled();
+      expect(mockStmts.insertPuzzleRel.run).not.toHaveBeenCalled();
+      expect(mockStmts.insertOwnedElem.run).not.toHaveBeenCalled();
+      expect(mockStmts.insertAssocElem.run).not.toHaveBeenCalled();
 
       // Verify logging
       expect(mockLogger.startSync).toHaveBeenCalledWith('characters');
@@ -224,17 +247,39 @@ describe('CharacterSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM character_links')) return mockStmts.deleteCharLinks;
-        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
-        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
-        if (sql.includes('DELETE FROM characters')) return mockStmts.deleteCharacters;
-        if (sql.includes('INSERT INTO characters')) return mockStmts.insertCharacter;
-        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) return mockStmts.insertEventRel;
-        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) return mockStmts.insertOwnedElem;
-        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) return mockStmts.insertAssocElem;
-        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) return mockStmts.insertPuzzleRel;
+        if (sql.includes('DELETE FROM character_links')) {
+          return mockStmts.deleteCharLinks;
+        }
+        if (sql.includes('DELETE FROM character_timeline_events')) {
+          return mockStmts.deleteCharEvents;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwnedElems;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssocElems;
+        }
+        if (sql.includes('DELETE FROM character_puzzles')) {
+          return mockStmts.deleteCharPuzzles;
+        }
+        if (sql.includes('DELETE FROM characters')) {
+          return mockStmts.deleteCharacters;
+        }
+        if (sql.includes('INSERT INTO characters')) {
+          return mockStmts.insertCharacter;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_timeline_events')) {
+          return mockStmts.insertEventRel;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_owned_elements')) {
+          return mockStmts.insertOwnedElem;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_associated_elements')) {
+          return mockStmts.insertAssocElem;
+        }
+        if (sql.includes('INSERT OR IGNORE INTO character_puzzles')) {
+          return mockStmts.insertPuzzleRel;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -267,12 +312,24 @@ describe('CharacterSyncer Integration Tests', () => {
 
       // Setup prepare mock to return appropriate statements
       mockDB.prepare.mockImplementation((sql) => {
-        if (sql.includes('DELETE FROM character_links')) return mockStmts.deleteCharLinks;
-        if (sql.includes('DELETE FROM character_timeline_events')) return mockStmts.deleteCharEvents;
-        if (sql.includes('DELETE FROM character_owned_elements')) return mockStmts.deleteCharOwnedElems;
-        if (sql.includes('DELETE FROM character_associated_elements')) return mockStmts.deleteCharAssocElems;
-        if (sql.includes('DELETE FROM character_puzzles')) return mockStmts.deleteCharPuzzles;
-        if (sql.includes('DELETE FROM characters')) return mockStmts.deleteCharacters;
+        if (sql.includes('DELETE FROM character_links')) {
+          return mockStmts.deleteCharLinks;
+        }
+        if (sql.includes('DELETE FROM character_timeline_events')) {
+          return mockStmts.deleteCharEvents;
+        }
+        if (sql.includes('DELETE FROM character_owned_elements')) {
+          return mockStmts.deleteCharOwnedElems;
+        }
+        if (sql.includes('DELETE FROM character_associated_elements')) {
+          return mockStmts.deleteCharAssocElems;
+        }
+        if (sql.includes('DELETE FROM character_puzzles')) {
+          return mockStmts.deleteCharPuzzles;
+        }
+        if (sql.includes('DELETE FROM characters')) {
+          return mockStmts.deleteCharacters;
+        }
         throw new Error(`Unexpected SQL: ${sql}`);
       });
 
@@ -323,7 +380,7 @@ describe('CharacterSyncer Integration Tests', () => {
     it('should handle database errors gracefully', async () => {
       mockNotionService.getCharacters.mockResolvedValue([{ id: 'char1' }]);
       mockPropertyMapper.mapCharacterWithNames.mockResolvedValue({ id: 'char1', name: 'Sarah' });
-      
+
       // Simulate database error
       mockDB.prepare.mockImplementation(() => {
         throw new Error('Database connection lost');

@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/197</span>
+                <span class='fraction'>1/198</span>
             </div>
         
             
@@ -927,7 +927,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1158,7 +1157,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1274,6 +1272,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1542,7 +1542,7 @@ function <span class="fstat-no" title="function not covered" >extractNumber(</sp
  */
 function <span class="fstat-no" title="function not covered" >mapCharacter(</span>notionCharacter) {
   const properties = <span class="cstat-no" title="statement not covered" >notionCharacter.properties;</span>
-  
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
     id: notionCharacter.id,
     name: extractTitle(properties.Name),
@@ -1557,7 +1557,7 @@ function <span class="fstat-no" title="function not covered" >mapCharacter(</spa
     ownedElements: properties.Owned_Elements ? extractRelation(properties.Owned_Elements) : [],
     associatedElements: properties.Associated_Elements ? extractRelation(properties.Associated_Elements) : [],
     connections: extractNumber(properties.Connections),
-    lastEdited: notionCharacter.last_edited_time,
+    lastEdited: notionCharacter.last_edited_time
   };
 }
 &nbsp;
@@ -1568,7 +1568,7 @@ function <span class="fstat-no" title="function not covered" >mapCharacter(</spa
  */
 function <span class="fstat-no" title="function not covered" >mapTimelineEvent(</span>notionEvent) {
   const properties = <span class="cstat-no" title="statement not covered" >notionEvent.properties;</span>
-  
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
     id: notionEvent.id,
     description: extractTitle(properties.Description),
@@ -1577,7 +1577,7 @@ function <span class="fstat-no" title="function not covered" >mapTimelineEvent(<
     memoryEvidence: properties.Memory_Evidence ? extractRelation(properties.Memory_Evidence) : [],
     memType: properties.mem_type ? extractRichText(properties.mem_type) : '',
     notes: properties.Notes ? extractRichText(properties.Notes) : '',
-    lastEdited: notionEvent.last_edited_time,
+    lastEdited: notionEvent.last_edited_time
   };
 }
 &nbsp;
@@ -1588,7 +1588,7 @@ function <span class="fstat-no" title="function not covered" >mapTimelineEvent(<
  */
 function <span class="fstat-no" title="function not covered" >mapPuzzle(</span>notionPuzzle) {
   const properties = <span class="cstat-no" title="statement not covered" >notionPuzzle.properties;</span>
-  
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
     id: notionPuzzle.id,
     puzzle: extractTitle(properties.Puzzle),
@@ -1603,10 +1603,9 @@ function <span class="fstat-no" title="function not covered" >mapPuzzle(</span>n
     assetLink: extractUrl(properties.Asset_Link),
     description: properties.Description_Solution ? extractRichText(properties.Description_Solution) : '',
     narrativeThreads: properties.Narrative_Threads ? extractMultiSelect(properties.Narrative_Threads) : [],
-    lastEdited: notionPuzzle.last_edited_time,
+    lastEdited: notionPuzzle.last_edited_time
   };
 }
-&nbsp;
 &nbsp;
 /**
  * Helper function to get a property from a Notion object, trying various naming conventions
@@ -1623,17 +1622,17 @@ function <span class="fstat-no" title="function not covered" >getProperty(</span
     propertyName.replace(/(\w)\/(\w)/g, '$1_$2'), // Handle slashes (e.g., "Description/Text" -&gt; "Description_Text")
     propertyName.replace(/\//g, ' ')              // Replace slashes with spaces (e.g., "Description/Text" -&gt; "Description Text")
   ];
-  
+&nbsp;
   // Try each variation until we find the property
 <span class="cstat-no" title="statement not covered" >  for (const variant of variations) {</span>
 <span class="cstat-no" title="statement not covered" >    if (properties[variant]) {</span>
 <span class="cstat-no" title="statement not covered" >      return properties[variant];</span>
     }
   }
-  
+&nbsp;
   // If not found, log the issue (but don't throw an error to maintain resilience)
 <span class="cstat-no" title="statement not covered" >  console.warn(`Property "${propertyName}" not found in Notion object. Available properties: ${Object.keys(properties).join(', ')}`);</span>
-  
+&nbsp;
   // Return null
 <span class="cstat-no" title="statement not covered" >  return null;</span>
 }
@@ -1702,7 +1701,7 @@ function <span class="fstat-no" title="function not covered" >extractUrlByName(<
 async function <span class="fstat-no" title="function not covered" >mapCharacterWithNames(</span>notionCharacter, notionService) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const properties = <span class="cstat-no" title="statement not covered" >notionCharacter.properties;</span>
-    
+&nbsp;
     // Use the new helper functions to extract relations with flexible property naming
     const eventIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Events');</span>
     const puzzleIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Character Puzzles');</span>
@@ -1741,19 +1740,19 @@ async function <span class="fstat-no" title="function not covered" >mapCharacter
       lastEdited: notionCharacter.last_edited_time,
       // These properties don't exist in the Characters database:
       // actFocus: extractSelectByName(properties, 'Act Focus'),
-      // themes: extractMultiSelectByName(properties, 'Narrative Threads'), 
+      // themes: extractMultiSelectByName(properties, 'Narrative Threads'),
       // resolutionPaths: extractMultiSelectByName(properties, 'Resolution Paths'),
       linkedCharacters: [] // Computed from character_links table after sync
     };
 <span class="cstat-no" title="statement not covered" >    return mappedChar;</span>
   } catch (error) {
 <span class="cstat-no" title="statement not covered" >    console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);</span>
-    
+&nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
       id: notionCharacter?.id || 'error',
       name: notionCharacter?.properties?.Name ? extractTitle(notionCharacter.properties.Name) : 'Error loading character',
-      error: error.message,
+      error: error.message
     };
   }
 }
@@ -1767,27 +1766,27 @@ async function <span class="fstat-no" title="function not covered" >mapCharacter
 async function <span class="fstat-no" title="function not covered" >mapTimelineEventWithNames(</span>notionEvent, notionService) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const properties = <span class="cstat-no" title="statement not covered" >notionEvent.properties;</span>
-    
+&nbsp;
     // Use helper functions for flexible property extraction
     const characterIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Characters Involved');</span>
     const memoryEvidenceIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Memory/Evidence');</span>
 &nbsp;
     const [characters, memoryEvidence] = <span class="cstat-no" title="statement not covered" >await Promise.all([</span>
       notionService.getPagesByIds(characterIds),
-      notionService.getPagesByIds(memoryEvidenceIds),
+      notionService.getPagesByIds(memoryEvidenceIds)
     ]);
 &nbsp;
     const toIdName = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(p</span>age, titleProp = <span class="branch-0 cbranch-no" title="branch not covered" >'Name')</span> =&gt; (<span class="cstat-no" title="statement not covered" >{ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Description'] || { title: [] }) })</span>;</span>
 &nbsp;
     // Extract character mentions from description if Characters Involved is empty
-    let charactersInvolved = <span class="cstat-no" title="statement not covered" >characters.map(<span class="fstat-no" title="function not covered" >pa</span>ge =&gt; <span class="cstat-no" title="statement not covered" >toIdName(page, 'Name'))</span>;</span>
-    
+    const charactersInvolved = <span class="cstat-no" title="statement not covered" >characters.map(<span class="fstat-no" title="function not covered" >pa</span>ge =&gt; <span class="cstat-no" title="statement not covered" >toIdName(page, 'Name'))</span>;</span>
+&nbsp;
     // If no characters in Notion relation, parse from description (@mentions)
 <span class="cstat-no" title="statement not covered" >    if (charactersInvolved.length === 0) {</span>
       const description = <span class="cstat-no" title="statement not covered" >extractTitle(properties.Description) || '';</span>
       // Improved regex to match @FirstName LastName (handles two-word names)
       const characterMentions = <span class="cstat-no" title="statement not covered" >description.match(/@([A-Za-z]+(?:\s+[A-Za-z]+)?)/g) || [];</span>
-      
+&nbsp;
       // For each mention, try to find matching character names
 <span class="cstat-no" title="statement not covered" >      for (const mention of characterMentions) {</span>
         const characterName = <span class="cstat-no" title="statement not covered" >mention.substring(1).trim();</span> // Remove @ symbol
@@ -1805,7 +1804,7 @@ async function <span class="fstat-no" title="function not covered" >mapTimelineE
       memoryEvidence: memoryEvidence.map(<span class="fstat-no" title="function not covered" >pa</span>ge =&gt; <span class="cstat-no" title="statement not covered" >toIdName(page, 'Name'))</span>,
       memType: extractRichTextByName(properties, 'mem type'),
       notes: extractRichTextByName(properties, 'Notes'),
-      lastEdited: notionEvent.last_edited_time,
+      lastEdited: notionEvent.last_edited_time
       // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
       // Act Focus is computed from related elements' acts, not stored in Notion
       // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed field
@@ -1819,12 +1818,12 @@ async function <span class="fstat-no" title="function not covered" >mapTimelineE
 <span class="cstat-no" title="statement not covered" >    return mappedEvent;</span>
   } catch (error) {
 <span class="cstat-no" title="statement not covered" >    console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);</span>
-    
+&nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
       id: notionEvent?.id || 'error',
       description: notionEvent?.properties?.Description ? extractTitle(notionEvent.properties.Description) : 'Error loading event',
-      error: error.message,
+      error: error.message
     };
   }
 }
@@ -1849,12 +1848,11 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
     // Note: Impacted Characters and Related Timeline Events are computed relationships,
     // not direct Notion properties. These will be computed after sync based on puzzle ownership.
 &nbsp;
-&nbsp;
     // Optimize API calls - only fetch non-empty relation arrays
     // This prevents unnecessary API calls for empty relations, improving performance significantly
     const apiCalls = <span class="cstat-no" title="statement not covered" >[];</span>
     const callMap = <span class="cstat-no" title="statement not covered" >{};</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    if (ownerIds.length &gt; 0) {</span>
 <span class="cstat-no" title="statement not covered" >      callMap.owners = apiCalls.length;</span>
 <span class="cstat-no" title="statement not covered" >      apiCalls.push(notionService.getPagesByIds(ownerIds));</span>
@@ -1879,15 +1877,15 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
 <span class="cstat-no" title="statement not covered" >      callMap.subPuzzles = apiCalls.length;</span>
 <span class="cstat-no" title="statement not covered" >      apiCalls.push(notionService.getPagesByIds(subPuzzleIds));</span>
     }
-    
+&nbsp;
     // Execute only the needed API calls with timeout protection
     const results = <span class="cstat-no" title="statement not covered" >apiCalls.length &gt; 0 ? await Promise.race([</span>
       Promise.all(apiCalls),
-      new Promise(<span class="fstat-no" title="function not covered" >(_</span>, reject) =&gt; 
+      new Promise(<span class="fstat-no" title="function not covered" >(_</span>, reject) =&gt;
 <span class="cstat-no" title="statement not covered" >        setTimeout(<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >reject(new Error('Puzzle mapping timeout after 10 seconds')),</span> 10000)</span>
       )
     ]) : [];
-    
+&nbsp;
     // Map results back to expected variables (empty arrays for skipped calls)
     const owners = <span class="cstat-no" title="statement not covered" >callMap.owners !== undefined ? results[callMap.owners] : [];</span>
     const lockedItems = <span class="cstat-no" title="statement not covered" >callMap.lockedItems !== undefined ? results[callMap.lockedItems] : [];</span>
@@ -1913,7 +1911,7 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
       assetLink: extractUrlByName(properties, 'Asset Link'),
       description: extractRichTextByName(properties, 'Description/Solution'),
       narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'),
-      lastEdited: notionPuzzle.last_edited_time,
+      lastEdited: notionPuzzle.last_edited_time
       // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
       // Commenting out to prevent "Property not found" errors
       // actFocus: extractSelectByName(properties, 'Act Focus'), // Computed from timeline events
@@ -1931,7 +1929,7 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
 <span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Failed to map puzzle "${puzzleName}" (ID: ${notionPuzzle?.id || 'unknown'})`);</span>
 <span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Error type: ${error.name || 'Unknown'}`);</span>
 <span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Error message: ${error.message}`);</span>
-    
+&nbsp;
     // Log relation array sizes for debugging
 <span class="cstat-no" title="statement not covered" >    if (notionPuzzle?.properties) {</span>
       const properties = <span class="cstat-no" title="statement not covered" >notionPuzzle.properties;</span>
@@ -1943,14 +1941,14 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
         parentItems: extractRelationByName(properties, 'Parent item').length,
         subPuzzles: extractRelationByName(properties, 'Sub-Puzzles').length
       };
-<span class="cstat-no" title="statement not covered" >      console.error(`[PUZZLE SYNC ERROR] Relation sizes:`, relationSizes);</span>
+<span class="cstat-no" title="statement not covered" >      console.error('[PUZZLE SYNC ERROR] Relation sizes:', relationSizes);</span>
     }
-    
+&nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
       id: notionPuzzle?.id || 'error',
       puzzle: puzzleName,
-      error: error.message,
+      error: error.message
     };
   }
 }
@@ -1961,12 +1959,14 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
  * @returns {Object} Simplified character overview object
  */
 function <span class="fstat-no" title="function not covered" >mapCharacterOverview(</span>notionCharacter) {
-<span class="cstat-no" title="statement not covered" >  if (!notionCharacter || !notionCharacter.properties) <span class="cstat-no" title="statement not covered" >return null;</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!notionCharacter || !notionCharacter.properties) {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
+  }
   const properties = <span class="cstat-no" title="statement not covered" >notionCharacter.properties;</span>
-  
+&nbsp;
 <span class="cstat-no" title="statement not covered" >  return {</span>
     id: notionCharacter.id,
-    name: extractTitle(properties.Name),
+    name: extractTitle(properties.Name)
   };
 }
 &nbsp;
@@ -1979,7 +1979,7 @@ function <span class="fstat-no" title="function not covered" >mapCharacterOvervi
 async function <span class="fstat-no" title="function not covered" >mapElementWithNames(</span>notionElement, notionService) {
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const properties = <span class="cstat-no" title="statement not covered" >notionElement.properties;</span>
-    
+&nbsp;
     // Use helper functions for flexible property extraction
     const ownerIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Owner');</span>
     const containerIds = <span class="cstat-no" title="statement not covered" >extractRelationByName(properties, 'Container');</span>
@@ -1998,7 +1998,7 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
       notionService.getPagesByIds(requiredForIds),
       notionService.getPagesByIds(rewardedByIds),
       notionService.getPagesByIds(timelineEventIds),
-      notionService.getPagesByIds(associatedCharacterIds),
+      notionService.getPagesByIds(associatedCharacterIds)
     ]);
 &nbsp;
     const toIdName = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(p</span>age, titleProp = <span class="branch-0 cbranch-no" title="branch not covered" >'Name')</span> =&gt; (<span class="cstat-no" title="statement not covered" >{ id: page.id, name: extractTitle(page.properties[titleProp] || page.properties['Description'] || page.properties['Puzzle'] || { title: [] }) })</span>;</span>
@@ -2021,7 +2021,7 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
       status: extractSelectByName(properties, 'Status'),
       contentLink: extractUrlByName(properties, 'Content Link'),
       productionNotes: extractRichTextByName(properties, 'Production/Puzzle Notes'),
-      lastEdited: notionElement.last_edited_time,
+      lastEdited: notionElement.last_edited_time
       // COMPUTED FIELDS - These don't exist in Notion, only in SQLite after computation
       // actFocus: extractSelectByName(properties, 'First Available'), // This was wrong - Act Focus is computed, not First Available
       // themes: extractMultiSelectByName(properties, 'Narrative Threads'), // Duplicate of narrativeThreads
@@ -2045,7 +2045,7 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
 <span class="cstat-no" title="statement not covered" >      if (isMemoryType) {</span>
         // Ensure properties object exists
 <span class="cstat-no" title="statement not covered" >        if (!mappedElement.properties) {</span>
-<span class="cstat-no" title="statement not covered" >            mappedElement.properties = {};</span>
+<span class="cstat-no" title="statement not covered" >          mappedElement.properties = {};</span>
         }
 &nbsp;
         // Updated regex patterns to handle [bracket] format
@@ -2076,7 +2076,7 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
 <span class="cstat-no" title="statement not covered" >        if (groupMatch &amp;&amp; groupMatch[1]) {</span>
           const groupValue = <span class="cstat-no" title="statement not covered" >groupMatch[1];</span>
 <span class="cstat-no" title="statement not covered" >          mappedElement.properties.sf_group = groupValue;</span>
-          
+&nbsp;
           // Parse multiplier from patterns like "Ephemeral Echo (x10)"
           const multiplierRegex = <span class="cstat-no" title="statement not covered" >/\(x(\d+(?:\.\d+)?)\)/i;</span>
           const multiplierMatch = <span class="cstat-no" title="statement not covered" >groupValue.match(multiplierRegex);</span>
@@ -2094,12 +2094,12 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
 <span class="cstat-no" title="statement not covered" >    return mappedElement;</span>
   } catch (error) {
 <span class="cstat-no" title="statement not covered" >    console.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);</span>
-    
+&nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
       id: notionElement?.id || 'error',
       name: notionElement?.properties?.Name ? extractTitle(notionElement.properties.Name) : 'Error loading element',
-      error: error.message,
+      error: error.message
     };
   }
 }
@@ -2126,15 +2126,15 @@ module.exports = {
   extractRichTextByName,
   extractSelectByName,
   extractMultiSelectByName,
-  extractUrlByName,
-}; </pre></td></tr></table></pre>
+  extractUrlByName
+};</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-07T18:54:01.790Z
+                at 2025-06-28T23:32:12.954Z
             </div>
         <script src="../prettify.js"></script>
         <script>

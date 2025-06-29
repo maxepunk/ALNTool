@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ReactFlow, ReactFlowProvider, useNodesState, useEdgesState, Controls, Background, MiniMap } from '@xyflow/react';
+import logger from '../../utils/logger';
 import { 
   Box, 
   Typography, 
@@ -185,7 +186,7 @@ const ExperienceFlowGraph = ({ initialNodes, initialEdges, characterData, analys
 
   const handleNodeClick = (event, node) => {
     setSelectedNode(node);
-    console.log('Selected node:', node);
+    logger.debug('Selected node:', node);
   };
 
   return (

@@ -50,7 +50,7 @@ describe('Sync Routes', () => {
     // Ensure all database connections are closed
     if (mockDB) {
       await Promise.all(
-        Array.from({ length: activeConnections }, () => 
+        Array.from({ length: activeConnections }, () =>
           new Promise(resolve => {
             const stmt = mockDB.prepare();
             stmt.finalize();
@@ -68,7 +68,7 @@ describe('Sync Routes', () => {
     // Reset mocks and state
     jest.clearAllMocks();
     activeConnections = 0;
-    
+
     // Setup mock database with all required methods
     mockDB = {
       exec: jest.fn(),
@@ -81,7 +81,9 @@ describe('Sync Routes', () => {
           run: jest.fn(),
           get: jest.fn(),
           all: jest.fn(),
-          finalize: () => { activeConnections--; }
+          finalize: () => {
+            activeConnections--;
+          }
         };
       }),
       inTransaction: false,
@@ -99,7 +101,7 @@ describe('Sync Routes', () => {
     ResolutionPathComputer.mockImplementation(() => ({
       computeAll: jest.fn().mockResolvedValue({ computed: 8, errors: 0 })
     }));
-    
+
     // Create test app
     app = express();
     app.use(express.json());
@@ -310,7 +312,7 @@ describe('Sync Routes', () => {
 
     it('should complete full sync within 30 seconds', async () => {
       const startTime = Date.now();
-      
+
       // Mock sync with realistic timing but shorter for tests
       dataSyncService.syncAll.mockImplementation(async () => {
         await new Promise(resolve => setTimeout(resolve, 5000)); // 5s sync for testing
@@ -349,7 +351,9 @@ describe('Sync Routes', () => {
           run: jest.fn(),
           get: jest.fn(),
           all: jest.fn(),
-          finalize: () => { activeConnections--; }
+          finalize: () => {
+            activeConnections--;
+          }
         };
       });
 
@@ -373,4 +377,4 @@ describe('Sync Routes', () => {
       expect(activeConnections).toBeLessThanOrEqual(maxConnections);
     });
   });
-}); 
+});

@@ -14,6 +14,7 @@ const ActFocusComputer = require('./compute/ActFocusComputer');
 const ResolutionPathComputer = require('./compute/ResolutionPathComputer');
 const NarrativeThreadComputer = require('./compute/NarrativeThreadComputer');
 
+const logger = require('../utils/logger');
 /**
  * DataSyncService coordinates data synchronization between Notion and SQLite.
  * Uses SyncOrchestrator to manage the sync process in phases:
@@ -21,7 +22,7 @@ const NarrativeThreadComputer = require('./compute/NarrativeThreadComputer');
  * 2. Sync relationships and compute character links
  * 3. Compute derived fields
  * 4. Maintain cache (optional)
- * 
+ *
  * @deprecated The following methods are deprecated and will be removed in v2.0:
  * - performCacheMaintenance() - Use cacheManager.refreshCache() instead
  * - computeDerivedFields() - Use computeServices in orchestrator instead
@@ -37,7 +38,7 @@ class DataSyncService {
 
     this.db = null;
     this.logger = new SyncLogger();
-    
+
     // Initialize sync components
     this.entitySyncers = [
       new CharacterSyncer({ notionService, propertyMapper, logger: this.logger }),
@@ -45,20 +46,20 @@ class DataSyncService {
       new PuzzleSyncer({ notionService, propertyMapper, logger: this.logger }),
       new TimelineEventSyncer({ notionService, propertyMapper, logger: this.logger })
     ];
-    
+
     this.relationshipSyncer = new RelationshipSyncer({
       notionService,
       propertyMapper,
       logger: this.logger
     });
-    
+
     // Initialize compute services
     this.computeServices = [
       new ActFocusComputer(getDB()),
       new ResolutionPathComputer(getDB()),
       new NarrativeThreadComputer(getDB())
     ];
-    
+
     // Initialize cache manager
     this.cacheManager = {
       refreshCache: async () => {
@@ -67,7 +68,7 @@ class DataSyncService {
         return { refreshed: true };
       }
     };
-    
+
     // Create orchestrator (will be initialized when db is available)
     this.orchestrator = null;
   }
@@ -94,17 +95,17 @@ class DataSyncService {
     try {
       this.initDB();
       const result = await this.orchestrator.syncAll(options);
-      
-      console.log('Sync completed successfully:', {
+
+      logger.debug('Sync completed successfully:', {
         duration: result.totalDuration,
         status: result.status,
         phases: result.phases
       });
-      
+
       return result;
-      
+
     } catch (error) {
-      console.error('Sync failed:', error);
+      logger.error('Sync failed:', error);
       throw error;
     }
   }
@@ -116,21 +117,21 @@ class DataSyncService {
   async getSyncStatus() {
     try {
       this.initDB();
-      
+
       // Get current database counts
       const counts = {};
       const tables = ['characters', 'elements', 'puzzles', 'timeline_events', 'character_links'];
-      
+
       for (const table of tables) {
         try {
           const result = this.db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();
           counts[table] = result.count;
         } catch (error) {
-          console.warn(`Failed to count ${table}:`, error.message);
+          logger.warn(`Failed to count ${table}:`, error.message);
           counts[table] = 0;
         }
       }
-      
+
       return {
         success: true,
         counts,
@@ -161,7 +162,7 @@ class DataSyncService {
    * @private
    */
   async performCacheMaintenance() {
-    console.warn('performCacheMaintenance() is deprecated. Use cacheManager.refreshCache() instead.');
+    logger.warn('performCacheMaintenance() is deprecated. Use cacheManager.refreshCache() instead.');
     return this.cacheManager.refreshCache();
   }
 
@@ -170,7 +171,7 @@ class DataSyncService {
    * @private
    */
   async computeDerivedFields() {
-    console.warn('computeDerivedFields() is deprecated. Use computeServices in orchestrator instead.');
+    logger.warn('computeDerivedFields() is deprecated. Use computeServices in orchestrator instead.');
     const stats = { processed: 0, errors: 0 };
     for (const service of this.computeServices) {
       const result = await service.compute();
@@ -185,7 +186,7 @@ class DataSyncService {
    * @private
    */
   async syncRelationships() {
-    console.warn('syncRelationships() is deprecated. Use relationshipSyncer in orchestrator instead.');
+    logger.warn('syncRelationships() is deprecated. Use relationshipSyncer in orchestrator instead.');
     return this.relationshipSyncer.sync();
   }
 
@@ -194,7 +195,7 @@ class DataSyncService {
    * @private
    */
   logSyncStart(entityType) {
-    console.warn('logSyncStart() is deprecated. Use SyncLogger instead.');
+    logger.warn('logSyncStart() is deprecated. Use SyncLogger instead.');
     return this.logger.startSync(entityType);
   }
 
@@ -203,7 +204,7 @@ class DataSyncService {
    * @private
    */
   logSyncSuccess(logId, recordsFetched, recordsSynced, errors) {
-    console.warn('logSyncSuccess() is deprecated. Use SyncLogger instead.');
+    logger.warn('logSyncSuccess() is deprecated. Use SyncLogger instead.');
     return this.logger.completeSync(logId, { fetched: recordsFetched, synced: recordsSynced, errors });
   }
 
@@ -212,10 +213,10 @@ class DataSyncService {
    * @private
    */
   logSyncFailure(logId, error, recordsFetched = 0, recordsSynced = 0) {
-    console.warn('logSyncFailure() is deprecated. Use SyncLogger instead.');
+    logger.warn('logSyncFailure() is deprecated. Use SyncLogger instead.');
     return this.logger.failSync(logId, error, { fetched: recordsFetched, synced: recordsSynced });
   }
 }
 
 // Export singleton instance
-module.exports = new DataSyncService(); 
+module.exports = new DataSyncService();

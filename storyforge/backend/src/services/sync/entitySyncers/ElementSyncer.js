@@ -3,12 +3,12 @@ const BaseSyncer = require('./BaseSyncer');
 /**
  * Syncer for Element entities.
  * Handles fetching from Notion, mapping, and inserting element data.
- * 
+ *
  * Elements have relationships with:
  * - Characters (owner)
  * - Other Elements (container)
  * - Timeline Events
- * 
+ *
  * @extends BaseSyncer
  */
 class ElementSyncer extends BaseSyncer {
@@ -39,7 +39,7 @@ class ElementSyncer extends BaseSyncer {
     this.db.prepare('UPDATE puzzles SET locked_item_id = NULL').run();
     this.db.prepare('DELETE FROM character_owned_elements').run();
     this.db.prepare('DELETE FROM character_associated_elements').run();
-    
+
     // Finally, clear the elements table
     this.db.prepare('DELETE FROM elements').run();
   }
@@ -52,30 +52,30 @@ class ElementSyncer extends BaseSyncer {
   async mapData(notionElement) {
     try {
       const mapped = await this.propertyMapper.mapElementWithNames(
-        notionElement, 
+        notionElement,
         this.notionService
       );
-      
+
       if (mapped.error) {
         return { error: mapped.error };
       }
 
       // Extract single IDs from relation arrays
-      const ownerId = mapped.owner && mapped.owner.length > 0 
-        ? mapped.owner[0].id 
+      const ownerId = mapped.owner && mapped.owner.length > 0
+        ? mapped.owner[0].id
         : null;
-      
-      const containerId = mapped.container && mapped.container.length > 0 
-        ? mapped.container[0].id 
+
+      const containerId = mapped.container && mapped.container.length > 0
+        ? mapped.container[0].id
         : null;
-      
-      const timelineEventId = mapped.timelineEvent && mapped.timelineEvent.length > 0 
-        ? mapped.timelineEvent[0].id 
+
+      const timelineEventId = mapped.timelineEvent && mapped.timelineEvent.length > 0
+        ? mapped.timelineEvent[0].id
         : null;
 
       // Extract memory values from properties object (if they exist)
       const memoryProps = mapped.properties || {};
-      
+
       return {
         id: mapped.id,
         name: mapped.name || '',
@@ -93,8 +93,8 @@ class ElementSyncer extends BaseSyncer {
         memory_type: memoryProps.sf_memory_type || null,
         memory_group: memoryProps.sf_group || null,
         group_multiplier: memoryProps.sf_group_multiplier || 1.0,
-        calculated_memory_value: (memoryProps.sf_value_rating && memoryProps.sf_group_multiplier) 
-          ? memoryProps.sf_value_rating * memoryProps.sf_group_multiplier 
+        calculated_memory_value: (memoryProps.sf_value_rating && memoryProps.sf_group_multiplier)
+          ? memoryProps.sf_value_rating * memoryProps.sf_group_multiplier
           : (memoryProps.sf_value_rating || 0)
       };
     } catch (error) {
@@ -116,7 +116,7 @@ class ElementSyncer extends BaseSyncer {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       mappedData.id,
       mappedData.name,

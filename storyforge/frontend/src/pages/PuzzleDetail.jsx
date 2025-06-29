@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -40,22 +40,20 @@ function PuzzleDetail() {
   
   // Fetch puzzle data with the queryKey for refreshing
   const queryKey = ['puzzle', id];
-  const { data: puzzle, isLoading, isFetching, error } = useQuery(
+  const { data: puzzle, isLoading, isFetching, error } = useQuery({
     queryKey,
-    () => api.getPuzzleById(id),
-    {
-      enabled: !!id,
-      // Keep previous data while refetching for a smoother UX
-      keepPreviousData: true,
-    }
-  );
+    queryFn: () => api.getPuzzleById(id),
+    enabled: !!id,
+    // Keep previous data while refetching for a smoother UX
+    keepPreviousData: true,
+    });
   
   // Fetch puzzle graph data
-  const { data: puzzleGraph, isLoading: isGraphLoading } = useQuery(
-    ['puzzleGraph', id],
-    () => api.getPuzzleGraph(id, 2),
-    { enabled: !!id }
-  );
+  const { data: puzzleGraph, isLoading: isGraphLoading } = useQuery({
+    queryKey: ['puzzleGraph', id],
+    queryFn: () => api.getPuzzleGraph(id, 2),
+    enabled: !!id
+  });
   
   // Handler for tab changes
   const handleTabChange = (event, newValue) => {

@@ -1,13 +1,14 @@
 const BaseSyncer = require('./BaseSyncer');
 
+const logger = require('../../../utils/logger');
 /**
  * Syncer for Puzzle entities.
  * Handles fetching from Notion, mapping, and inserting puzzle data.
- * 
+ *
  * Puzzles have relationships with:
  * - Characters (owner)
  * - Elements (locked item, rewards, puzzle elements)
- * 
+ *
  * @extends BaseSyncer
  */
 class PuzzleSyncer extends BaseSyncer {
@@ -36,7 +37,7 @@ class PuzzleSyncer extends BaseSyncer {
   async clearExistingData() {
     // Clear tables that have foreign key to puzzles, in correct order
     this.db.prepare('DELETE FROM character_puzzles').run();
-    
+
     // Finally, clear the puzzles table
     this.db.prepare('DELETE FROM puzzles').run();
   }
@@ -49,64 +50,64 @@ class PuzzleSyncer extends BaseSyncer {
   async mapData(notionPuzzle) {
     try {
       const startTime = Date.now();
-      const puzzleName = notionPuzzle?.properties?.Puzzle ? 
+      const puzzleName = notionPuzzle?.properties?.Puzzle ?
         this.propertyMapper.extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';
-      
-      console.log(`[PUZZLE SYNC] Mapping puzzle: "${puzzleName}"`);
-      
+
+      logger.debug(`[PUZZLE SYNC] Mapping puzzle: "${puzzleName}"`);
+
       const mapped = await this.propertyMapper.mapPuzzleWithNames(
-        notionPuzzle, 
+        notionPuzzle,
         this.notionService
       );
-      
+
       const duration = Date.now() - startTime;
-      console.log(`[PUZZLE SYNC] ✅ Mapped "${puzzleName}" in ${duration}ms`);
-      
+      logger.debug(`[PUZZLE SYNC] ✅ Mapped "${puzzleName}" in ${duration}ms`);
+
       if (mapped.error) {
         return { error: mapped.error };
       }
 
-      // Handle puzzle name - puzzles can have either 'puzzle' or 'name' property  
-      const finalPuzzleName = mapped.puzzle || mapped.name || 
+      // Handle puzzle name - puzzles can have either 'puzzle' or 'name' property
+      const finalPuzzleName = mapped.puzzle || mapped.name ||
         `Untitled Puzzle (${notionPuzzle.id.substring(0, 8)})`;
 
       // Extract single IDs from relation arrays with foreign key validation
-      let ownerId = mapped.owner && mapped.owner.length > 0 
-        ? mapped.owner[0].id 
+      let ownerId = mapped.owner && mapped.owner.length > 0
+        ? mapped.owner[0].id
         : null;
-      
-      let lockedItemId = mapped.lockedItem && mapped.lockedItem.length > 0 
-        ? mapped.lockedItem[0].id 
+
+      let lockedItemId = mapped.lockedItem && mapped.lockedItem.length > 0
+        ? mapped.lockedItem[0].id
         : null;
-      
+
       // Validate foreign key references to prevent constraint violations
       if (ownerId) {
         const ownerExists = this.db.prepare('SELECT 1 FROM characters WHERE id = ?').get(ownerId);
         if (!ownerExists) {
-          console.warn(`[PUZZLE SYNC] Warning: Owner ID ${ownerId} not found in characters table for puzzle "${finalPuzzleName}", setting to NULL`);
+          logger.warn(`[PUZZLE SYNC] Warning: Owner ID ${ownerId} not found in characters table for puzzle "${finalPuzzleName}", setting to NULL`);
           ownerId = null;
         }
       }
-      
+
       if (lockedItemId) {
         const elementExists = this.db.prepare('SELECT 1 FROM elements WHERE id = ?').get(lockedItemId);
         if (!elementExists) {
-          console.warn(`[PUZZLE SYNC] Warning: Locked item ID ${lockedItemId} not found in elements table for puzzle "${finalPuzzleName}", setting to NULL`);
+          logger.warn(`[PUZZLE SYNC] Warning: Locked item ID ${lockedItemId} not found in elements table for puzzle "${finalPuzzleName}", setting to NULL`);
           lockedItemId = null;
         }
       }
 
       // Convert arrays to JSON strings
-      const rewardIds = mapped.rewards 
-        ? JSON.stringify(mapped.rewards.map(r => r.id)) 
+      const rewardIds = mapped.rewards
+        ? JSON.stringify(mapped.rewards.map(r => r.id))
         : '[]';
-      
-      const puzzleElementIds = mapped.puzzleElements 
-        ? JSON.stringify(mapped.puzzleElements.map(pe => pe.id)) 
+
+      const puzzleElementIds = mapped.puzzleElements
+        ? JSON.stringify(mapped.puzzleElements.map(pe => pe.id))
         : '[]';
-      
-      const narrativeThreads = mapped.narrativeThreads 
-        ? JSON.stringify(mapped.narrativeThreads) 
+
+      const narrativeThreads = mapped.narrativeThreads
+        ? JSON.stringify(mapped.narrativeThreads)
         : '[]';
 
       return {
@@ -121,9 +122,9 @@ class PuzzleSyncer extends BaseSyncer {
         narrative_threads: narrativeThreads
       };
     } catch (error) {
-      const puzzleName = notionPuzzle?.properties?.Puzzle ? 
+      const puzzleName = notionPuzzle?.properties?.Puzzle ?
         this.propertyMapper.extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';
-      console.error(`[PUZZLE SYNC] ❌ Failed to map "${puzzleName}": ${error.message}`);
+      logger.error(`[PUZZLE SYNC] ❌ Failed to map "${puzzleName}": ${error.message}`);
       return { error: error.message };
     }
   }
@@ -141,7 +142,7 @@ class PuzzleSyncer extends BaseSyncer {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       mappedData.id,
       mappedData.name,
@@ -163,7 +164,7 @@ class PuzzleSyncer extends BaseSyncer {
    */
   handleItemError(puzzle, error) {
     super.handleItemError(puzzle, error);
-    
+
     // Log raw Notion data for debugging puzzle sync issues
     if (puzzle.properties) {
       this.logger.error(

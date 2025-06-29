@@ -16,11 +16,11 @@ class BaseSyncer {
     if (new.target === BaseSyncer) {
       throw new Error('BaseSyncer is an abstract class and cannot be instantiated directly');
     }
-    
+
     if (!entityType) {
       throw new Error('entityType is required in BaseSyncer constructor');
     }
-    
+
     this.notionService = notionService;
     this.propertyMapper = propertyMapper;
     this.logger = logger;
@@ -48,38 +48,38 @@ class BaseSyncer {
    */
   async sync(options = {}) {
     const { batchSize = 100, continueOnError = true } = options;
-    
+
     const logId = this.logger.startSync(this.entityType);
     const stats = { fetched: 0, synced: 0, errors: 0 };
-    
+
     try {
       // Step 1: Fetch data from Notion
       const notionData = await this.fetchFromNotion();
       stats.fetched = notionData.length;
-      
+
       if (stats.fetched === 0) {
         this.logger.warn(`No ${this.entityType} found in Notion.`);
         this.logger.completeSync(logId, stats);
         return stats;
       }
-      
+
       // Step 2: Process in transaction
       this.initDB();
       this.db.exec('BEGIN');
-      
+
       try {
         // Step 3: Clear existing data
         await this.clearExistingData();
-        
+
         // Step 4: Process items in batches
         for (let i = 0; i < notionData.length; i += batchSize) {
           const batch = notionData.slice(i, i + batchSize);
-          
+
           for (const item of batch) {
             try {
               // Step 5: Map and validate data
               const mappedData = await this.mapData(item);
-              
+
               if (mappedData && !mappedData.error) {
                 // Step 6: Insert data
                 await this.insertData(mappedData);
@@ -87,7 +87,7 @@ class BaseSyncer {
               } else {
                 stats.errors++;
                 this.handleItemError(item, mappedData?.error || 'Unknown mapping error');
-                
+
                 if (!continueOnError) {
                   throw new Error(`Failed to sync ${this.entityType} item: ${item.id}`);
                 }
@@ -95,25 +95,25 @@ class BaseSyncer {
             } catch (itemError) {
               stats.errors++;
               this.handleItemError(item, itemError);
-              
+
               if (!continueOnError) {
                 throw itemError;
               }
             }
           }
         }
-        
+
         // Step 7: Post-process if needed
         await this.postProcess();
-        
+
         // Commit transaction
         this.db.exec('COMMIT');
-        
+
         // Log success
         this.logger.completeSync(logId, stats);
-        
+
         return stats;
-        
+
       } catch (error) {
         // Rollback on error
         if (this.db.inTransaction) {
@@ -121,7 +121,7 @@ class BaseSyncer {
         }
         throw error;
       }
-      
+
     } catch (error) {
       this.logger.failSync(logId, error, stats);
       throw error;
@@ -199,17 +199,17 @@ class BaseSyncer {
    */
   async dryRun(options = {}) {
     const stats = { fetched: 0, toDelete: 0, toAdd: 0, errors: 0 };
-    
+
     try {
       // Fetch data from Notion
       const notionData = await this.fetchFromNotion();
       stats.fetched = notionData.length;
-      
+
       // Get current database state
       this.initDB();
       const currentCount = await this.getCurrentRecordCount();
       stats.toDelete = currentCount;
-      
+
       // Validate mappings
       for (const item of notionData) {
         try {
@@ -223,14 +223,14 @@ class BaseSyncer {
           stats.errors++;
         }
       }
-      
+
       return {
         ...stats,
         wouldSync: stats.toAdd,
         wouldDelete: stats.toDelete,
         wouldError: stats.errors
       };
-      
+
     } catch (error) {
       throw new Error(`Dry run failed: ${error.message}`);
     }

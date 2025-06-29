@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Box, Paper, CircularProgress, Alert, Typography, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
 
 import PageHeader from '../components/PageHeader';
+import logger from '../utils/logger';
 // import RelationshipMapper from '../components/RelationshipMapper'; // Not directly using RelationshipMapper component
 import { api } from '../services/api';
 import useGraphTransform from '../components/RelationshipMapper/useGraphTransform';
@@ -24,15 +25,13 @@ function PuzzleFlowPage() {
   const queryClient = useQueryClient();
 
   const queryKey = ['puzzleFlowGraph', puzzleId];
-  const { data: rawGraphData, isLoading, isError, error, refetch, isFetching } = useQuery(
+  const { data: rawGraphData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey,
-    () => api.getPuzzleFlowGraph(puzzleId),
-    {
-      enabled: !!puzzleId,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
-    }
-  );
+    queryFn: () => api.getPuzzleFlowGraph(puzzleId),
+    enabled: !!puzzleId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
 
   const centralEntityName = rawGraphData?.center?.name || puzzleId;
 
@@ -79,7 +78,7 @@ function PuzzleFlowPage() {
     } else if (type === 'Character') {
       navigate(`/characters/${node.id}`);
     } else {
-      console.log('Clicked node with unhandled type:', node);
+      logger.debug('Clicked node with unhandled type:', node);
     }
   };
 

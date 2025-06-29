@@ -109,19 +109,26 @@ class DocumentationVerifier {
         const escapedMetric = metric.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
         // Only match within system health or status sections
-        const healthSection = content.match(/#{1,3}\s*(?:System Health|Known Working State|Status)[^#]*(?=#{1,3}|$)/si);
-        if (!healthSection) return;
+        const healthSection = content.match(/### 📊 System Health[\s\S]*?(?=###|$)/i) || 
+                             content.match(/\*\*Known Working State:\*\*[\s\S]*?(?=###|$)/i);
+        if (!healthSection) {
+            console.log(`  - No health section found in ${file} for metric: ${metric}`);
+            return;
+        }
         
         const sectionContent = healthSection[0];
+        console.log(`  - Checking ${metric} in ${file}...`);
         const patterns = [
             new RegExp(`${escapedMetric}[^\\d]*(\\d+(?:\\.\\d+)?)(?:\\s|%|,|\\)|$)`, 'i'),
-            new RegExp(`(\\d+(?:\\.\\d+)?)(?:\\s|/)\\d*\\s*${escapedMetric}`, 'i')
+            new RegExp(`(\\d+(?:\\.\\d+)?)(?:\\s|/)\\d*\\s*${escapedMetric}`, 'i'),
+            new RegExp(`(\\d+)\\s+${escapedMetric}(?:\\s|\\(|$)`, 'i')
         ];
 
         for (const pattern of patterns) {
             const match = sectionContent.match(pattern);
             if (match) {
                 const claimedValue = match[1];
+                console.log(`    Found match: "${match[0]}" -> value: ${claimedValue}`);
                 if (!isApproximate && claimedValue != actualValue) {
                     this.errors.push(
                         `${file} claims ${metric}: ${claimedValue}, but actual value is ${actualValue}`

@@ -29,6 +29,7 @@ function PlayerJourneyPage() {
   }));
   
   const [systemAnalysis, setSystemAnalysis] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     // Load journey data if an active character is selected and their data isn't already loaded.
@@ -46,10 +47,44 @@ function PlayerJourneyPage() {
     );
   }
 
+  // Handle search functionality
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+  };
+
+  // Handle export functionality
+  const handleExport = (format) => {
+    const journey = journeyData.get(activeCharacterId);
+    if (!journey) return null;
+
+    // Prepare export data
+    const exportData = {
+      characterInfo: journey.character_info,
+      nodes: journey.graph.nodes,
+      edges: journey.graph.edges,
+      analysis: systemAnalysis,
+      exportDate: new Date().toISOString()
+    };
+
+    return format === 'json' ? exportData : [
+      // For CSV, flatten the data
+      {
+        characterId: journey.character_info.id,
+        characterName: journey.character_info.name,
+        nodeCount: journey.graph.nodes.length,
+        edgeCount: journey.graph.edges.length,
+        pacingScore: systemAnalysis?.pacing?.score || 'N/A',
+        memoryTokensCollected: systemAnalysis?.memoryTokenFlow?.collected || 0,
+        bottleneckCount: systemAnalysis?.bottlenecks?.length || 0
+      }
+    ];
+  };
+
   const journeySpace = (
     <ExperienceFlowAnalyzer 
       characterId={activeCharacterId} 
       onAnalysisUpdate={setSystemAnalysis}
+      searchTerm={searchTerm}
     />
   );
   
@@ -203,7 +238,9 @@ function PlayerJourneyPage() {
     <DualLensLayout
       journeySpaceContent={journeySpace}
       systemSpaceContent={systemSpace}
-      title="Experience Flow Analyzer"
+      onSearch={handleSearch}
+      onExport={handleExport}
+      exportFilename={`journey-${activeCharacterId || 'unknown'}`}
     />
   );
 }
