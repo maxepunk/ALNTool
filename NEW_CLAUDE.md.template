@@ -1,0 +1,602 @@
+# CLAUDE.md - ALNTool Production Intelligence
+
+**Generated**: [DATE]
+**Metrics Last Verified**: [DATE]
+
+## Quick Status
+- Build Status: ✅ Both frontend/backend build successfully
+- Console Logs: [METRIC] (target: 0)
+- Error Boundaries: [METRIC] (9 total usages)
+- Components >500 lines: [METRIC] (target: 0)
+- Test Coverage: [METRIC] (unable to measure due to failures)
+
+## What This Tool Does
+About Last Night Production Intelligence Tool - journey management and production tool for an immersive murder mystery game. Provides micro (individual paths) and macro (system balance) views.
+
+## Tech Stack
+- Frontend: React 18 + Vite + Material-UI + Zustand + React Query v4
+- Backend: Node.js + Express + SQLite (better-sqlite3)
+- Data: Notion API → SQLite sync pipeline
+- Testing: Jest + Playwright + MSW
+
+## Quick Start
+```bash
+# Terminal 1: Backend (port 3001)
+cd storyforge/backend && npm run dev
+
+# Terminal 2: Frontend (port 3000/3001/3002...)
+cd storyforge/frontend && npm run dev
+```
+
+## Essential Commands
+
+### Development
+```bash
+# Frontend
+npm run dev                  # Start dev server
+npm run build               # Production build
+npm run test               # Jest tests
+npm run test:architecture  # Check code health
+
+# Backend
+npm run dev               # Start with nodemon
+npm run verify:all       # Run ALL verifications
+npm test                # Jest tests
+node scripts/sync-data.js  # Sync from Notion
+```
+
+### Verification Commands
+```bash
+# Count console logs (should be 0)
+grep -r "console\." src --include="*.js" --include="*.jsx" | wc -l
+
+# Count error boundaries
+grep -r "<ErrorBoundary" src --include="*.jsx" | wc -l
+
+# Find components >500 lines
+find src -name "*.jsx" -exec wc -l {} + | sort -n | tail -10
+```
+
+## Current Architecture
+
+### Backend Structure
+```
+src/
+├── controllers/    # HTTP handlers
+├── routes/        # API endpoints
+├── services/      
+│   ├── sync/      # Notion → SQLite
+│   └── compute/   # Derived fields
+├── db/           # Database layer
+└── utils/        # Utilities
+```
+
+### Frontend Structure
+```
+src/
+├── pages/         # Route components
+├── components/    # Reusable UI
+├── services/      # API client
+├── stores/       # Zustand state
+├── hooks/        # Custom hooks
+└── contexts/     # React contexts
+```
+
+## Key Files
+- **SyncOrchestrator**: backend/src/services/sync/SyncOrchestrator.js
+- **Large Components** (need refactoring):
+  - RelationshipMapper.jsx (806 lines)
+  - ResolutionPathAnalyzerPage.jsx (751 lines)
+  - EntityNode.jsx (619 lines)
+  - Characters.jsx (586 lines)
+  - Elements.jsx (580 lines)
+  - MemoryEconomyPage.jsx (553 lines)
+
+## Current Issues
+1. **No component-level error boundaries** - only app/route level
+2. **27 console.log statements** - security/performance risk
+3. **Large components** - 6 files over 500 lines
+4. **Test failures** - preventing coverage measurement
+
+## Development Rules
+- Always verify with actual commands, not memory
+- Use TodoWrite to track all tasks
+- Never trust documentation over code
+- Check Notion as source of truth for data issues
+- **Follow Test-Driven Development** - Write tests first, then implementation
+
+## Test-Driven Development Workflow
+
+### Core TDD Cycle
+1. **RED**: Write a failing test that defines desired behavior
+2. **GREEN**: Write minimal code to make the test pass
+3. **REFACTOR**: Improve code quality while keeping tests green
+
+### Test File Organization
+
+#### Frontend Test Structure
+```
+src/
+├── components/
+│   ├── ErrorBoundary/
+│   │   ├── ErrorBoundary.jsx
+│   │   ├── ErrorBoundary.test.jsx    # Co-located unit test
+│   │   └── index.js
+│   └── __tests__/                     # Shared component tests
+│       └── integration.test.jsx
+├── pages/
+│   ├── Dashboard.jsx
+│   └── __tests__/
+│       └── Dashboard.test.jsx         # Page-level tests
+├── hooks/
+│   ├── useEntityData.js
+│   └── __tests__/
+│       └── useEntityData.test.js      # Hook tests
+├── tests/                             # Global test utilities
+│   ├── setup.js                       # Jest setup
+│   ├── utils.js                       # Test helpers
+│   └── mocks/                         # Shared mocks
+│       ├── handlers.js                # MSW handlers
+│       └── server.js                  # MSW server
+└── e2e/                              # Playwright E2E tests
+    ├── criticalPaths.spec.js
+    └── fixtures/
+```
+
+#### Backend Test Structure
+```
+src/
+├── services/
+│   ├── sync/
+│   │   ├── SyncOrchestrator.js
+│   │   └── __tests__/
+│   │       └── SyncOrchestrator.test.js
+│   └── compute/
+│       ├── ComputeOrchestrator.js
+│       └── ComputeOrchestrator.test.js    # Co-located alternative
+├── controllers/
+│   ├── characters.controller.js
+│   └── __tests__/
+│       └── characters.controller.test.js
+└── test/                                   # Test utilities
+    ├── fixtures/                           # Test data
+    ├── helpers/                            # Test helpers
+    └── setup.js                            # Global setup
+```
+
+### Test Naming Conventions
+
+#### File Naming
+```bash
+# Unit tests - same name as file being tested
+ErrorBoundary.jsx → ErrorBoundary.test.jsx
+useEntityData.js → useEntityData.test.js
+
+# Integration tests
+CharacterFlow.integration.test.jsx
+
+# E2E tests
+user-journey.spec.js
+critical-paths.spec.js
+```
+
+#### Test Suite and Case Naming
+```javascript
+// Describe blocks match component/function name
+describe('ErrorBoundary', () => {
+  // Use "should" for behavior descriptions
+  it('should catch errors and display fallback UI', () => {});
+  it('should reset when retry button is clicked', () => {});
+  
+  // Group related tests
+  describe('when error occurs', () => {
+    it('should log error in development', () => {});
+    it('should send to monitoring in production', () => {});
+  });
+});
+
+// For hooks, prefix with "use"
+describe('useEntityData', () => {
+  it('should return loading state initially', () => {});
+  it('should fetch data on mount', () => {});
+});
+```
+
+### TDD Implementation Process
+
+#### 1. Before Starting Any Fix
+```bash
+# Check if test file exists
+find src -name "*[ComponentName]*test*" -type f
+
+# Verify current test state
+npm test -- --findRelatedTests src/components/ErrorBoundary.jsx
+
+# Create test file following co-location pattern
+mkdir -p src/components/ErrorBoundary/__tests__
+touch src/components/ErrorBoundary/__tests__/ErrorBoundary.test.jsx
+```
+
+#### 2. Write Test First (RED Phase)
+```javascript
+// src/components/ErrorBoundary/__tests__/ErrorBoundary.test.jsx
+import { render, screen } from '@testing-library/react';
+import ErrorBoundary from '../ErrorBoundary';
+
+describe('ErrorBoundary', () => {
+  it('should catch errors and display fallback UI', () => {
+    const ThrowError = () => {
+      throw new Error('Test error');
+    };
+    
+    render(
+      <ErrorBoundary level="component">
+        <ThrowError />
+      </ErrorBoundary>
+    );
+    
+    expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+  
+  it('should render children when there is no error', () => {
+    render(
+      <ErrorBoundary>
+        <div>Test content</div>
+      </ErrorBoundary>
+    );
+    
+    expect(screen.getByText('Test content')).toBeInTheDocument();
+  });
+});
+```
+
+#### 3. Run Test to Confirm Failure
+```bash
+# Run specific test file
+npm test ErrorBoundary.test.jsx
+
+# Run in watch mode for TDD
+npm test -- --watch ErrorBoundary.test.jsx
+```
+
+#### 4. Implement Minimal Solution (GREEN Phase)
+```javascript
+// src/components/ErrorBoundary/ErrorBoundary.jsx
+import React from 'react';
+import { Box, Typography, Button } from '@mui/material';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  
+  componentDidCatch(error, errorInfo) {
+    // Log to console in dev, monitoring in prod
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught:', error, errorInfo);
+    }
+  }
+  
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+  
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Something went wrong
+          </Typography>
+          <Button onClick={this.handleReset}>
+            Try Again
+          </Button>
+        </Box>
+      );
+    }
+    
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;
+```
+
+#### 5. Add More Tests (Extend Coverage)
+```javascript
+// Add to ErrorBoundary.test.jsx
+it('should reset error state when try again is clicked', async () => {
+  const ThrowError = ({ shouldThrow }) => {
+    if (shouldThrow) throw new Error('Test error');
+    return <div>Success</div>;
+  };
+  
+  const { rerender } = render(
+    <ErrorBoundary>
+      <ThrowError shouldThrow={true} />
+    </ErrorBoundary>
+  );
+  
+  // Error is shown
+  expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+  
+  // Click reset
+  await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+  
+  // Rerender with non-throwing component
+  rerender(
+    <ErrorBoundary>
+      <ThrowError shouldThrow={false} />
+    </ErrorBoundary>
+  );
+  
+  // Should show success
+  expect(screen.getByText('Success')).toBeInTheDocument();
+});
+
+describe('logging behavior', () => {
+  let consoleSpy;
+  
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+  });
+  
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+  
+  it('should log errors in development', () => {
+    process.env.NODE_ENV = 'development';
+    
+    const ThrowError = () => {
+      throw new Error('Dev error');
+    };
+    
+    render(
+      <ErrorBoundary>
+        <ThrowError />
+      </ErrorBoundary>
+    );
+    
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'ErrorBoundary caught:',
+      expect.any(Error),
+      expect.any(Object)
+    );
+  });
+});
+```
+
+### Test Utilities and Helpers
+
+#### Common Test Setup
+```javascript
+// src/tests/setup.js
+import '@testing-library/jest-dom';
+import { server } from './mocks/server';
+
+// MSW setup
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+// Global test utilities
+global.renderWithProviders = (ui, options) => {
+  const AllTheProviders = ({ children }) => {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          {children}
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+  };
+  
+  return render(ui, { wrapper: AllTheProviders, ...options });
+};
+```
+
+#### Custom Testing Utilities
+```javascript
+// src/tests/utils.js
+export const createMockCharacter = (overrides = {}) => ({
+  id: 'test-id',
+  name: 'Test Character',
+  tier: 'Core',
+  actFocus: 'Act 1',
+  ...overrides
+});
+
+export const waitForLoadingToFinish = () => 
+  waitForElementToBeRemoved(() => 
+    screen.queryByText(/loading/i)
+  );
+
+export const setupMockApi = (handlers) => {
+  server.use(...handlers);
+};
+```
+
+### TDD Patterns for Common Scenarios
+
+#### Testing Component Refactoring
+```javascript
+// Capture current behavior before refactoring
+describe('LargeComponent - Current Behavior', () => {
+  beforeEach(() => {
+    // Save current implementation snapshot
+    const { container } = render(<LargeComponent />);
+    expect(container).toMatchSnapshot('before-refactor');
+  });
+  
+  it('preserves user flow after refactoring', async () => {
+    const { getByRole, getByText } = render(<LargeComponent />);
+    
+    // Test critical user interactions still work
+    await userEvent.click(getByRole('button', { name: /filter/i }));
+    expect(getByText(/filtered results/i)).toBeInTheDocument();
+  });
+});
+```
+
+#### Testing Console Log Removal
+```javascript
+describe('Logger Integration', () => {
+  let consoleSpy;
+  let loggerSpy;
+  
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    loggerSpy = jest.spyOn(logger, 'debug');
+  });
+  
+  it('should use logger instead of console', () => {
+    render(<ComponentWithLogs />);
+    
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(loggerSpy).toHaveBeenCalledWith('[DEBUG]', expect.any(String));
+  });
+});
+```
+
+#### Testing Data Hooks
+```javascript
+// src/hooks/__tests__/useEntityData.test.js
+import { renderHook, waitFor } from '@testing-library/react';
+import { useEntityData } from '../useEntityData';
+
+describe('useEntityData', () => {
+  it('should handle loading states correctly', async () => {
+    const { result } = renderHook(() => useEntityData('characters'));
+    
+    // Initial state
+    expect(result.current).toEqual({
+      data: undefined,
+      isLoading: true,
+      error: null
+    });
+    
+    // After loading
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    
+    expect(result.current.data).toHaveLength(10);
+  });
+  
+  it('should handle errors gracefully', async () => {
+    server.use(
+      rest.get('/api/characters', (req, res, ctx) => {
+        return res(ctx.status(500), ctx.json({ error: 'Server error' }));
+      })
+    );
+    
+    const { result } = renderHook(() => useEntityData('characters'));
+    
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+    });
+    
+    expect(result.current.error.message).toBe('Server error');
+  });
+});
+```
+
+### Running Tests Effectively
+
+#### Test Commands
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (TDD workflow)
+npm test -- --watch
+
+# Run tests for specific file/pattern
+npm test Button
+npm test -- --testPathPattern="components"
+
+# Run only changed files
+npm test -- --onlyChanged
+
+# Run with coverage
+npm test -- --coverage
+
+# Run specific test suite
+npm test -- --testNamePattern="ErrorBoundary"
+
+# Update snapshots
+npm test -- --updateSnapshot
+```
+
+#### Debugging Tests
+```bash
+# Run single test file with debugging
+node --inspect-brk node_modules/.bin/jest --runInBand ErrorBoundary.test.jsx
+
+# Verbose output
+npm test -- --verbose
+
+# Show test coverage for specific files
+npm test -- --coverage --collectCoverageFrom="src/components/ErrorBoundary/**"
+```
+
+### Coverage Requirements
+```javascript
+// jest.config.js
+module.exports = {
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    },
+    // Stricter requirements for critical components
+    './src/components/ErrorBoundary/': {
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100
+    }
+  },
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/src/tests/',
+    '.stories.js'
+  ]
+};
+```
+
+### Integration with CI/CD
+```yaml
+# .github/workflows/test.yml
+name: Test Suite
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+      
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests with coverage
+        run: npm test -- --coverage --ci
+        
+      - name: Upload coverage
+        uses: codecov/codecov-action@v2
+```
+
+## Auto-Generated Metrics
+[METRICS_PLACEHOLDER]
+Last generated: [TIMESTAMP]
