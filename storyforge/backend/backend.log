@@ -1,0 +1,231 @@
+
+> storyforge-backend@1.0.0 dev
+> nodemon src/index.js
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/index.js`[39m
+{"timestamp":"2025-06-30T14:15:47.667Z","level":"WARN","message":"getDB() called before initializeDatabase or outside of test setup. Connecting to default production DB."}
+PRAGMA foreign_keys = ON;
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS schema_migrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+SELECT version FROM schema_migrations ORDER BY version
+[0mGET /api/metadata [36m304[0m 1.803 ms - -[0m
+[0mGET /api/metadata [36m304[0m 0.338 ms - -[0m
+[0mGET /api/metadata [36m304[0m 0.249 ms - -[0m
+
+      SELECT * FROM sync_log 
+      ORDER BY start_time DESC 
+      LIMIT 1
+    
+
+      SELECT COUNT(*) as count 
+      FROM sqlite_master 
+      WHERE type='table'
+    
+SELECT COUNT(*) as count FROM characters
+SELECT COUNT(*) as count FROM elements
+SELECT COUNT(*) as count FROM puzzles
+SELECT COUNT(*) as count FROM timeline_events
+[0mGET /api/sync/status [32m200[0m 4.696 ms - 163[0m
+[0mGET /api/metadata [36m304[0m 0.206 ms - -[0m
+
+      SELECT * FROM sync_log 
+      ORDER BY start_time DESC 
+      LIMIT 1
+    
+
+      SELECT COUNT(*) as count 
+      FROM sqlite_master 
+      WHERE type='table'
+    
+SELECT COUNT(*) as count FROM characters
+SELECT COUNT(*) as count FROM elements
+SELECT COUNT(*) as count FROM puzzles
+SELECT COUNT(*) as count FROM timeline_events
+[0mGET /api/sync/status [32m200[0m 1.185 ms - 163[0m
+[0mGET /api/characters/18c2f33d-583f-8086-8ff8-fdb97283e1a8 [32m200[0m 1901.621 ms - 2835[0m
+SELECT * FROM characters WHERE id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+
+        SELECT te.*, 'timeline_event' as type FROM timeline_events te
+        JOIN character_timeline_events cte ON te.id = cte.timeline_event_id
+        WHERE cte.character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+
+        SELECT p.*, 'puzzle' as type FROM puzzles p
+        JOIN character_puzzles cp ON p.id = cp.puzzle_id
+        WHERE cp.character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+
+        SELECT e.*, 'element' as type, 'owned' as relationship_type FROM elements e
+        JOIN character_owned_elements coe ON e.id = coe.element_id
+        WHERE coe.character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+
+        SELECT e.*, 'element' as type, 'associated' as relationship_type FROM elements e
+        JOIN character_associated_elements cae ON e.id = cae.element_id
+        WHERE cae.character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+
+        SELECT 
+          CASE 
+            WHEN cl.character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ THEN cl.character_b_id
+            WHEN cl.character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ THEN cl.character_a_id
+          END as linked_character_id,
+          cl.link_type,
+          cl.link_strength as link_count,
+          CASE 
+            WHEN cl.character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ THEN cb.name
+            WHEN cl.character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ THEN ca.name
+          END as linked_character_name
+        FROM character_links cl
+        LEFT JOIN characters ca ON cl.character_a_id = ca.id
+        LEFT JOIN characters cb ON cl.character_b_id = cb.id
+        WHERE cl.character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ OR cl.character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+        ORDER BY cl.link_strength DESC
+      
+SELECT * FROM characters WHERE id = '18c2f33d-583f-80a5-87aa-cd198fb5'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '18c2f33d-583f-80c8-83b4-ef43b7c9'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '18c2f33d-583f-8045-88f3-c23116be'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '18c2f33d-583f-80a3-9b13-ca462bd2'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '19f2f33d-583f-804f-a5e2-c90a3cac'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '18c2f33d-583f-802f-9042-d4e98998'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '19f2f33d-583f-801f-8f0d-fbe2aaab'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '19f2f33d-583f-80e2-af1f-ced97f5d'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '1b62f33d-583f-8022-9a6f-c558cbb3'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '1b62f33d-583f-8044-b768-e88bdeb3'/*+4 bytes*/
+SELECT * FROM characters WHERE id = '1b62f33d-583f-8086-81f8-c0a239ef'/*+4 bytes*/
+[0mGET /api/characters/18c2f33d-583f-8086-8ff8-fdb97283e1a8/graph [32m200[0m 3.975 ms - 19651[0m
+[0mGET /api/characters/18c2f33d-583f-8086-8ff8-fdb97283e1a8 [32m200[0m 0.336 ms - 2835[0m
+[0mGET /api/puzzles [32m200[0m 3565.551 ms - 28046[0m
+[0mGET /health [32m200[0m 0.931 ms - 53[0m
+[0mGET /health [32m200[0m 0.314 ms - 53[0m
+
+    SELECT 
+      id, 
+      name, 
+      type, 
+      tier,
+      logline,
+      resolution_paths
+    FROM characters 
+    ORDER BY name ASC
+  
+[0mGET /api/characters [32m200[0m 0.810 ms - 3897[0m
+
+      SELECT * FROM sync_log 
+      ORDER BY start_time DESC 
+      LIMIT 1
+    
+
+      SELECT COUNT(*) as count 
+      FROM sqlite_master 
+      WHERE type='table'
+    
+SELECT COUNT(*) as count FROM characters
+SELECT COUNT(*) as count FROM elements
+SELECT COUNT(*) as count FROM puzzles
+SELECT COUNT(*) as count FROM timeline_events
+[0mGET /api/sync/status [32m200[0m 0.670 ms - 163[0m
+
+      SELECT * FROM cached_journey_graphs 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ 
+      AND datetime(cached_at) > datetime('now', '-24 hours')
+    
+
+    SELECT 
+      (SELECT COUNT(*) FROM character_timeline_events WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as event_count,
+      (SELECT COUNT(*) FROM character_puzzles WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as puzzle_count,
+      (SELECT COUNT(*) FROM character_owned_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as owned_element_count,
+      (SELECT COUNT(*) FROM character_associated_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as assoc_element_count,
+      (SELECT COUNT(*) FROM character_links WHERE character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ OR character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as link_count
+  
+
+      UPDATE cached_journey_graphs 
+      SET last_accessed = CURRENT_TIMESTAMP 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+[0mGET /api/journeys/18c2f33d-583f-8086-8ff8-fdb97283e1a8 [32m200[0m 9.940 ms - 8886[0m
+
+      SELECT * FROM cached_journey_graphs 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ 
+      AND datetime(cached_at) > datetime('now', '-24 hours')
+    
+
+    SELECT 
+      (SELECT COUNT(*) FROM character_timeline_events WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as event_count,
+      (SELECT COUNT(*) FROM character_puzzles WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as puzzle_count,
+      (SELECT COUNT(*) FROM character_owned_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as owned_element_count,
+      (SELECT COUNT(*) FROM character_associated_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as assoc_element_count,
+      (SELECT COUNT(*) FROM character_links WHERE character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ OR character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as link_count
+  
+
+      UPDATE cached_journey_graphs 
+      SET last_accessed = CURRENT_TIMESTAMP 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+[0mGET /api/journeys/18c2f33d-583f-8086-8ff8-fdb97283e1a8 [32m200[0m 9.030 ms - 8886[0m
+
+      SELECT * FROM cached_journey_graphs 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ 
+      AND datetime(cached_at) > datetime('now', '-24 hours')
+    
+
+    SELECT 
+      (SELECT COUNT(*) FROM character_timeline_events WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as event_count,
+      (SELECT COUNT(*) FROM character_puzzles WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as puzzle_count,
+      (SELECT COUNT(*) FROM character_owned_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as owned_element_count,
+      (SELECT COUNT(*) FROM character_associated_elements WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as assoc_element_count,
+      (SELECT COUNT(*) FROM character_links WHERE character_a_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/ OR character_b_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/) as link_count
+  
+
+      UPDATE cached_journey_graphs 
+      SET last_accessed = CURRENT_TIMESTAMP 
+      WHERE character_id = '18c2f33d-583f-8086-8ff8-fdb97283'/*+4 bytes*/
+    
+[0mGET /api/journeys/18c2f33d-583f-8086-8ff8-fdb97283e1a8 [32m200[0m 8.278 ms - 8886[0m
+
+    SELECT 
+      c.*,
+      (
+        SELECT COUNT(DISTINCT CASE 
+          WHEN cl.character_a_id = c.id THEN cl.character_b_id 
+          WHEN cl.character_b_id = c.id THEN cl.character_a_id 
+        END)
+        FROM character_links cl
+        WHERE cl.character_a_id = c.id OR cl.character_b_id = c.id
+      ) as relationship_count,
+      COUNT(DISTINCT coe.element_id) as owned_elements_count,
+      COUNT(DISTINCT cae.element_id) as associated_elements_count,
+      COUNT(DISTINCT cte.timeline_event_id) as timeline_events_count
+    FROM characters c
+    LEFT JOIN character_owned_elements coe ON c.id = coe.character_id
+    LEFT JOIN character_associated_elements cae ON c.id = cae.character_id
+    LEFT JOIN character_timeline_events cte ON c.id = cte.character_id
+    GROUP BY c.id
+    ORDER BY c.name
+  
+
+    SELECT DISTINCT
+      CASE 
+        WHEN cl.character_a_id < cl.character_b_id THEN cl.character_a_id 
+        ELSE cl.character_b_id 
+      END as char1_id,
+      CASE 
+        WHEN cl.character_a_id < cl.character_b_id THEN cl.character_b_id 
+        ELSE cl.character_a_id 
+      END as char2_id,
+      COUNT(*) as link_count
+    FROM character_links cl
+    GROUP BY char1_id, char2_id
+  
+[0mGET /api/characters/with-sociogram-data [32m200[0m 1.421 ms - 19938[0m
+[0mGET /api/puzzles/with-warnings [32m200[0m 5004.309 ms - 7654[0m
+Killed

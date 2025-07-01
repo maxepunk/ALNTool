@@ -111,17 +111,6 @@ async function checkDocumentationClaims() {
     }
   }
 
-  // Check DEVELOPMENT_PLAYBOOK.md
-  const playbookPath = path.join(__dirname, '..', 'DEVELOPMENT_PLAYBOOK.md');
-  try {
-    const playbookContent = await fs.readFile(playbookPath, 'utf8');
-    
-    if (/Active Phase: Phase 0\.5/.test(playbookContent)) {
-      issues.push('DEVELOPMENT_PLAYBOOK.md: Still shows "Phase 0.5" instead of Architecture Remediation Phase 1');
-    }
-  } catch (e) {
-    issues.push('DEVELOPMENT_PLAYBOOK.md: Could not read file');
-  }
 
   return { issues, actualMetrics };
 }

@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-07-01T07:18:56.438Z",
+  "totalSuites": 6,
+  "completed": 0,
+  "failed": 6,
+  "results": [
+    {
+      "suite": "Visual Capture",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/visual-capture.spec.js --reporter=list\n"
+    },
+    {
+      "suite": "Navigation Flows",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/navigation-flows.spec.js --reporter=list\n"
+    },
+    {
+      "suite": "Component Consistency",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/component-consistency.spec.js --reporter=list\n"
+    },
+    {
+      "suite": "Interactions",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/interactions.spec.js --reporter=list\n"
+    },
+    {
+      "suite": "Performance",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/performance.spec.js --reporter=list\n"
+    },
+    {
+      "suite": "Accessibility",
+      "status": "failed",
+      "errors": "Command failed: npx playwright test e2e/audit/accessibility.spec.js --reporter=list\n"
+    }
+  ]
+}

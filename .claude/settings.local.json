@@ -74,7 +74,12 @@
       "Bash(tmux new-window:*)",
       "Bash(tmux list-windows:*)",
       "Bash(tmux list-sessions:*)",
-      "Bash(tmux new-session:*)"
+      "Bash(tmux new-session:*)",
+      "mcp__desktop-commander__edit_block",
+      "Bash(npm install:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(time curl:*)",
+      "mcp__desktop-commander__create_directory"
     ],
     "deny": []
   },

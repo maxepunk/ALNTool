@@ -1,0 +1,8 @@
+{
+  "name": "character-sociogram",
+  "category": "analysis",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-22-11-094Z",
+  "url": "http://localhost:3000/character-sociogram",
+  "analysisType": "character-relationships"
+}

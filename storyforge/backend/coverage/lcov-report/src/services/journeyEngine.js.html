@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.18% </span>
+                <span class="strong">68.88% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>30/44</span>
+                <span class='fraction'>31/45</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.18% </span>
+                <span class="strong">68.88% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>30/44</span>
+                <span class='fraction'>31/45</span>
             </div>
         
             
@@ -221,8 +221,18 @@
 <a name='L156'></a><a href='#L156'>156</a>
 <a name='L157'></a><a href='#L157'>157</a>
 <a name='L158'></a><a href='#L158'>158</a>
-<a name='L159'></a><a href='#L159'>159</a>
-<a name='L160'></a><a href='#L160'>160</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L159'></a><a href='#L159'>159</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -235,29 +245,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -270,8 +261,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -379,12 +378,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const logger = require('../utils/logger');
+&nbsp;
+// This file will contain the JourneyEngine class responsible for computing journey segments, detecting gaps, and building character journeys.
 const { getDB } = require('../db/database'); // Adjust path as needed
 const dbQueries = require('../db/queries'); // Adjust path
-&nbsp;
 &nbsp;
 class JourneyEngine {
   /**
@@ -415,7 +414,7 @@ class JourneyEngine {
         id: `puzzle-${puzzle.id}`,
         type: 'activityNode', // Custom node type for styling
         data: { label: `Puzzle: ${puzzle.name}`, ...puzzle },
-        position, // Position will be calculated by the frontend layout algorithm
+        position // Position will be calculated by the frontend layout algorithm
       });
     });
 &nbsp;
@@ -424,19 +423,18 @@ class JourneyEngine {
         id: `element-${element.id}`,
         type: 'discoveryNode', // Custom node type
         data: { label: `Element: ${element.name}`, ...element },
-        position,
+        position
       });
     });
 &nbsp;
     journeyData.events.forEach(event =&gt; {
-        nodes.push({
-            id: `event-${event.id}`,
-            type: 'loreNode', // Custom node type for historical events
-            data: { label: `Event: ${event.description}`, ...event },
-            position,
-        });
+      nodes.push({
+        id: `event-${event.id}`,
+        type: 'loreNode', // Custom node type for historical events
+        data: { label: `Event: ${event.description}`, ...event },
+        position
+      });
     });
-&nbsp;
 &nbsp;
     // Pass 2: Dependency Edge Creation (Gameplay Graph)
     journeyData.puzzles.forEach(<span class="fstat-no" title="function not covered" >pu</span>zzle =&gt; {
@@ -448,7 +446,7 @@ class JourneyEngine {
           id: `e-${puzzle.locked_item_id}-to-${puzzle.id}`,
           source: `element-${puzzle.locked_item_id}`,
           target: puzzleNodeId,
-          label: 'unlocks',
+          label: 'unlocks'
         });
       }
 &nbsp;
@@ -460,11 +458,11 @@ class JourneyEngine {
             id: `e-${puzzle.id}-to-${rewardId}`,
             source: puzzleNodeId,
             target: `element-${rewardId}`,
-            label: 'rewards',
+            label: 'rewards'
           });
         });
       } catch (e) {
-<span class="cstat-no" title="statement not covered" >        console.warn(`Could not parse reward_ids for puzzle ${puzzle.id}`);</span>
+<span class="cstat-no" title="statement not covered" >        logger.warn(`Could not parse reward_ids for puzzle ${puzzle.id}`);</span>
       }
     });
 &nbsp;
@@ -476,7 +474,7 @@ class JourneyEngine {
           source: `element-${element.id}`,
           target: `event-${element.timeline_event_id}`,
           label: 'provides context for',
-          type: 'contextEdge', // For special styling on the frontend
+          type: 'contextEdge' // For special styling on the frontend
         });
       }
     });
@@ -502,20 +500,20 @@ class JourneyEngine {
     <span class="missing-if-branch" title="else path not taken" >E</span>if (!isTestingWithOverride) {
       const cachedJourney = await dbQueries.getCachedJourneyGraph(characterId);
       <span class="missing-if-branch" title="if path not taken" >I</span>if (cachedJourney) {
-<span class="cstat-no" title="statement not covered" >        console.log(`Serving cached journey for character ${characterId}`);</span>
+<span class="cstat-no" title="statement not covered" >        logger.debug(`Serving cached journey for character ${characterId}`);</span>
 <span class="cstat-no" title="statement not covered" >        return cachedJourney;</span>
       }
     }
-    
+&nbsp;
     // 2. Compute the journey graph
     const characterData = dbQueries.getCharacterById(characterId);
     if (!characterData) {
-      console.error(`Character with ID ${characterId} not found.`);
+      logger.error(`Character with ID ${characterId} not found.`);
       return null;
     }
 &nbsp;
     const journeyGraph = await this.buildJourneyGraph(characterId);
-    
+&nbsp;
     // Fetch linked characters for this character
     const linkedCharacters = dbQueries.getLinkedCharacters(characterId);
 &nbsp;
@@ -536,7 +534,6 @@ class JourneyEngine {
     return computedJourney;
   }
 &nbsp;
-&nbsp;
 }
 &nbsp;
 module.exports = JourneyEngine;
@@ -547,7 +544,7 @@ module.exports = JourneyEngine;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T18:18:41.021Z
+                at 2025-06-30T22:46:39.326Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

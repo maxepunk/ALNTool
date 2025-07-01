@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.26% </span>
+                <span class="strong">78.72% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>36/46</span>
+                <span class='fraction'>37/47</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">25% </span>
+                <span class="strong">37.5% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>4/16</span>
+                <span class='fraction'>6/16</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.54% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>35/44</span>
+                <span class='fraction'>36/45</span>
             </div>
         
             
@@ -167,7 +167,9 @@
 <a name='L102'></a><a href='#L102'>102</a>
 <a name='L103'></a><a href='#L103'>103</a>
 <a name='L104'></a><a href='#L104'>104</a>
-<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -274,6 +276,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// backend/src/db/migrations.js
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 // const Database = require('better-sqlite3'); // Or get db instance passed in
 &nbsp;
 // const db = new Database(process.env.DATABASE_PATH || './data/production.db'); // Manage DB instance carefully
@@ -281,7 +284,7 @@ const path = require('path');
 const MIGRATION_DIR = path.join(__dirname, 'migration-scripts');
 &nbsp;
 function ensureSchemaMigrationsTable(db) {
-    db.exec(`
+  db.exec(`
         CREATE TABLE IF NOT EXISTS schema_migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             version TEXT NOT NULL UNIQUE,
@@ -292,86 +295,86 @@ function ensureSchemaMigrationsTable(db) {
 }
 &nbsp;
 function getAppliedMigrations(db) {
-    const stmt = db.prepare('SELECT version FROM schema_migrations ORDER BY version');
-    return stmt.all().map(<span class="fstat-no" title="function not covered" >ro</span>w =&gt; <span class="cstat-no" title="statement not covered" >row.version)</span>;
+  const stmt = db.prepare('SELECT version FROM schema_migrations ORDER BY version');
+  return stmt.all().map(<span class="fstat-no" title="function not covered" >ro</span>w =&gt; <span class="cstat-no" title="statement not covered" >row.version)</span>;
 }
 &nbsp;
 function readMigrationScripts() {
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (!fs.existsSync(MIGRATION_DIR)) {
-<span class="cstat-no" title="statement not covered" >        fs.mkdirSync(MIGRATION_DIR, { recursive: true });</span>
-    }
-    const files = fs.readdirSync(MIGRATION_DIR)
-        .filter(file =&gt; file.endsWith('.sql'))
-        .sort();
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!fs.existsSync(MIGRATION_DIR)) {
+<span class="cstat-no" title="statement not covered" >    fs.mkdirSync(MIGRATION_DIR, { recursive: true });</span>
+  }
+  const files = fs.readdirSync(MIGRATION_DIR)
+    .filter(file =&gt; file.endsWith('.sql'))
+    .sort();
 &nbsp;
-    return files.map(file =&gt; {
-        const [version, ...nameParts] = file.replace('.sql', '').split('_');
-        return {
-            version,
-            name: nameParts.join('_'),
-            filePath: path.join(MIGRATION_DIR, file)
-        };
-    });
+  return files.map(file =&gt; {
+    const [version, ...nameParts] = file.replace('.sql', '').split('_');
+    return {
+      version,
+      name: nameParts.join('_'),
+      filePath: path.join(MIGRATION_DIR, file)
+    };
+  });
 }
 &nbsp;
-function runMigrations(db, options = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> { // Expect db instance to be passed
-    const { useTransaction = <span class="branch-0 cbranch-no" title="branch not covered" >true </span>} = options;
-    
-    ensureSchemaMigrationsTable(db);
-    const appliedVersions = getAppliedMigrations(db);
-    const allScripts = readMigrationScripts();
+function runMigrations(db, options = {}) { // Expect db instance to be passed
+  const { useTransaction = true } = options;
 &nbsp;
-    const pendingMigrations = allScripts.filter(script =&gt; !appliedVersions.includes(script.version));
+  ensureSchemaMigrationsTable(db);
+  const appliedVersions = getAppliedMigrations(db);
+  const allScripts = readMigrationScripts();
 &nbsp;
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (pendingMigrations.length === 0) {
-<span class="cstat-no" title="statement not covered" >        console.log('Database is up to date. No migrations to apply.');</span>
-<span class="cstat-no" title="statement not covered" >        return { applied: 0, skipped: appliedVersions.length };</span>
-    }
+  const pendingMigrations = allScripts.filter(script =&gt; !appliedVersions.includes(script.version));
 &nbsp;
-    console.log(`Found ${pendingMigrations.length} pending migrations.`);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (pendingMigrations.length === 0) {
+<span class="cstat-no" title="statement not covered" >    logger.debug('Database is up to date. No migrations to apply.');</span>
+<span class="cstat-no" title="statement not covered" >    return { applied: 0, skipped: appliedVersions.length };</span>
+  }
 &nbsp;
-    // Start transaction if requested
-    <span class="missing-if-branch" title="else path not taken" >E</span>if (useTransaction) {
-        db.prepare('BEGIN').run();
-    }
+  logger.debug(`Found ${pendingMigrations.length} pending migrations.`);
 &nbsp;
-    try {
-        for (const migration of pendingMigrations) {
-            console.log(`Applying migration ${migration.version}_${migration.name}...`);
-            const sql = fs.readFileSync(migration.filePath, 'utf8');
-            
-            // Handle migrations that might fail if column already exists
-            try {
-                db.exec(sql); // Use exec for potentially multi-statement SQL files
-            } catch (error) {
-                // Check if it's a column already exists error
-<span class="cstat-no" title="statement not covered" >                if (error.message.includes('duplicate column name') || </span>
+  // Start transaction if requested
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (useTransaction) {
+    db.prepare('BEGIN').run();
+  }
+&nbsp;
+  try {
+    for (const migration of pendingMigrations) {
+      logger.debug(`Applying migration ${migration.version}_${migration.name}...`);
+      const sql = fs.readFileSync(migration.filePath, 'utf8');
+&nbsp;
+      // Handle migrations that might fail if column already exists
+      try {
+        db.exec(sql); // Use exec for potentially multi-statement SQL files
+      } catch (error) {
+        // Check if it's a column already exists error
+<span class="cstat-no" title="statement not covered" >        if (error.message.includes('duplicate column name') ||</span>
                     error.message.includes('already exists')) {
-<span class="cstat-no" title="statement not covered" >                    console.log(`Warning: ${error.message} - continuing...`);</span>
-                } else {
-<span class="cstat-no" title="statement not covered" >                    throw error;</span>
-                }
-            }
-            
-            const stmt = db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)');
-            stmt.run(migration.version, migration.name);
-            console.log(`Applied migration ${migration.version}_${migration.name}.`);
+<span class="cstat-no" title="statement not covered" >          logger.debug(`Warning: ${error.message} - continuing...`);</span>
+        } else {
+<span class="cstat-no" title="statement not covered" >          throw error;</span>
         }
-        
-        // Commit transaction if we started one
-        <span class="missing-if-branch" title="else path not taken" >E</span>if (useTransaction) {
-            db.prepare('COMMIT').run();
-        }
-        
-        console.log('All pending migrations applied successfully.');
-        return { applied: pendingMigrations.length, skipped: appliedVersions.length };
-    } catch (error) {
-        // Rollback transaction if we started one
-<span class="cstat-no" title="statement not covered" >        if (useTransaction) {</span>
-<span class="cstat-no" title="statement not covered" >            db.prepare('ROLLBACK').run();</span>
-        }
-<span class="cstat-no" title="statement not covered" >        throw error;</span>
+      }
+&nbsp;
+      const stmt = db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)');
+      stmt.run(migration.version, migration.name);
+      logger.debug(`Applied migration ${migration.version}_${migration.name}.`);
     }
+&nbsp;
+    // Commit transaction if we started one
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (useTransaction) {
+      db.prepare('COMMIT').run();
+    }
+&nbsp;
+    logger.debug('All pending migrations applied successfully.');
+    return { applied: pendingMigrations.length, skipped: appliedVersions.length };
+  } catch (error) {
+    // Rollback transaction if we started one
+<span class="cstat-no" title="statement not covered" >    if (useTransaction) {</span>
+<span class="cstat-no" title="statement not covered" >      db.prepare('ROLLBACK').run();</span>
+    }
+<span class="cstat-no" title="statement not covered" >    throw error;</span>
+  }
 }
 &nbsp;
 module.exports = { runMigrations };
@@ -382,7 +385,7 @@ module.exports = { runMigrations };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T12:43:34.701Z
+                at 2025-06-30T22:46:39.326Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

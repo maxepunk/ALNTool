@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.69% </span>
+                <span class="strong">10.63% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/46</span>
+                <span class='fraction'>5/47</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">9.09% </span>
+                <span class="strong">11.11% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/44</span>
+                <span class='fraction'>5/45</span>
             </div>
         
             
@@ -167,7 +167,9 @@
 <a name='L102'></a><a href='#L102'>102</a>
 <a name='L103'></a><a href='#L103'>103</a>
 <a name='L104'></a><a href='#L104'>104</a>
-<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -274,6 +276,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// backend/src/db/migrations.js
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 // const Database = require('better-sqlite3'); // Or get db instance passed in
 &nbsp;
 // const db = new Database(process.env.DATABASE_PATH || './data/production.db'); // Manage DB instance carefully
@@ -324,11 +327,11 @@ function <span class="fstat-no" title="function not covered" >runMigrations(</sp
   const pendingMigrations = <span class="cstat-no" title="statement not covered" >allScripts.filter(<span class="fstat-no" title="function not covered" >sc</span>ript =&gt; <span class="cstat-no" title="statement not covered" >!appliedVersions.includes(script.version))</span>;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (pendingMigrations.length === 0) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log('Database is up to date. No migrations to apply.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('Database is up to date. No migrations to apply.');</span>
 <span class="cstat-no" title="statement not covered" >    return { applied: 0, skipped: appliedVersions.length };</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  console.log(`Found ${pendingMigrations.length} pending migrations.`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`Found ${pendingMigrations.length} pending migrations.`);</span>
 &nbsp;
   // Start transaction if requested
 <span class="cstat-no" title="statement not covered" >  if (useTransaction) {</span>
@@ -337,7 +340,7 @@ function <span class="fstat-no" title="function not covered" >runMigrations(</sp
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  try {</span>
 <span class="cstat-no" title="statement not covered" >    for (const migration of pendingMigrations) {</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`Applying migration ${migration.version}_${migration.name}...`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`Applying migration ${migration.version}_${migration.name}...`);</span>
       const sql = <span class="cstat-no" title="statement not covered" >fs.readFileSync(migration.filePath, 'utf8');</span>
 &nbsp;
       // Handle migrations that might fail if column already exists
@@ -347,7 +350,7 @@ function <span class="fstat-no" title="function not covered" >runMigrations(</sp
         // Check if it's a column already exists error
 <span class="cstat-no" title="statement not covered" >        if (error.message.includes('duplicate column name') ||</span>
                     error.message.includes('already exists')) {
-<span class="cstat-no" title="statement not covered" >          console.log(`Warning: ${error.message} - continuing...`);</span>
+<span class="cstat-no" title="statement not covered" >          logger.debug(`Warning: ${error.message} - continuing...`);</span>
         } else {
 <span class="cstat-no" title="statement not covered" >          throw error;</span>
         }
@@ -355,7 +358,7 @@ function <span class="fstat-no" title="function not covered" >runMigrations(</sp
 &nbsp;
       const stmt = <span class="cstat-no" title="statement not covered" >db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)');</span>
 <span class="cstat-no" title="statement not covered" >      stmt.run(migration.version, migration.name);</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`Applied migration ${migration.version}_${migration.name}.`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`Applied migration ${migration.version}_${migration.name}.`);</span>
     }
 &nbsp;
     // Commit transaction if we started one
@@ -363,7 +366,7 @@ function <span class="fstat-no" title="function not covered" >runMigrations(</sp
 <span class="cstat-no" title="statement not covered" >      db.prepare('COMMIT').run();</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    console.log('All pending migrations applied successfully.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('All pending migrations applied successfully.');</span>
 <span class="cstat-no" title="statement not covered" >    return { applied: pendingMigrations.length, skipped: appliedVersions.length };</span>
   } catch (error) {
     // Rollback transaction if we started one
@@ -382,7 +385,7 @@ module.exports = { runMigrations };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T23:32:12.954Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../prettify.js"></script>
         <script>

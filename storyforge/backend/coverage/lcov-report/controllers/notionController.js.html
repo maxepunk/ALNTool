@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.2% </span>
+                <span class="strong">8.4% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>37/451</span>
+                <span class='fraction'>38/452</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.46% </span>
+                <span class="strong">8.67% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>37/437</span>
+                <span class='fraction'>38/438</span>
             </div>
         
             
@@ -1098,7 +1098,9 @@
 <a name='L1033'></a><a href='#L1033'>1033</a>
 <a name='L1034'></a><a href='#L1034'>1034</a>
 <a name='L1035'></a><a href='#L1035'>1035</a>
-<a name='L1036'></a><a href='#L1036'>1036</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L1036'></a><a href='#L1036'>1036</a>
+<a name='L1037'></a><a href='#L1037'>1037</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -2134,6 +2136,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const notionService = require('../services/notionService');
+const logger = require('../utils/logger');
 const graphService = require('../services/graphService'); // Import the new service
 const propertyMapper = require('../utils/notionPropertyMapper');
 const { notionCache, makeCacheKey } = require('../services/notionService');
@@ -2295,11 +2298,11 @@ const getCharacterById = catchAsync(<span class="fstat-no" title="function not c
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('mapped-character-v1.1-sociogram', { id });</span> // Updated cache key
   const cachedMappedCharacter = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedMappedCharacter) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (mapped character)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (mapped character)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedMappedCharacter);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (mapped character)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (mapped character)`);</span>
   const characterPage = <span class="cstat-no" title="statement not covered" >await notionService.getPage(id);</span>
 <span class="cstat-no" title="statement not covered" >  if (!characterPage) {</span>
 <span class="cstat-no" title="statement not covered" >    return res.status(404).json({ error: 'Character not found' });</span>
@@ -2307,7 +2310,7 @@ const getCharacterById = catchAsync(<span class="fstat-no" title="function not c
   const mappedCharacter = <span class="cstat-no" title="statement not covered" >await propertyMapper.mapCharacterWithNames(characterPage, notionService);</span>
 <span class="cstat-no" title="statement not covered" >  if (mappedCharacter &amp;&amp; !mappedCharacter.error) {</span>
 <span class="cstat-no" title="statement not covered" >    notionCache.set(cacheKey, mappedCharacter);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE SET] ${cacheKey} (mapped character)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE SET] ${cacheKey} (mapped character)`);</span>
   }
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(mappedCharacter);</span>
@@ -2335,7 +2338,7 @@ const getTimelineEvents = catchAsync(<span class="fstat-no" title="function not 
   };
   const filter = <span class="cstat-no" title="statement not covered" >buildNotionFilter(req.query, propertyMap);</span>
   // Log the constructed filter for debugging
-  // console.log('[Timeline Controller] Constructed Filter for Notion:', JSON.stringify(filter, null, 2));
+  // logger.debug('[Timeline Controller] Constructed Filter for Notion:', JSON.stringify(filter, null, 2));
   const notionEvents = <span class="cstat-no" title="statement not covered" >await notionService.getTimelineEvents(filter);</span>
   const events = <span class="cstat-no" title="statement not covered" >await Promise.all(</span>
     notionEvents.map(<span class="fstat-no" title="function not covered" >ev</span>ent =&gt; <span class="cstat-no" title="statement not covered" >propertyMapper.mapTimelineEventWithNames(event, notionService))</span>
@@ -2356,11 +2359,11 @@ const getTimelineEventById = catchAsync(<span class="fstat-no" title="function n
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('mapped-timelineevent', { id });</span>
   const cachedMappedEvent = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedMappedEvent) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (mapped event)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (mapped event)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedMappedEvent);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (mapped event)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (mapped event)`);</span>
   const eventPage = <span class="cstat-no" title="statement not covered" >await notionService.getPage(id);</span>
 <span class="cstat-no" title="statement not covered" >  if (!eventPage) {</span>
 <span class="cstat-no" title="statement not covered" >    return res.status(404).json({ error: 'Timeline event not found' });</span>
@@ -2368,7 +2371,7 @@ const getTimelineEventById = catchAsync(<span class="fstat-no" title="function n
   const mappedEvent = <span class="cstat-no" title="statement not covered" >await propertyMapper.mapTimelineEventWithNames(eventPage, notionService);</span>
 <span class="cstat-no" title="statement not covered" >  if (mappedEvent &amp;&amp; !mappedEvent.error) {</span>
 <span class="cstat-no" title="statement not covered" >    notionCache.set(cacheKey, mappedEvent);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE SET] ${cacheKey} (mapped event)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE SET] ${cacheKey} (mapped event)`);</span>
   }
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(mappedEvent);</span>
@@ -2390,11 +2393,11 @@ const getPuzzleById = catchAsync(<span class="fstat-no" title="function not cove
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('mapped-puzzle-v1.1-narrative', { id });</span> // Updated cache key
   const cachedMappedPuzzle = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedMappedPuzzle) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (mapped puzzle)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (mapped puzzle)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedMappedPuzzle);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (mapped puzzle)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (mapped puzzle)`);</span>
   const puzzlePage = <span class="cstat-no" title="statement not covered" >await notionService.getPage(id);</span>
 <span class="cstat-no" title="statement not covered" >  if (!puzzlePage) {</span>
 <span class="cstat-no" title="statement not covered" >    return res.status(404).json({ error: 'Puzzle not found' });</span>
@@ -2402,7 +2405,7 @@ const getPuzzleById = catchAsync(<span class="fstat-no" title="function not cove
   const mappedPuzzle = <span class="cstat-no" title="statement not covered" >await propertyMapper.mapPuzzleWithNames(puzzlePage, notionService);</span>
 <span class="cstat-no" title="statement not covered" >  if (mappedPuzzle &amp;&amp; !mappedPuzzle.error) {</span>
 <span class="cstat-no" title="statement not covered" >    notionCache.set(cacheKey, mappedPuzzle);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE SET] ${cacheKey} (mapped puzzle)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE SET] ${cacheKey} (mapped puzzle)`);</span>
   }
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(mappedPuzzle);</span>
@@ -2496,11 +2499,11 @@ const getElementById = catchAsync(<span class="fstat-no" title="function not cov
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('mapped-element', { id });</span>
   const cachedMappedElement = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedMappedElement) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (mapped element)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (mapped element)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedMappedElement);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (mapped element)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (mapped element)`);</span>
   const elementPage = <span class="cstat-no" title="statement not covered" >await notionService.getPage(id);</span>
 <span class="cstat-no" title="statement not covered" >  if (!elementPage) {</span>
 <span class="cstat-no" title="statement not covered" >    return res.status(404).json({ error: 'Element not found' });</span>
@@ -2508,7 +2511,7 @@ const getElementById = catchAsync(<span class="fstat-no" title="function not cov
   const mappedElement = <span class="cstat-no" title="statement not covered" >await propertyMapper.mapElementWithNames(elementPage, notionService);</span>
 <span class="cstat-no" title="statement not covered" >  if (mappedElement &amp;&amp; !mappedElement.error) {</span>
 <span class="cstat-no" title="statement not covered" >    notionCache.set(cacheKey, mappedElement);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE SET] ${cacheKey} (mapped element)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE SET] ${cacheKey} (mapped element)`);</span>
   }
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(mappedElement);</span>
@@ -2579,7 +2582,7 @@ const globalSearch = catchAsync(<span class="fstat-no" title="function not cover
         items.map(<span class="fstat-no" title="function not covered" >it</span>em =&gt; <span class="cstat-no" title="statement not covered" >config.mapperFn(item, notionService))</span>
       );
     } catch (e) {
-<span class="cstat-no" title="statement not covered" >      console.error(`Error searching in ${dbKey}:`, e);</span>
+<span class="cstat-no" title="statement not covered" >      logger.error(`Error searching in ${dbKey}:`, e);</span>
 <span class="cstat-no" title="statement not covered" >      results[dbKey] = [];</span>
     }
   });
@@ -2590,7 +2593,7 @@ const globalSearch = catchAsync(<span class="fstat-no" title="function not cover
 &nbsp;
 const clearCache = catchAsync(<span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {
 <span class="cstat-no" title="statement not covered" >  notionService.clearCache();</span>
-<span class="cstat-no" title="statement not covered" >  console.log('Server cache cleared.');</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug('Server cache cleared.');</span>
 <span class="cstat-no" title="statement not covered" >  res.json({ message: 'Cache cleared' });</span>
 });
 &nbsp;
@@ -2637,11 +2640,11 @@ const getPuzzlesWithWarnings = catchAsync(<span class="fstat-no" title="function
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('puzzles-with-warnings-v2');</span> // Cache key updated
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey}`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey}`);</span>
 &nbsp;
   const notionPuzzles = <span class="cstat-no" title="statement not covered" >await notionService.getPuzzles();</span> // Get all puzzles
   const mappedPuzzles = <span class="cstat-no" title="statement not covered" >await Promise.all(</span>
@@ -2680,7 +2683,7 @@ const getPuzzlesWithWarnings = catchAsync(<span class="fstat-no" title="function
   }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  notionCache.set(cacheKey, puzzlesWithWarnings);</span>
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE SET] ${cacheKey} - Found ${puzzlesWithWarnings.length} puzzles with warnings.`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE SET] ${cacheKey} - Found ${puzzlesWithWarnings.length} puzzles with warnings.`);</span>
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(puzzlesWithWarnings);</span>
 });
@@ -2689,11 +2692,11 @@ const getElementsWithWarnings = catchAsync(<span class="fstat-no" title="functio
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('elements-with-warnings-v2');</span> // Cache key updated
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey}`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey}`);</span>
 &nbsp;
   const notionElements = <span class="cstat-no" title="statement not covered" >await notionService.getElements();</span> // Get all elements
   const mappedElements = <span class="cstat-no" title="statement not covered" >await Promise.all(</span>
@@ -2745,7 +2748,7 @@ const getElementsWithWarnings = catchAsync(<span class="fstat-no" title="functio
   }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  notionCache.set(cacheKey, elementsWithWarnings);</span>
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE SET] ${cacheKey} - Found ${elementsWithWarnings.length} elements with warnings.`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE SET] ${cacheKey} - Found ${elementsWithWarnings.length} elements with warnings.`);</span>
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(elementsWithWarnings);</span>
 });
@@ -2756,11 +2759,11 @@ const getPuzzleFlow = catchAsync(<span class="fstat-no" title="function not cove
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (Puzzle Flow)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (Puzzle Flow)`);</span>
 &nbsp;
   const puzzlePage = <span class="cstat-no" title="statement not covered" >await notionService.getPage(puzzleId);</span>
 <span class="cstat-no" title="statement not covered" >  if (!puzzlePage) {</span>
@@ -2797,7 +2800,7 @@ const getPuzzleFlow = catchAsync(<span class="fstat-no" title="function not cove
     } else <span class="cstat-no" title="statement not covered" >if (page.properties.Name) { // Heuristic: if it has 'Name', it's likely an Element</span>
 <span class="cstat-no" title="statement not covered" >      mappedEntity = await propertyMapper.mapElementWithNames(page, notionService);</span>
     } else { // Fallback or if more types are possible
-<span class="cstat-no" title="statement not covered" >      console.warn(`[getPuzzleFlow] Could not determine type for related page ${page.id}`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.warn(`[getPuzzleFlow] Could not determine type for related page ${page.id}`);</span>
 <span class="cstat-no" title="statement not covered" >      continue;</span>
     }
 &nbsp;
@@ -2857,7 +2860,7 @@ const getPuzzleFlow = catchAsync(<span class="fstat-no" title="function not cove
   };
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  notionCache.set(cacheKey, flowData);</span>
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow for ${centralPuzzle.puzzle})`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE SET] ${cacheKey} (Puzzle Flow for ${centralPuzzle.puzzle})`);</span>
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(flowData);</span>
 });
@@ -2866,11 +2869,11 @@ const getAllUniqueNarrativeThreads = catchAsync(<span class="fstat-no" title="fu
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('unique-narrative-threads-v1');</span>
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey}`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey}`);</span>
 &nbsp;
   const allThreads = <span class="cstat-no" title="statement not covered" >new Set();</span>
 &nbsp;
@@ -2920,7 +2923,7 @@ const getAllUniqueNarrativeThreads = catchAsync(<span class="fstat-no" title="fu
   const sortedThreads = <span class="cstat-no" title="statement not covered" >Array.from(allThreads).sort();</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  notionCache.set(cacheKey, sortedThreads);</span>
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE SET] ${cacheKey} - Found ${sortedThreads.length} unique narrative threads.`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE SET] ${cacheKey} - Found ${sortedThreads.length} unique narrative threads.`);</span>
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(sortedThreads);</span>
 });
@@ -2932,11 +2935,11 @@ const getPuzzleFlowGraph = catchAsync(<span class="fstat-no" title="function not
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey} (Puzzle Flow Graph)`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey} (Puzzle Flow Graph)`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey} (Puzzle Flow Graph)`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey} (Puzzle Flow Graph)`);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const { centralPuzzle, mappedRelatedEntities } = <span class="cstat-no" title="statement not covered" >await notionService.fetchPuzzleFlowDataStructure(puzzleId);</span>
@@ -3055,12 +3058,12 @@ const getPuzzleFlowGraph = catchAsync(<span class="fstat-no" title="function not
     };
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    notionCache.set(cacheKey, graphData);</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE SET] ${cacheKey} (Puzzle Flow Graph for ${centralPuzzle.puzzle})`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE SET] ${cacheKey} (Puzzle Flow Graph for ${centralPuzzle.puzzle})`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    res.json(graphData);</span>
 &nbsp;
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error(`Error generating puzzle flow graph for ID ${puzzleId}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`Error generating puzzle flow graph for ID ${puzzleId}:`, error);</span>
 <span class="cstat-no" title="statement not covered" >    if (!res.headersSent) {</span>
 <span class="cstat-no" title="statement not covered" >      res.status(500).json({ error: error.message || 'Failed to generate puzzle flow graph' });</span>
     }
@@ -3071,11 +3074,11 @@ const getCharactersWithWarnings = catchAsync(<span class="fstat-no" title="funct
   const cacheKey = <span class="cstat-no" title="statement not covered" >makeCacheKey('characters-with-warnings-v2');</span>
   const cachedData = <span class="cstat-no" title="statement not covered" >notionCache.get(cacheKey);</span>
 <span class="cstat-no" title="statement not covered" >  if (cachedData) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log(`[CACHE HIT] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[CACHE HIT] ${cacheKey}`);</span>
 <span class="cstat-no" title="statement not covered" >    setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >    return res.json(cachedData);</span>
   }
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE MISS] ${cacheKey}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE MISS] ${cacheKey}`);</span>
 &nbsp;
   const notionCharacters = <span class="cstat-no" title="statement not covered" >await notionService.getCharacters();</span> // Get all characters
   const mappedCharacters = <span class="cstat-no" title="statement not covered" >await Promise.all(</span>
@@ -3137,7 +3140,7 @@ const getCharactersWithWarnings = catchAsync(<span class="fstat-no" title="funct
   }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  notionCache.set(cacheKey, charactersWithWarnings);</span>
-<span class="cstat-no" title="statement not covered" >  console.log(`[CACHE SET] ${cacheKey} - Found ${charactersWithWarnings.length} characters with warnings.`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`[CACHE SET] ${cacheKey} - Found ${charactersWithWarnings.length} characters with warnings.`);</span>
 <span class="cstat-no" title="statement not covered" >  setCacheHeaders(res);</span>
 <span class="cstat-no" title="statement not covered" >  res.json(charactersWithWarnings);</span>
 });
@@ -3175,7 +3178,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T23:32:12.954Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../prettify.js"></script>
         <script>

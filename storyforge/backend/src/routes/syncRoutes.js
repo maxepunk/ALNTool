@@ -79,9 +79,12 @@ router.post('/data', async (req, res) => {
  * - 200: Status retrieved successfully
  * - 500: Internal server error
  */
-router.get('/status', (req, res) => {
+router.get('/status', async (req, res) => {
   try {
-    const status = dataSyncService.getSyncStatus();
+    const syncResult = await dataSyncService.getSyncStatus();
+    
+    // Extract orchestrator status which contains isRunning
+    const status = syncResult.orchestratorStatus || { isRunning: false, progress: 0, startTime: null };
 
     if (!status || typeof status.isRunning !== 'boolean') {
       throw new Error('Invalid sync status');
@@ -91,12 +94,14 @@ router.get('/status', (req, res) => {
     const enhancedStatus = {
       ...status,
       startTime: formatDate(status.startTime),
-      progress: typeof status.progress === 'number' ? status.progress : 0
+      progress: typeof status.progress === 'number' ? status.progress : 0,
+      counts: syncResult.counts || {},
+      lastSync: syncResult.lastSync
     };
 
     res.json({
       success: true,
-      status: enhancedStatus
+      ...enhancedStatus
     });
   } catch (error) {
     logger.error('❌ Status API error:', error);
@@ -117,7 +122,8 @@ router.get('/status', (req, res) => {
  */
 router.post('/cancel', async (req, res) => {
   try {
-    const status = dataSyncService.getSyncStatus();
+    const syncResult = await dataSyncService.getSyncStatus();
+    const status = syncResult.orchestratorStatus || { isRunning: false };
 
     if (!status || typeof status.isRunning !== 'boolean') {
       throw new Error('Invalid sync status');

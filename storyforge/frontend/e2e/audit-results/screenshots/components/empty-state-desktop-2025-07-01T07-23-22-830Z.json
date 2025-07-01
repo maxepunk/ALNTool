@@ -1,0 +1,9 @@
+{
+  "name": "empty-state",
+  "category": "components",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-23-22-830Z",
+  "url": "http://localhost:3000/characters",
+  "state": "empty",
+  "entity": "characters"
+}

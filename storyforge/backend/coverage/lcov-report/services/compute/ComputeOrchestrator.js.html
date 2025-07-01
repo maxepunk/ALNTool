@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15.85% </span>
+                <span class="strong">8.43% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/82</span>
+                <span class='fraction'>7/83</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>1/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">33.33% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/3</span>
+                <span class='fraction'>0/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.04% </span>
+                <span class="strong">8.43% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/81</span>
+                <span class='fraction'>7/83</span>
             </div>
         
             
@@ -240,10 +240,15 @@
 <a name='L175'></a><a href='#L175'>175</a>
 <a name='L176'></a><a href='#L176'>176</a>
 <a name='L177'></a><a href='#L177'>177</a>
-<a name='L178'></a><a href='#L178'>178</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -251,16 +256,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -423,21 +429,24 @@ const NarrativeThreadComputer = require('./NarrativeThreadComputer');
 const MemoryValueExtractor = require('./MemoryValueExtractor');
 const MemoryValueComputer = require('./MemoryValueComputer');
 &nbsp;
+const logger = require('../../utils/logger');
 /**
  * Orchestrates the computation of all derived fields
  * Manages the execution of individual computers and coordinates their updates
  */
 class ComputeOrchestrator {
-  constructor(db) {
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (!db) <span class="cstat-no" title="statement not covered" >throw new Error('Database connection required');</span>
-    this.db = db;
-    
+<span class="fstat-no" title="function not covered" >  co</span>nstructor(db) {
+<span class="cstat-no" title="statement not covered" >    if (!db) {</span>
+<span class="cstat-no" title="statement not covered" >      throw new Error('Database connection required');</span>
+    }
+<span class="cstat-no" title="statement not covered" >    this.db = db;</span>
+&nbsp;
     // Initialize computers
-    this.actFocusComputer = new ActFocusComputer(db);
-    this.resolutionPathComputer = new ResolutionPathComputer(db);
-    this.narrativeThreadComputer = new NarrativeThreadComputer(db);
-    this.memoryValueExtractor = new MemoryValueExtractor(db);
-    this.memoryValueComputer = new MemoryValueComputer(db);
+<span class="cstat-no" title="statement not covered" >    this.actFocusComputer = new ActFocusComputer(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.resolutionPathComputer = new ResolutionPathComputer(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.narrativeThreadComputer = new NarrativeThreadComputer(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.memoryValueExtractor = new MemoryValueExtractor(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.memoryValueComputer = new MemoryValueComputer(db);</span>
   }
 &nbsp;
   /**
@@ -456,51 +465,51 @@ class ComputeOrchestrator {
 <span class="cstat-no" title="statement not covered" >      this.db.exec('BEGIN');</span>
 &nbsp;
       // 1. Compute Act Focus for Timeline Events
-<span class="cstat-no" title="statement not covered" >      console.log('🧮 Computing Act Focus for timeline events...');</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug('🧮 Computing Act Focus for timeline events...');</span>
       const actFocusStats = <span class="cstat-no" title="statement not covered" >await this.actFocusComputer.computeAll();</span>
 <span class="cstat-no" title="statement not covered" >      stats.processed += actFocusStats.processed;</span>
 <span class="cstat-no" title="statement not covered" >      stats.errors += actFocusStats.errors;</span>
 <span class="cstat-no" title="statement not covered" >      stats.details.actFocus = actFocusStats;</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`✅ Act Focus computed for ${actFocusStats.processed} events (${actFocusStats.errors} errors)`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`✅ Act Focus computed for ${actFocusStats.processed} events (${actFocusStats.errors} errors)`);</span>
 &nbsp;
       // 2. Compute Resolution Paths for all entity types
-<span class="cstat-no" title="statement not covered" >      console.log('🧮 Computing Resolution Paths...');</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug('🧮 Computing Resolution Paths...');</span>
       const entityTypes = <span class="cstat-no" title="statement not covered" >['character', 'puzzle', 'element'];</span>
 <span class="cstat-no" title="statement not covered" >      for (const type of entityTypes) {</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`- Computing paths for ${type}s...`);</span>
+<span class="cstat-no" title="statement not covered" >        logger.debug(`- Computing paths for ${type}s...`);</span>
         const pathStats = <span class="cstat-no" title="statement not covered" >await this.resolutionPathComputer.computeAll(type);</span>
 <span class="cstat-no" title="statement not covered" >        stats.processed += pathStats.processed;</span>
 <span class="cstat-no" title="statement not covered" >        stats.errors += pathStats.errors;</span>
 <span class="cstat-no" title="statement not covered" >        stats.details[`${type}Paths`] = pathStats;</span>
-<span class="cstat-no" title="statement not covered" >        console.log(`✅ Paths computed for ${pathStats.processed} ${type}s (${pathStats.errors} errors)`);</span>
+<span class="cstat-no" title="statement not covered" >        logger.debug(`✅ Paths computed for ${pathStats.processed} ${type}s (${pathStats.errors} errors)`);</span>
       }
 &nbsp;
       // 3. Compute Narrative Threads for Puzzles
-<span class="cstat-no" title="statement not covered" >      console.log('🧮 Computing Narrative Threads for puzzles...');</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug('🧮 Computing Narrative Threads for puzzles...');</span>
       const threadStats = <span class="cstat-no" title="statement not covered" >await this.narrativeThreadComputer.computeAll();</span>
 <span class="cstat-no" title="statement not covered" >      stats.processed += threadStats.processed;</span>
 <span class="cstat-no" title="statement not covered" >      stats.errors += threadStats.errors;</span>
 <span class="cstat-no" title="statement not covered" >      stats.details.narrativeThreads = threadStats;</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`✅ Narrative threads computed for ${threadStats.processed} puzzles (${threadStats.errors} errors)`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`✅ Narrative threads computed for ${threadStats.processed} puzzles (${threadStats.errors} errors)`);</span>
 &nbsp;
       // 4. Extract Memory Values from Element Descriptions
-<span class="cstat-no" title="statement not covered" >      console.log('🧮 Extracting Memory Values from element descriptions...');</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug('🧮 Extracting Memory Values from element descriptions...');</span>
       const memoryExtractCount = <span class="cstat-no" title="statement not covered" >await this.memoryValueExtractor.extractAllMemoryValues();</span>
 <span class="cstat-no" title="statement not covered" >      stats.processed += memoryExtractCount;</span>
 <span class="cstat-no" title="statement not covered" >      stats.details.memoryExtraction = { processed: memoryExtractCount, errors: 0 };</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`✅ Memory values extracted for ${memoryExtractCount} elements`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`✅ Memory values extracted for ${memoryExtractCount} elements`);</span>
 &nbsp;
       // 5. Compute Total Memory Values for Characters
-<span class="cstat-no" title="statement not covered" >      console.log('🧮 Computing Total Memory Values for characters...');</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug('🧮 Computing Total Memory Values for characters...');</span>
       const memoryComputeCount = <span class="cstat-no" title="statement not covered" >await this.memoryValueComputer.computeAllCharacterMemoryValues();</span>
 <span class="cstat-no" title="statement not covered" >      stats.processed += memoryComputeCount;</span>
 <span class="cstat-no" title="statement not covered" >      stats.details.memoryComputation = { processed: memoryComputeCount, errors: 0 };</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`✅ Total memory values computed for ${memoryComputeCount} characters`);</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`✅ Total memory values computed for ${memoryComputeCount} characters`);</span>
 &nbsp;
       // Commit transaction
 <span class="cstat-no" title="statement not covered" >      this.db.exec('COMMIT');</span>
-<span class="cstat-no" title="statement not covered" >      console.log(`✅ All derived fields computed (${stats.processed} total, ${stats.errors} errors)`);</span>
-      
+<span class="cstat-no" title="statement not covered" >      logger.debug(`✅ All derived fields computed (${stats.processed} total, ${stats.errors} errors)`);</span>
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return stats;</span>
     } catch (error) {
       // Rollback on error
@@ -525,7 +534,7 @@ class ComputeOrchestrator {
         puzzle: 'puzzles',
         element: 'elements'
       };
-      
+&nbsp;
       const tableName = <span class="cstat-no" title="statement not covered" >tableMap[entityType];</span>
 <span class="cstat-no" title="statement not covered" >      if (!tableName) {</span>
 <span class="cstat-no" title="statement not covered" >        throw new Error(`Unsupported entity type: ${entityType}`);</span>
@@ -547,29 +556,29 @@ class ComputeOrchestrator {
 &nbsp;
       // Compute appropriate fields based on entity type
 <span class="cstat-no" title="statement not covered" >      switch (entityType) {</span>
-        case 'timeline_event':
-          const { act_focus } = <span class="cstat-no" title="statement not covered" >await this.actFocusComputer.compute(entity);</span>
-<span class="cstat-no" title="statement not covered" >          computedFields.act_focus = act_focus;</span>
-<span class="cstat-no" title="statement not covered" >          break;</span>
+      case 'timeline_event':
+        const { act_focus } = <span class="cstat-no" title="statement not covered" >await this.actFocusComputer.compute(entity);</span>
+<span class="cstat-no" title="statement not covered" >        computedFields.act_focus = act_focus;</span>
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-        case 'puzzle':
-          // Compute both resolution paths and narrative threads for puzzles
-          const [pathResult, threadResult] = <span class="cstat-no" title="statement not covered" >await Promise.all([</span>
-            this.resolutionPathComputer.compute(entity, entityType),
-            this.narrativeThreadComputer.compute(entity)
-          ]);
-<span class="cstat-no" title="statement not covered" >          computedFields.resolution_paths = pathResult.resolution_paths;</span>
-<span class="cstat-no" title="statement not covered" >          computedFields.computed_narrative_threads = threadResult.computed_narrative_threads;</span>
-<span class="cstat-no" title="statement not covered" >          break;</span>
+      case 'puzzle':
+        // Compute both resolution paths and narrative threads for puzzles
+        const [pathResult, threadResult] = <span class="cstat-no" title="statement not covered" >await Promise.all([</span>
+          this.resolutionPathComputer.compute(entity, entityType),
+          this.narrativeThreadComputer.compute(entity)
+        ]);
+<span class="cstat-no" title="statement not covered" >        computedFields.resolution_paths = pathResult.resolution_paths;</span>
+<span class="cstat-no" title="statement not covered" >        computedFields.computed_narrative_threads = threadResult.computed_narrative_threads;</span>
+<span class="cstat-no" title="statement not covered" >        break;</span>
 &nbsp;
-        case 'character':
-        case 'element':
-          const { resolution_paths } = <span class="cstat-no" title="statement not covered" >await this.resolutionPathComputer.compute(</span>
-            entity, 
-            entityType
-          );
-<span class="cstat-no" title="statement not covered" >          computedFields.resolution_paths = resolution_paths;</span>
-<span class="cstat-no" title="statement not covered" >          break;</span>
+      case 'character':
+      case 'element':
+        const { resolution_paths } = <span class="cstat-no" title="statement not covered" >await this.resolutionPathComputer.compute(</span>
+          entity,
+          entityType
+        );
+<span class="cstat-no" title="statement not covered" >        computedFields.resolution_paths = resolution_paths;</span>
+<span class="cstat-no" title="statement not covered" >        break;</span>
       }
 &nbsp;
       // Update database
@@ -582,7 +591,7 @@ class ComputeOrchestrator {
 &nbsp;
       // Commit transaction
 <span class="cstat-no" title="statement not covered" >      this.db.exec('COMMIT');</span>
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return computedFields;</span>
     } catch (error) {
       // Rollback on error only if transaction was started
@@ -594,14 +603,14 @@ class ComputeOrchestrator {
   }
 }
 &nbsp;
-module.exports = ComputeOrchestrator; </pre></td></tr></table></pre>
+module.exports = ComputeOrchestrator;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T20:43:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

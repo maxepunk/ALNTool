@@ -1,0 +1,12 @@
+{
+  "name": "focus-indicator-contrast",
+  "category": "components",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T19-42-53-825Z",
+  "url": "http://localhost:3000/",
+  "element": "BODY",
+  "hasOutline": false,
+  "outlineColor": "rgba(255, 255, 255, 0.9)",
+  "backgroundColor": "rgb(10, 10, 10)",
+  "outlineWidth": "0px"
+}

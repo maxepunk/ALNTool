@@ -1,0 +1,9 @@
+{
+  "name": "error-state-500",
+  "category": "errors",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-21-12-594Z",
+  "url": "http://localhost:3000/characters",
+  "errorType": "500",
+  "state": "error"
+}

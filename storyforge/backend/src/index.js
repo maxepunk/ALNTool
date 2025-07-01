@@ -7,6 +7,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
+// Import middleware
+const { responseWrapper, errorHandler } = require('./middleware/responseWrapper');
+
 // Import routes
 const notionRoutes = require('./routes/notion');
 const journeyRoutes = require('./routes/journeyRoutes');
@@ -46,6 +49,9 @@ if (process.env.NODE_ENV === 'production') {
   logger.debug('Rate limiting DISABLED for development');
 }
 
+// Apply response wrapper middleware to all /api routes
+app.use('/api', responseWrapper);
+
 // Routes
 app.use('/api', notionRoutes); // Existing Notion routes
 app.use('/api', journeyRoutes); // New Journey Engine routes (e.g. /api/journeys/:characterId)
@@ -56,21 +62,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'StoryForge API is running' });
 });
 
-// Error handling
-app.use((err, req, res, next) => {
-  logger.error('Error occurred:', err.message);
-  logger.error('Stack trace:', err.stack);
-  
-  // In development, send more detailed error info
-  if (process.env.NODE_ENV !== 'production') {
-    res.status(500).json({ 
-      error: err.message || 'Something went wrong!',
-      stack: err.stack 
-    });
-  } else {
-    res.status(500).json({ error: 'Something went wrong!' });
-  }
-});
+// Error handling - use our standardized error handler
+app.use(errorHandler);
 
 // Start server
 async function startServer() {

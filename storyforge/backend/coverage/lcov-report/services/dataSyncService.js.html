@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">52.85% </span>
+                <span class="strong">36.61% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>37/70</span>
+                <span class='fraction'>26/71</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.18% </span>
+                <span class="strong">9.09% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/11</span>
+                <span class='fraction'>1/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">25% </span>
+                <span class="strong">8.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/12</span>
+                <span class='fraction'>1/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">52.85% </span>
+                <span class="strong">36.61% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>37/70</span>
+                <span class='fraction'>26/71</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -283,7 +283,8 @@
 <a name='L218'></a><a href='#L218'>218</a>
 <a name='L219'></a><a href='#L219'>219</a>
 <a name='L220'></a><a href='#L220'>220</a>
-<a name='L221'></a><a href='#L221'>221</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L221'></a><a href='#L221'>221</a>
+<a name='L222'></a><a href='#L222'>222</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -299,6 +300,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -362,10 +364,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -399,24 +401,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -519,6 +521,7 @@ const ActFocusComputer = require('./compute/ActFocusComputer');
 const ResolutionPathComputer = require('./compute/ResolutionPathComputer');
 const NarrativeThreadComputer = require('./compute/NarrativeThreadComputer');
 &nbsp;
+const logger = require('../utils/logger');
 /**
  * DataSyncService coordinates data synchronization between Notion and SQLite.
  * Uses SyncOrchestrator to manage the sync process in phases:
@@ -526,7 +529,7 @@ const NarrativeThreadComputer = require('./compute/NarrativeThreadComputer');
  * 2. Sync relationships and compute character links
  * 3. Compute derived fields
  * 4. Maintain cache (optional)
- * 
+ *
  * @deprecated The following methods are deprecated and will be removed in v2.0:
  * - performCacheMaintenance() - Use cacheManager.refreshCache() instead
  * - computeDerivedFields() - Use computeServices in orchestrator instead
@@ -542,7 +545,7 @@ class DataSyncService {
 &nbsp;
     this.db = null;
     this.logger = new SyncLogger();
-    
+&nbsp;
     // Initialize sync components
     this.entitySyncers = [
       new CharacterSyncer({ notionService, propertyMapper, logger: this.logger }),
@@ -550,20 +553,20 @@ class DataSyncService {
       new PuzzleSyncer({ notionService, propertyMapper, logger: this.logger }),
       new TimelineEventSyncer({ notionService, propertyMapper, logger: this.logger })
     ];
-    
+&nbsp;
     this.relationshipSyncer = new RelationshipSyncer({
       notionService,
       propertyMapper,
       logger: this.logger
     });
-    
+&nbsp;
     // Initialize compute services
     this.computeServices = [
       new ActFocusComputer(getDB()),
       new ResolutionPathComputer(getDB()),
       new NarrativeThreadComputer(getDB())
     ];
-    
+&nbsp;
     // Initialize cache manager
     this.cacheManager = {
       refreshCache: <span class="fstat-no" title="function not covered" >as</span>ync () =&gt; {
@@ -572,7 +575,7 @@ class DataSyncService {
 <span class="cstat-no" title="statement not covered" >        return { refreshed: true };</span>
       }
     };
-    
+&nbsp;
     // Create orchestrator (will be initialized when db is available)
     this.orchestrator = null;
   }
@@ -581,11 +584,11 @@ class DataSyncService {
    * Initialize database connection and orchestrator
    * @private
    */
-  initDB() {
-    <span class="missing-if-branch" title="else path not taken" >E</span>if (!this.db) {
-      this.db = getDB();
+<span class="fstat-no" title="function not covered" >  in</span>itDB() {
+<span class="cstat-no" title="statement not covered" >    if (!this.db) {</span>
+<span class="cstat-no" title="statement not covered" >      this.db = getDB();</span>
       // Initialize orchestrator with database connection
-      this.orchestrator = new SyncOrchestrator(this.db);
+<span class="cstat-no" title="statement not covered" >      this.orchestrator = new SyncOrchestrator(this.db);</span>
     }
   }
 &nbsp;
@@ -599,17 +602,17 @@ class DataSyncService {
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >      this.initDB();</span>
       const result = <span class="cstat-no" title="statement not covered" >await this.orchestrator.syncAll(options);</span>
-      
-<span class="cstat-no" title="statement not covered" >      console.log('Sync completed successfully:', {</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      logger.debug('Sync completed successfully:', {</span>
         duration: result.totalDuration,
         status: result.status,
         phases: result.phases
       });
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return result;</span>
-      
+&nbsp;
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >      console.error('Sync failed:', error);</span>
+<span class="cstat-no" title="statement not covered" >      logger.error('Sync failed:', error);</span>
 <span class="cstat-no" title="statement not covered" >      throw error;</span>
     }
   }
@@ -618,25 +621,25 @@ class DataSyncService {
    * Get current sync status including database counts
    * @returns {Promise&lt;Object&gt;} Current sync status with database statistics
    */
-  async getSyncStatus() {
-    try {
-      this.initDB();
-      
+<span class="fstat-no" title="function not covered" >  as</span>ync getSyncStatus() {
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      this.initDB();</span>
+&nbsp;
       // Get current database counts
-      const counts = {};
-      const tables = ['characters', 'elements', 'puzzles', 'timeline_events', 'character_links'];
-      
-      for (const table of tables) {
-        try {
-          const result = this.db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();
-          counts[table] = result.count;
+      const counts = <span class="cstat-no" title="statement not covered" >{};</span>
+      const tables = <span class="cstat-no" title="statement not covered" >['characters', 'elements', 'puzzles', 'timeline_events', 'character_links'];</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      for (const table of tables) {</span>
+<span class="cstat-no" title="statement not covered" >        try {</span>
+          const result = <span class="cstat-no" title="statement not covered" >this.db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get();</span>
+<span class="cstat-no" title="statement not covered" >          counts[table] = result.count;</span>
         } catch (error) {
-<span class="cstat-no" title="statement not covered" >          console.warn(`Failed to count ${table}:`, error.message);</span>
+<span class="cstat-no" title="statement not covered" >          logger.warn(`Failed to count ${table}:`, error.message);</span>
 <span class="cstat-no" title="statement not covered" >          counts[table] = 0;</span>
         }
       }
-      
-      return {
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      return {</span>
         success: true,
         counts,
         lastSync: new Date().toISOString(),
@@ -666,7 +669,7 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync performCacheMaintenance() {
-<span class="cstat-no" title="statement not covered" >    console.warn('performCacheMaintenance() is deprecated. Use cacheManager.refreshCache() instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('performCacheMaintenance() is deprecated. Use cacheManager.refreshCache() instead.');</span>
 <span class="cstat-no" title="statement not covered" >    return this.cacheManager.refreshCache();</span>
   }
 &nbsp;
@@ -675,7 +678,7 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync computeDerivedFields() {
-<span class="cstat-no" title="statement not covered" >    console.warn('computeDerivedFields() is deprecated. Use computeServices in orchestrator instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('computeDerivedFields() is deprecated. Use computeServices in orchestrator instead.');</span>
     const stats = <span class="cstat-no" title="statement not covered" >{ processed: 0, errors: 0 };</span>
 <span class="cstat-no" title="statement not covered" >    for (const service of this.computeServices) {</span>
       const result = <span class="cstat-no" title="statement not covered" >await service.compute();</span>
@@ -690,7 +693,7 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync syncRelationships() {
-<span class="cstat-no" title="statement not covered" >    console.warn('syncRelationships() is deprecated. Use relationshipSyncer in orchestrator instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('syncRelationships() is deprecated. Use relationshipSyncer in orchestrator instead.');</span>
 <span class="cstat-no" title="statement not covered" >    return this.relationshipSyncer.sync();</span>
   }
 &nbsp;
@@ -699,7 +702,7 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  lo</span>gSyncStart(entityType) {
-<span class="cstat-no" title="statement not covered" >    console.warn('logSyncStart() is deprecated. Use SyncLogger instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('logSyncStart() is deprecated. Use SyncLogger instead.');</span>
 <span class="cstat-no" title="statement not covered" >    return this.logger.startSync(entityType);</span>
   }
 &nbsp;
@@ -708,7 +711,7 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  lo</span>gSyncSuccess(logId, recordsFetched, recordsSynced, errors) {
-<span class="cstat-no" title="statement not covered" >    console.warn('logSyncSuccess() is deprecated. Use SyncLogger instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('logSyncSuccess() is deprecated. Use SyncLogger instead.');</span>
 <span class="cstat-no" title="statement not covered" >    return this.logger.completeSync(logId, { fetched: recordsFetched, synced: recordsSynced, errors });</span>
   }
 &nbsp;
@@ -717,20 +720,20 @@ class DataSyncService {
    * @private
    */
 <span class="fstat-no" title="function not covered" >  lo</span>gSyncFailure(logId, error, recordsFetched = <span class="branch-0 cbranch-no" title="branch not covered" >0,</span> recordsSynced = <span class="branch-0 cbranch-no" title="branch not covered" >0)</span> {
-<span class="cstat-no" title="statement not covered" >    console.warn('logSyncFailure() is deprecated. Use SyncLogger instead.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('logSyncFailure() is deprecated. Use SyncLogger instead.');</span>
 <span class="cstat-no" title="statement not covered" >    return this.logger.failSync(logId, error, { fetched: recordsFetched, synced: recordsSynced });</span>
   }
 }
 &nbsp;
 // Export singleton instance
-module.exports = new DataSyncService(); </pre></td></tr></table></pre>
+module.exports = new DataSyncService();</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T20:43:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../prettify.js"></script>
         <script>

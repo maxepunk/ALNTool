@@ -1,0 +1,9 @@
+{
+  "name": "puzzles-loading",
+  "category": "entities",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-20-41-493Z",
+  "url": "http://localhost:3000/puzzles",
+  "entity": "puzzles",
+  "state": "loading"
+}

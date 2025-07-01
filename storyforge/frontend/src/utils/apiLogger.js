@@ -8,9 +8,9 @@ export const logApiResponse = (url, response, data) => {
   // Disable logging in Jest environment
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
   
-  // Determine if we're in development mode
-  const isDev = process.env.NODE_ENV === 'development';
-  const apiUrl = process.env.VITE_API_URL || 'http://localhost:3001';
+  // Determine if we're in development mode (Vite provides import.meta.env)
+  const isDev = import.meta.env?.MODE === 'development';
+  const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001';
   
   if (!isDev) return;
   const endpoint = url.replace(apiUrl, '');
@@ -63,8 +63,8 @@ export const logComponentData = (componentName, props, context = {}) => {
   // Disable logging in Jest environment
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
   
-  // Determine if we're in development mode
-  const isDev = process.env.NODE_ENV === 'development';
+  // Determine if we're in development mode (Vite provides import.meta.env)
+  const isDev = import.meta.env?.MODE === 'development';
   
   if (!isDev) return;
 

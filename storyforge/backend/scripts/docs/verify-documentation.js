@@ -144,7 +144,7 @@ class DocumentationVerifier {
     checkVerificationTimestamps() {
         console.log('📅 Checking verification timestamps...');
 
-        const files = ['README.md', 'DEVELOPMENT_PLAYBOOK.md', 'CLAUDE.md'];
+        const files = ['README.md', 'CLAUDE.md'];
         const today = new Date();
 
         for (const file of files) {
@@ -183,7 +183,7 @@ class DocumentationVerifier {
             systemStatus: []
         };
 
-        const files = ['README.md', 'DEVELOPMENT_PLAYBOOK.md', 'CLAUDE.md'];
+        const files = ['README.md', 'CLAUDE.md'];
 
         for (const file of files) {
             const filePath = path.join(PROJECT_ROOT, file);
@@ -230,26 +230,15 @@ class DocumentationVerifier {
     verifyAuthorityCompliance() {
         console.log('📏 Verifying authority matrix compliance...');
 
-        // Check that README.md points to DEVELOPMENT_PLAYBOOK.md for current task
-        const readmePath = path.join(PROJECT_ROOT, 'README.md');
-        if (fs.existsSync(readmePath)) {
-            const content = fs.readFileSync(readmePath, 'utf-8');
-            if (!content.includes('DEVELOPMENT_PLAYBOOK.md')) {
-                this.warnings.push(
-                    'README.md should reference DEVELOPMENT_PLAYBOOK.md for current task status'
-                );
-            }
-        }
 
         // Check that status claims are in the right documents
         const authorityRules = {
-            'Current Task': 'DEVELOPMENT_PLAYBOOK.md',
             'System Health': 'README.md',
             'Workflow': 'CLAUDE.md'
         };
 
         for (const [claim, authorizedFile] of Object.entries(authorityRules)) {
-            const files = ['README.md', 'DEVELOPMENT_PLAYBOOK.md', 'CLAUDE.md'];
+            const files = ['README.md', 'CLAUDE.md'];
             for (const file of files) {
                 if (file === authorizedFile) continue;
                 
@@ -274,7 +263,7 @@ class DocumentationVerifier {
     checkAutomationMarkers() {
         console.log('🤖 Checking automation markers...');
 
-        const files = ['README.md', 'DEVELOPMENT_PLAYBOOK.md'];
+        const files = ['README.md'];
         const markers = ['CURRENT_TASK', 'LAST_UPDATED', 'PROGRESS', 'LAST_COMPLETED'];
 
         for (const file of files) {

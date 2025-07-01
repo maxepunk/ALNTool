@@ -1,1 +1,0 @@
-# maze with letters on it and then letters in uv light after the first round

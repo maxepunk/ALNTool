@@ -5,8 +5,12 @@ import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import JourneyGraphView from './JourneyGraphView';
 import useJourneyStore from '../../stores/journeyStore';
+import { useJourney } from '../../hooks/useJourney';
 
-// Mock the store
+// Mock useJourney hook (data fetching)
+jest.mock('../../hooks/useJourney');
+
+// Mock the store (UI state only)
 jest.mock('../../stores/journeyStore');
 
 // Mock ReactFlow components
@@ -73,13 +77,23 @@ describe('JourneyGraphView Performance - RED Phase', () => {
   });
 
   beforeEach(() => {
-    // Setup mock store with large dataset
+    // Setup mock journey data from useJourney hook (current architecture)
     const largeJourneyData = createLargeJourneyData();
     
+    useJourney.mockReturnValue({
+      data: largeJourneyData,
+      isLoading: false,
+      error: null,
+      refetch: jest.fn()
+    });
+    
+    // Mock UI state only (current architecture)
     useJourneyStore.mockImplementation((selector) => {
       const state = {
-        journeyData: new Map([['test-character', largeJourneyData]]),
-        setSelectedNode: jest.fn()
+        selectedNode: null,
+        setSelectedNode: jest.fn(),
+        viewMode: 'design',
+        setViewMode: jest.fn(),
       };
       return selector ? selector(state) : state;
     });

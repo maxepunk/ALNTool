@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">6.45% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>2/31</span>
+                <span class='fraction'>4/32</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">10% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>1/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">6.45% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/31</span>
+                <span class='fraction'>4/32</span>
             </div>
         
             
@@ -242,15 +242,17 @@
 <a name='L177'></a><a href='#L177'>177</a>
 <a name='L178'></a><a href='#L178'>178</a>
 <a name='L179'></a><a href='#L179'>179</a>
-<a name='L180'></a><a href='#L180'>180</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -423,13 +425,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">const { getDB } = require('../../db/database');
 &nbsp;
+const logger = require('../../utils/logger');
 /**
  * Centralized logging service for sync operations.
  * Provides consistent logging interface and tracks sync progress in the database.
  */
 class SyncLogger {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor() {
-<span class="cstat-no" title="statement not covered" >    this.db = null;</span>
+  constructor() {
+    this.db = null;
   }
 &nbsp;
   /**
@@ -461,7 +464,7 @@ class SyncLogger {
       entityType
     );
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    console.log(`🔄 Starting sync for ${entityType}...`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`🔄 Starting sync for ${entityType}...`);</span>
 <span class="cstat-no" title="statement not covered" >    return lastInsertRowid;</span>
   }
 &nbsp;
@@ -496,7 +499,7 @@ class SyncLogger {
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    console.log(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` +</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` +</span>
                 (errors &gt; 0 ? ` (${errors} errors)` : ''));
   }
 &nbsp;
@@ -529,7 +532,7 @@ class SyncLogger {
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    console.error(`❌ ${entity_type} sync failed:`, error.message);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`❌ ${entity_type} sync failed:`, error.message);</span>
   }
 &nbsp;
   /**
@@ -538,7 +541,7 @@ class SyncLogger {
    * @param {*} details - Additional details to log
    */
 <span class="fstat-no" title="function not covered" >  wa</span>rn(message, details = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
-<span class="cstat-no" title="statement not covered" >    console.warn(`⚠️  ${message}`, details || '');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn(`⚠️  ${message}`, details || '');</span>
   }
 &nbsp;
   /**
@@ -548,9 +551,9 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  er</span>ror(message, error = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
 <span class="cstat-no" title="statement not covered" >    if (error instanceof Error) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`❌ ${message}:`, error.message);</span>
+<span class="cstat-no" title="statement not covered" >      logger.error(`❌ ${message}:`, error.message);</span>
     } else {
-<span class="cstat-no" title="statement not covered" >      console.error(`❌ ${message}`, error || '');</span>
+<span class="cstat-no" title="statement not covered" >      logger.error(`❌ ${message}`, error || '');</span>
     }
   }
 &nbsp;
@@ -559,7 +562,7 @@ class SyncLogger {
    * @param {string} message - Info message
    */
 <span class="fstat-no" title="function not covered" >  in</span>fo(message) {
-<span class="cstat-no" title="statement not covered" >    console.log(`📝 ${message}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`📝 ${message}`);</span>
   }
 &nbsp;
   /**
@@ -607,7 +610,7 @@ module.exports = SyncLogger;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T23:32:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

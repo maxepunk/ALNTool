@@ -161,6 +161,24 @@ export const api = {
     const response = await apiClient.get('/narrative-threads'); // Path from B023/B027
     return response.data;
   },
+
+  // Cache management
+  clearCache: async () => {
+    const response = await apiClient.post('/cache/clear');
+    return response.data;
+  },
+
+  // Sync management
+  cancelSync: async () => {
+    const response = await apiClient.post('/sync/cancel');
+    return response.data;
+  },
+
+  // Game constants
+  getGameConstants: async () => {
+    const response = await apiClient.get('/game-constants');
+    return response.data;
+  },
 };
 
 // Response interceptor for logging successful responses
@@ -168,6 +186,15 @@ apiClient.interceptors.response.use(
   (response) => {
     // Log successful API responses
     logApiResponse(response.config.url, response, response.data);
+    
+    // Handle standardized response format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (response.data.success) {
+        // Return the data directly for successful responses
+        response.data = response.data.data;
+      }
+    }
+    
     return response;
   },
   (error) => {
@@ -190,97 +217,29 @@ apiClient.interceptors.response.use(
       logger.error('API Request Setup Error:', error.message, error.config.url);
     }
     
-    // Standardize error object to be returned
-    const customError = {
-      message: error.response?.data?.message || error.message || 'An unexpected error occurred',
-      status: error.response?.status,
-      data: error.response?.data,
-    };
+    // Handle standardized error format
+    let customError;
+    if (error.response?.data?.success === false && error.response?.data?.error) {
+      // Use the standardized error format from backend
+      customError = {
+        message: error.response.data.error.message || 'An unexpected error occurred',
+        status: error.response.data.error.code || error.response.status,
+        details: error.response.data.error.details,
+        data: error.response.data,
+      };
+    } else {
+      // Fallback for non-standardized errors
+      customError = {
+        message: error.response?.data?.message || error.message || 'An unexpected error occurred',
+        status: error.response?.status,
+        data: error.response?.data,
+      };
+    }
     
     return Promise.reject(customError);
   }
 );
 
-// Named exports for backward compatibility with tests
-export const fetchCharacterGraphData = async (id) => {
-  const response = await fetch(`/api/characters/${id}/graph`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch character graph data for ${id}: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchElementGraphData = async (id) => {
-  const response = await fetch(`/api/elements/${id}/graph`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch element graph data for ${id}: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchPuzzleGraphData = async (id) => {
-  const response = await fetch(`/api/puzzles/${id}/graph`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch puzzle graph data for ${id}: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchTimelineGraphData = async (id) => {
-  const response = await fetch(`/api/timeline/${id}/graph`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch timeline graph data for ${id}: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchCharacters = async () => {
-  const response = await fetch('/api/characters');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch characters: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchElements = async () => {
-  const response = await fetch('/api/elements');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch elements: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchPuzzles = async () => {
-  const response = await fetch('/api/puzzles');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch puzzles: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchTimelineEvents = async () => {
-  const response = await fetch('/api/timeline');
-  if (!response.ok) {
-    throw new Error(`Failed to fetch timeline events: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const fetchEntityById = async (entityType, id) => {
-  const response = await fetch(`/api/${entityType}/${id}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${entityType} with id ${id}: ${response.status}`);
-  }
-  return response.json();
-};
-
-export const searchAll = async (query) => {
-  const response = await fetch(`/api/search?q=${query}`);
-  if (!response.ok) {
-    throw new Error(`Search failed: ${response.status}`);
-  }
-  return response.json();
-};
 
 export { apiClient }; // Named export for apiClient
 export default api; // Default export the api object with methods

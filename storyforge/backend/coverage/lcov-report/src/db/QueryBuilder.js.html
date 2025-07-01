@@ -775,7 +775,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">/**
  * QueryBuilder.js
- * 
+ *
  * Centralized SQL query patterns to eliminate duplication.
  * All complex queries should be built here for consistency and reusability.
  */
@@ -797,7 +797,7 @@ class QueryBuilder {
             WHEN cl.character_b_id = ? THEN cl.character_a_id
           END as linked_character_id,
           cl.link_type,
-          cl.link_count,
+          cl.link_strength as link_count,
           CASE 
             WHEN cl.character_a_id = ? THEN cb.name
             WHEN cl.character_b_id = ? THEN ca.name
@@ -806,7 +806,7 @@ class QueryBuilder {
         LEFT JOIN characters ca ON cl.character_a_id = ca.id
         LEFT JOIN characters cb ON cl.character_b_id = cb.id
         WHERE cl.character_a_id = ? OR cl.character_b_id = ?
-        ORDER BY cl.link_count DESC
+        ORDER BY cl.link_strength DESC
       `,
       params: [characterId, characterId, characterId, characterId, characterId, characterId]
     };
@@ -865,8 +865,8 @@ class QueryBuilder {
    * @returns {Object} Query object
    */
 <span class="fstat-no" title="function not covered" >  st</span>atic memoryElements(filters = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-    let whereClauses = <span class="cstat-no" title="statement not covered" >[`e.type IN (${GameConstants.MEMORY_VALUE.MEMORY_ELEMENT_TYPES.map(<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >'?')</span>.join(',')})`];</span>
-    let params = <span class="cstat-no" title="statement not covered" >[...GameConstants.MEMORY_VALUE.MEMORY_ELEMENT_TYPES];</span>
+    const whereClauses = <span class="cstat-no" title="statement not covered" >[`e.type IN (${GameConstants.MEMORY_VALUE.MEMORY_ELEMENT_TYPES.map(<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >'?')</span>.join(',')})`];</span>
+    const params = <span class="cstat-no" title="statement not covered" >[...GameConstants.MEMORY_VALUE.MEMORY_ELEMENT_TYPES];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (filters.hasValue) {</span>
 <span class="cstat-no" title="statement not covered" >      whereClauses.push('e.calculated_memory_value &gt; 0');</span>
@@ -947,8 +947,8 @@ class QueryBuilder {
    * @returns {Object} Query object
    */
 <span class="fstat-no" title="function not covered" >  st</span>atic timelineEventsWithCharacters(filters = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-    let whereClauses = <span class="cstat-no" title="statement not covered" >[];</span>
-    let params = <span class="cstat-no" title="statement not covered" >[];</span>
+    const whereClauses = <span class="cstat-no" title="statement not covered" >[];</span>
+    const params = <span class="cstat-no" title="statement not covered" >[];</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (filters.characterId) {</span>
 <span class="cstat-no" title="statement not covered" >      whereClauses.push('cte.character_id = ?');</span>
@@ -1011,7 +1011,7 @@ class QueryBuilder {
    */
 <span class="fstat-no" title="function not covered" >  st</span>atic resolutionPathDistribution() {
     const paths = <span class="cstat-no" title="statement not covered" >[...GameConstants.RESOLUTION_PATHS.TYPES, GameConstants.RESOLUTION_PATHS.DEFAULT];</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    return {</span>
       sql: `
         SELECT 
@@ -1090,10 +1090,10 @@ class QueryBuilder {
    * @returns {Object} Query object
    */
 <span class="fstat-no" title="function not covered" >  st</span>atic narrativeThreadAnalysis(threads = <span class="branch-0 cbranch-no" title="branch not covered" >[])</span> {
-    const threadConditions = <span class="cstat-no" title="statement not covered" >threads.length &gt; 0 </span>
-      ? threads.map(<span class="fstat-no" title="function not covered" >th</span>read =&gt; <span class="cstat-no" title="statement not covered" >`narrative_threads LIKE ?`)</span>.join(' OR ')
+    const threadConditions = <span class="cstat-no" title="statement not covered" >threads.length &gt; 0</span>
+      ? threads.map(<span class="fstat-no" title="function not covered" >th</span>read =&gt; <span class="cstat-no" title="statement not covered" >'narrative_threads LIKE ?')</span>.join(' OR ')
       : '1=1';
-    
+&nbsp;
     const threadParams = <span class="cstat-no" title="statement not covered" >threads.map(<span class="fstat-no" title="function not covered" >th</span>read =&gt; <span class="cstat-no" title="statement not covered" >`%${thread}%`)</span>;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return {</span>
@@ -1135,7 +1135,7 @@ module.exports = QueryBuilder;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T12:43:34.701Z
+                at 2025-06-30T22:46:39.326Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0.47% </span>
+                <span class="strong">0.95% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/209</span>
+                <span class='fraction'>2/210</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0.5% </span>
+                <span class="strong">1% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/198</span>
+                <span class='fraction'>2/199</span>
             </div>
         
             
@@ -751,12 +751,16 @@
 <a name='L686'></a><a href='#L686'>686</a>
 <a name='L687'></a><a href='#L687'>687</a>
 <a name='L688'></a><a href='#L688'>688</a>
-<a name='L689'></a><a href='#L689'>689</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L689'></a><a href='#L689'>689</a>
+<a name='L690'></a><a href='#L690'>690</a>
+<a name='L691'></a><a href='#L691'>691</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1416,7 +1420,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1439,7 +1443,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const logger = require('./logger');
+&nbsp;
+/**
  * Extracts the title/name from a Notion title property
  * @param {Object} titleProperty - Notion title property
  * @returns {string} The extracted title text
@@ -1631,7 +1637,7 @@ function <span class="fstat-no" title="function not covered" >getProperty(</span
   }
 &nbsp;
   // If not found, log the issue (but don't throw an error to maintain resilience)
-<span class="cstat-no" title="statement not covered" >  console.warn(`Property "${propertyName}" not found in Notion object. Available properties: ${Object.keys(properties).join(', ')}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.warn(`Property "${propertyName}" not found in Notion object. Available properties: ${Object.keys(properties).join(', ')}`);</span>
 &nbsp;
   // Return null
 <span class="cstat-no" title="statement not covered" >  return null;</span>
@@ -1746,7 +1752,7 @@ async function <span class="fstat-no" title="function not covered" >mapCharacter
     };
 <span class="cstat-no" title="statement not covered" >    return mappedChar;</span>
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`Error mapping character with ID ${notionCharacter?.id || 'unknown'}:`, error);</span>
 &nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
@@ -1813,11 +1819,11 @@ async function <span class="fstat-no" title="function not covered" >mapTimelineE
       // narrativeThreads: extractMultiSelectByName(properties, 'Narrative Threads'), // Keep if it exists in Notion
     };
     // Debug logging removed for commented fields
-    // if (mappedEvent.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
-    // if (mappedEvent.themes &amp;&amp; mappedEvent.themes.length &gt; 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedEvent.themes.join(', ')} for event: ${mappedEvent.description}`);
+    // if (mappedEvent.actFocus) logger.debug(`[GRAPH DATA MAP] Mapped actFocus: ${mappedEvent.actFocus} for event: ${mappedEvent.description}`);
+    // if (mappedEvent.themes &amp;&amp; mappedEvent.themes.length &gt; 0) logger.debug(`[GRAPH DATA MAP] Mapped themes: ${mappedEvent.themes.join(', ')} for event: ${mappedEvent.description}`);
 <span class="cstat-no" title="statement not covered" >    return mappedEvent;</span>
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`Error mapping timeline event with ID ${notionEvent?.id || 'unknown'}:`, error);</span>
 &nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
@@ -1921,14 +1927,14 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
       // relatedTimelineEvents: computed after sync based on story reveals and timing
     };
     // Debug logging removed since fields are commented out
-    // if (mappedPuzzle.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
-    // if (mappedPuzzle.themes &amp;&amp; mappedPuzzle.themes.length &gt; 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
+    // if (mappedPuzzle.actFocus) logger.debug(`[GRAPH DATA MAP] Mapped actFocus: ${mappedPuzzle.actFocus} for puzzle: ${mappedPuzzle.puzzle}`);
+    // if (mappedPuzzle.themes &amp;&amp; mappedPuzzle.themes.length &gt; 0) logger.debug(`[GRAPH DATA MAP] Mapped themes: ${mappedPuzzle.themes.join(', ')} for puzzle: ${mappedPuzzle.puzzle}`);
 <span class="cstat-no" title="statement not covered" >    return mappedPuzzle;</span>
   } catch (error) {
     const puzzleName = <span class="cstat-no" title="statement not covered" >notionPuzzle?.properties?.Puzzle ? extractTitle(notionPuzzle.properties.Puzzle) : 'Unknown';</span>
-<span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Failed to map puzzle "${puzzleName}" (ID: ${notionPuzzle?.id || 'unknown'})`);</span>
-<span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Error type: ${error.name || 'Unknown'}`);</span>
-<span class="cstat-no" title="statement not covered" >    console.error(`[PUZZLE SYNC ERROR] Error message: ${error.message}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`[PUZZLE SYNC ERROR] Failed to map puzzle "${puzzleName}" (ID: ${notionPuzzle?.id || 'unknown'})`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`[PUZZLE SYNC ERROR] Error type: ${error.name || 'Unknown'}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`[PUZZLE SYNC ERROR] Error message: ${error.message}`);</span>
 &nbsp;
     // Log relation array sizes for debugging
 <span class="cstat-no" title="statement not covered" >    if (notionPuzzle?.properties) {</span>
@@ -1941,7 +1947,7 @@ async function <span class="fstat-no" title="function not covered" >mapPuzzleWit
         parentItems: extractRelationByName(properties, 'Parent item').length,
         subPuzzles: extractRelationByName(properties, 'Sub-Puzzles').length
       };
-<span class="cstat-no" title="statement not covered" >      console.error('[PUZZLE SYNC ERROR] Relation sizes:', relationSizes);</span>
+<span class="cstat-no" title="statement not covered" >      logger.error('[PUZZLE SYNC ERROR] Relation sizes:', relationSizes);</span>
     }
 &nbsp;
     // Return a minimal object to avoid breaking the client
@@ -2030,9 +2036,9 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
     };
 &nbsp;
     // Debug logging removed for commented fields
-    // if (mappedElement.actFocus) console.log(`[GRAPH DATA MAP] Mapped actFocus: ${mappedElement.actFocus} for element: ${mappedElement.name}`);
-    // if (mappedElement.themes &amp;&amp; mappedElement.themes.length &gt; 0) console.log(`[GRAPH DATA MAP] Mapped themes: ${mappedElement.themes.join(', ')} for element: ${mappedElement.name}`);
-    // if (mappedElement.memorySets &amp;&amp; mappedElement.memorySets.length &gt; 0) console.log(`[GRAPH DATA MAP] Mapped memorySets: ${mappedElement.memorySets.join(', ')} for element: ${mappedElement.name}`);
+    // if (mappedElement.actFocus) logger.debug(`[GRAPH DATA MAP] Mapped actFocus: ${mappedElement.actFocus} for element: ${mappedElement.name}`);
+    // if (mappedElement.themes &amp;&amp; mappedElement.themes.length &gt; 0) logger.debug(`[GRAPH DATA MAP] Mapped themes: ${mappedElement.themes.join(', ')} for element: ${mappedElement.name}`);
+    // if (mappedElement.memorySets &amp;&amp; mappedElement.memorySets.length &gt; 0) logger.debug(`[GRAPH DATA MAP] Mapped memorySets: ${mappedElement.memorySets.join(', ')} for element: ${mappedElement.name}`);
 &nbsp;
     // Parse SF_RFID from Description/Text for memory-type Elements
     const descriptionText = <span class="cstat-no" title="statement not covered" >mappedElement.description;</span> // Already extracted
@@ -2053,21 +2059,21 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
         const rfidMatch = <span class="cstat-no" title="statement not covered" >descriptionText.match(rfidRegex);</span>
 <span class="cstat-no" title="statement not covered" >        if (rfidMatch &amp;&amp; rfidMatch[1]) {</span>
 <span class="cstat-no" title="statement not covered" >          mappedElement.properties.parsed_sf_rfid = rfidMatch[1];</span>
-<span class="cstat-no" title="statement not covered" >          console.log('[MEMORY PARSE] Found RFID:', mappedElement.properties.parsed_sf_rfid, 'for Element:', mappedElement.name);</span>
+<span class="cstat-no" title="statement not covered" >          logger.debug('[MEMORY PARSE] Found RFID:', mappedElement.properties.parsed_sf_rfid, 'for Element:', mappedElement.name);</span>
         }
 &nbsp;
         const valueRatingRegex = <span class="cstat-no" title="statement not covered" >/^SF_ValueRating:\s*\[([1-5])\]/m;</span>
         const valueRatingMatch = <span class="cstat-no" title="statement not covered" >descriptionText.match(valueRatingRegex);</span>
 <span class="cstat-no" title="statement not covered" >        if (valueRatingMatch &amp;&amp; valueRatingMatch[1]) {</span>
 <span class="cstat-no" title="statement not covered" >          mappedElement.properties.sf_value_rating = parseInt(valueRatingMatch[1], 10);</span>
-<span class="cstat-no" title="statement not covered" >          console.log('[MEMORY PARSE] Found SF_ValueRating:', mappedElement.properties.sf_value_rating, 'for Element:', mappedElement.name);</span>
+<span class="cstat-no" title="statement not covered" >          logger.debug('[MEMORY PARSE] Found SF_ValueRating:', mappedElement.properties.sf_value_rating, 'for Element:', mappedElement.name);</span>
         }
 &nbsp;
         const memoryTypeRegex = <span class="cstat-no" title="statement not covered" >/^SF_MemoryType:\s*\[([^\]]+)\]/im;</span>
         const memoryTypeMatch = <span class="cstat-no" title="statement not covered" >descriptionText.match(memoryTypeRegex);</span>
 <span class="cstat-no" title="statement not covered" >        if (memoryTypeMatch &amp;&amp; memoryTypeMatch[1]) {</span>
 <span class="cstat-no" title="statement not covered" >          mappedElement.properties.sf_memory_type = memoryTypeMatch[1];</span>
-<span class="cstat-no" title="statement not covered" >          console.log('[MEMORY PARSE] Found SF_MemoryType:', mappedElement.properties.sf_memory_type, 'for Element:', mappedElement.name);</span>
+<span class="cstat-no" title="statement not covered" >          logger.debug('[MEMORY PARSE] Found SF_MemoryType:', mappedElement.properties.sf_memory_type, 'for Element:', mappedElement.name);</span>
         }
 &nbsp;
         // NEW: Extract SF_Group with multiplier parsing
@@ -2082,10 +2088,10 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
           const multiplierMatch = <span class="cstat-no" title="statement not covered" >groupValue.match(multiplierRegex);</span>
 <span class="cstat-no" title="statement not covered" >          if (multiplierMatch &amp;&amp; multiplierMatch[1]) {</span>
 <span class="cstat-no" title="statement not covered" >            mappedElement.properties.sf_group_multiplier = parseFloat(multiplierMatch[1]);</span>
-<span class="cstat-no" title="statement not covered" >            console.log('[MEMORY PARSE] Found SF_Group with multiplier:', groupValue, 'x' + mappedElement.properties.sf_group_multiplier, 'for Element:', mappedElement.name);</span>
+<span class="cstat-no" title="statement not covered" >            logger.debug('[MEMORY PARSE] Found SF_Group with multiplier:', groupValue, 'x' + mappedElement.properties.sf_group_multiplier, 'for Element:', mappedElement.name);</span>
           } else {
 <span class="cstat-no" title="statement not covered" >            mappedElement.properties.sf_group_multiplier = 1.0; </span>// Default multiplier
-<span class="cstat-no" title="statement not covered" >            console.log('[MEMORY PARSE] Found SF_Group (no multiplier):', groupValue, 'for Element:', mappedElement.name);</span>
+<span class="cstat-no" title="statement not covered" >            logger.debug('[MEMORY PARSE] Found SF_Group (no multiplier):', groupValue, 'for Element:', mappedElement.name);</span>
           }
         }
       }
@@ -2093,7 +2099,7 @@ async function <span class="fstat-no" title="function not covered" >mapElementWi
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    return mappedElement;</span>
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error(`Error mapping element with ID ${notionElement?.id || 'unknown'}:`, error);</span>
 &nbsp;
     // Return a minimal object to avoid breaking the client
 <span class="cstat-no" title="statement not covered" >    return {</span>
@@ -2134,7 +2140,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T23:32:12.954Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../prettify.js"></script>
         <script>

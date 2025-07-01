@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.97% </span>
+                <span class="strong">4.41% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/67</span>
+                <span class='fraction'>3/68</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.97% </span>
+                <span class="strong">4.41% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/67</span>
+                <span class='fraction'>3/68</span>
             </div>
         
             
@@ -348,20 +348,22 @@
 <a name='L283'></a><a href='#L283'>283</a>
 <a name='L284'></a><a href='#L284'>284</a>
 <a name='L285'></a><a href='#L285'>285</a>
-<a name='L286'></a><a href='#L286'>286</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -635,145 +637,146 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">const DerivedFieldComputer = require('./DerivedFieldComputer');
 &nbsp;
+const logger = require('../../utils/logger');
 /**
  * Computes total memory values for characters based on owned elements
- * 
+ *
  * This service calculates:
  * 1. Total memory value from owned elements
  * 2. Memory value distribution across characters
  * 3. Path affinity based on memory token types
  */
 class MemoryValueComputer extends DerivedFieldComputer {
-    constructor(db) {
-        super(db);
-        this.name = 'MemoryValueComputer';
-    }
+<span class="fstat-no" title="function not covered" >  co</span>nstructor(db) {
+<span class="cstat-no" title="statement not covered" >    super(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.name = 'MemoryValueComputer';</span>
+  }
 &nbsp;
-    // Simple logging methods
-<span class="fstat-no" title="function not covered" >    de</span>bug(message) {
-<span class="cstat-no" title="statement not covered" >        if (process.env.NODE_ENV !== 'test') {</span>
-<span class="cstat-no" title="statement not covered" >            console.log(`[DEBUG] ${this.name}: ${message}`);</span>
-        }
+  // Simple logging methods
+<span class="fstat-no" title="function not covered" >  de</span>bug(message) {
+<span class="cstat-no" title="statement not covered" >    if (process.env.NODE_ENV !== 'test') {</span>
+<span class="cstat-no" title="statement not covered" >      logger.debug(`[DEBUG] ${this.name}: ${message}`);</span>
     }
+  }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    in</span>fo(message) {
-<span class="cstat-no" title="statement not covered" >        console.log(`[INFO] ${this.name}: ${message}`);</span>
-    }
+<span class="fstat-no" title="function not covered" >  in</span>fo(message) {
+<span class="cstat-no" title="statement not covered" >    logger.debug(`[INFO] ${this.name}: ${message}`);</span>
+  }
 &nbsp;
-<span class="fstat-no" title="function not covered" >    er</span>ror(message, error) {
-<span class="cstat-no" title="statement not covered" >        console.error(`[ERROR] ${this.name}: ${message}`, error);</span>
-    }
+<span class="fstat-no" title="function not covered" >  er</span>ror(message, error) {
+<span class="cstat-no" title="statement not covered" >    logger.error(`[ERROR] ${this.name}: ${message}`, error);</span>
+  }
 &nbsp;
-    /**
+  /**
      * Compute total memory values for all characters
      * @returns {number} - Number of characters updated
      */
-<span class="fstat-no" title="function not covered" >    as</span>ync computeAllCharacterMemoryValues() {
-        const startTime = <span class="cstat-no" title="statement not covered" >Date.now();</span>
-<span class="cstat-no" title="statement not covered" >        this.debug('Computing total memory values for all characters...');</span>
+<span class="fstat-no" title="function not covered" >  as</span>ync computeAllCharacterMemoryValues() {
+    const startTime = <span class="cstat-no" title="statement not covered" >Date.now();</span>
+<span class="cstat-no" title="statement not covered" >    this.debug('Computing total memory values for all characters...');</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        try {</span>
-            // Get all characters
-            const characters = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      // Get all characters
+      const characters = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
                 SELECT id, name 
                 FROM characters 
                 ORDER BY name
             `).all();
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            this.debug(`Processing ${characters.length} characters`);</span>
+<span class="cstat-no" title="statement not covered" >      this.debug(`Processing ${characters.length} characters`);</span>
 &nbsp;
-            let updatedCount = <span class="cstat-no" title="statement not covered" >0;</span>
+      let updatedCount = <span class="cstat-no" title="statement not covered" >0;</span>
 &nbsp;
-            // Prepare statements
-            const getMemoryValueStmt = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+      // Prepare statements
+      const getMemoryValueStmt = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
                 SELECT COALESCE(SUM(e.calculated_memory_value), 0) as total_memory_value
                 FROM elements e
                 JOIN character_owned_elements coe ON e.id = coe.element_id
                 WHERE coe.character_id = ?
             `);
 &nbsp;
-            const updateCharacterStmt = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+      const updateCharacterStmt = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
                 UPDATE characters 
                 SET total_memory_value = ? 
                 WHERE id = ?
             `);
 &nbsp;
-            // Process each character
-<span class="cstat-no" title="statement not covered" >            for (const character of characters) {</span>
-                const result = <span class="cstat-no" title="statement not covered" >getMemoryValueStmt.get(character.id);</span>
-                const totalMemoryValue = <span class="cstat-no" title="statement not covered" >result.total_memory_value || 0;</span>
+      // Process each character
+<span class="cstat-no" title="statement not covered" >      for (const character of characters) {</span>
+        const result = <span class="cstat-no" title="statement not covered" >getMemoryValueStmt.get(character.id);</span>
+        const totalMemoryValue = <span class="cstat-no" title="statement not covered" >result.total_memory_value || 0;</span>
 &nbsp;
-                // Update character
-<span class="cstat-no" title="statement not covered" >                updateCharacterStmt.run(totalMemoryValue, character.id);</span>
-<span class="cstat-no" title="statement not covered" >                updatedCount++;</span>
+        // Update character
+<span class="cstat-no" title="statement not covered" >        updateCharacterStmt.run(totalMemoryValue, character.id);</span>
+<span class="cstat-no" title="statement not covered" >        updatedCount++;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >                if (totalMemoryValue &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >                    this.debug(`Character "${character.name}": total memory value = $${totalMemoryValue}`);</span>
-                }
-            }
-&nbsp;
-            const duration = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
-            
-<span class="cstat-no" title="statement not covered" >            this.info(`Memory value computation completed in ${duration}ms`);</span>
-<span class="cstat-no" title="statement not covered" >            this.info(`Updated ${updatedCount} characters`);</span>
-&nbsp;
-<span class="cstat-no" title="statement not covered" >            return updatedCount;</span>
-&nbsp;
-        } catch (error) {
-<span class="cstat-no" title="statement not covered" >            this.error('Error during memory value computation:', error);</span>
-<span class="cstat-no" title="statement not covered" >            throw error;</span>
+<span class="cstat-no" title="statement not covered" >        if (totalMemoryValue &gt; 0) {</span>
+<span class="cstat-no" title="statement not covered" >          this.debug(`Character "${character.name}": total memory value = $${totalMemoryValue}`);</span>
         }
-    }
+      }
 &nbsp;
-    /**
+      const duration = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      this.info(`Memory value computation completed in ${duration}ms`);</span>
+<span class="cstat-no" title="statement not covered" >      this.info(`Updated ${updatedCount} characters`);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >      return updatedCount;</span>
+&nbsp;
+    } catch (error) {
+<span class="cstat-no" title="statement not covered" >      this.error('Error during memory value computation:', error);</span>
+<span class="cstat-no" title="statement not covered" >      throw error;</span>
+    }
+  }
+&nbsp;
+  /**
      * Compute memory value for a single character
      * @param {string} characterId - Character ID
      * @returns {number} - Total memory value
      */
-<span class="fstat-no" title="function not covered" >    as</span>ync computeCharacterMemoryValue(characterId) {
-<span class="cstat-no" title="statement not covered" >        try {</span>
-            const character = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+<span class="fstat-no" title="function not covered" >  as</span>ync computeCharacterMemoryValue(characterId) {
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      const character = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
                 SELECT id, name 
                 FROM characters 
                 WHERE id = ?
             `).get(characterId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            if (!character) {</span>
-<span class="cstat-no" title="statement not covered" >                throw new Error(`Character not found: ${characterId}`);</span>
-            }
+<span class="cstat-no" title="statement not covered" >      if (!character) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error(`Character not found: ${characterId}`);</span>
+      }
 &nbsp;
-            // Get total memory value from owned elements
-            const result = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+      // Get total memory value from owned elements
+      const result = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
                 SELECT COALESCE(SUM(e.calculated_memory_value), 0) as total_memory_value
                 FROM elements e
                 JOIN character_owned_elements coe ON e.id = coe.element_id
                 WHERE coe.character_id = ?
             `).get(characterId);
 &nbsp;
-            const totalMemoryValue = <span class="cstat-no" title="statement not covered" >result.total_memory_value || 0;</span>
+      const totalMemoryValue = <span class="cstat-no" title="statement not covered" >result.total_memory_value || 0;</span>
 &nbsp;
-            // Update character
-<span class="cstat-no" title="statement not covered" >            this.db.prepare(`</span>
+      // Update character
+<span class="cstat-no" title="statement not covered" >      this.db.prepare(`</span>
                 UPDATE characters 
                 SET total_memory_value = ? 
                 WHERE id = ?
             `).run(totalMemoryValue, characterId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            this.debug(`Character "${character.name}": computed total memory value = $${totalMemoryValue}`);</span>
-<span class="cstat-no" title="statement not covered" >            return totalMemoryValue;</span>
+<span class="cstat-no" title="statement not covered" >      this.debug(`Character "${character.name}": computed total memory value = $${totalMemoryValue}`);</span>
+<span class="cstat-no" title="statement not covered" >      return totalMemoryValue;</span>
 &nbsp;
-        } catch (error) {
-<span class="cstat-no" title="statement not covered" >            this.error(`Error computing memory value for character ${characterId}:`, error);</span>
-<span class="cstat-no" title="statement not covered" >            throw error;</span>
-        }
+    } catch (error) {
+<span class="cstat-no" title="statement not covered" >      this.error(`Error computing memory value for character ${characterId}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >      throw error;</span>
     }
+  }
 &nbsp;
-    /**
+  /**
      * Get memory value distribution across characters
      * @returns {Array} - Characters with their memory values
      */
-<span class="fstat-no" title="function not covered" >    ge</span>tMemoryValueDistribution() {
-<span class="cstat-no" title="statement not covered" >        return this.db.prepare(`</span>
+<span class="fstat-no" title="function not covered" >  ge</span>tMemoryValueDistribution() {
+<span class="cstat-no" title="statement not covered" >    return this.db.prepare(`</span>
             SELECT 
                 c.id,
                 c.name,
@@ -786,14 +789,14 @@ class MemoryValueComputer extends DerivedFieldComputer {
             GROUP BY c.id, c.name, c.total_memory_value
             ORDER BY c.total_memory_value DESC, c.name
         `).all();
-    }
+  }
 &nbsp;
-    /**
+  /**
      * Get memory value statistics across all characters
      * @returns {Object} - Statistics about memory value distribution
      */
-<span class="fstat-no" title="function not covered" >    ge</span>tMemoryValueStats() {
-        const stats = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+<span class="fstat-no" title="function not covered" >  ge</span>tMemoryValueStats() {
+    const stats = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
             SELECT 
                 COUNT(*) as total_characters,
                 COUNT(CASE WHEN total_memory_value &gt; 0 THEN 1 END) as characters_with_memory,
@@ -804,24 +807,24 @@ class MemoryValueComputer extends DerivedFieldComputer {
             FROM characters
         `).get();
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        return {</span>
-            totalCharacters: stats.total_characters,
-            charactersWithMemory: stats.characters_with_memory,
-            charactersWithoutMemory: stats.total_characters - stats.characters_with_memory,
-            totalMemoryValue: stats.total_memory_value || 0,
-            averageMemoryValue: Math.round((stats.avg_memory_value || 0) * 100) / 100,
-            maxMemoryValue: stats.max_memory_value || 0,
-            minMemoryValue: stats.min_memory_value || 0
-        };
-    }
+<span class="cstat-no" title="statement not covered" >    return {</span>
+      totalCharacters: stats.total_characters,
+      charactersWithMemory: stats.characters_with_memory,
+      charactersWithoutMemory: stats.total_characters - stats.characters_with_memory,
+      totalMemoryValue: stats.total_memory_value || 0,
+      averageMemoryValue: Math.round((stats.avg_memory_value || 0) * 100) / 100,
+      maxMemoryValue: stats.max_memory_value || 0,
+      minMemoryValue: stats.min_memory_value || 0
+    };
+  }
 &nbsp;
-    /**
+  /**
      * Get elements contributing to a character's memory value
      * @param {string} characterId - Character ID
      * @returns {Array} - Elements with memory values
      */
-<span class="fstat-no" title="function not covered" >    ge</span>tCharacterMemoryElements(characterId) {
-<span class="cstat-no" title="statement not covered" >        return this.db.prepare(`</span>
+<span class="fstat-no" title="function not covered" >  ge</span>tCharacterMemoryElements(characterId) {
+<span class="cstat-no" title="statement not covered" >    return this.db.prepare(`</span>
             SELECT 
                 e.id,
                 e.name,
@@ -837,14 +840,14 @@ class MemoryValueComputer extends DerivedFieldComputer {
             WHERE coe.character_id = ? AND e.calculated_memory_value &gt; 0
             ORDER BY e.calculated_memory_value DESC, e.name
         `).all(characterId);
-    }
+  }
 &nbsp;
-    /**
+  /**
      * Get memory tokens by group for potential completion bonus calculations
      * @returns {Object} - Memory tokens organized by group
      */
-<span class="fstat-no" title="function not covered" >    ge</span>tMemoryTokensByGroup() {
-        const tokens = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
+<span class="fstat-no" title="function not covered" >  ge</span>tMemoryTokensByGroup() {
+    const tokens = <span class="cstat-no" title="statement not covered" >this.db.prepare(`</span>
             SELECT 
                 e.id,
                 e.name,
@@ -861,61 +864,61 @@ class MemoryValueComputer extends DerivedFieldComputer {
             ORDER BY e.memory_group, e.name
         `).all();
 &nbsp;
-        // Group by memory_group
-        const grouped = <span class="cstat-no" title="statement not covered" >{};</span>
-<span class="cstat-no" title="statement not covered" >        tokens.forEach(<span class="fstat-no" title="function not covered" >to</span>ken =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >            if (!grouped[token.memory_group]) {</span>
-<span class="cstat-no" title="statement not covered" >                grouped[token.memory_group] = {</span>
-                    groupName: token.memory_group,
-                    groupMultiplier: token.group_multiplier,
-                    tokens: []
-                };
-            }
-<span class="cstat-no" title="statement not covered" >            grouped[token.memory_group].tokens.push(token);</span>
-        });
+    // Group by memory_group
+    const grouped = <span class="cstat-no" title="statement not covered" >{};</span>
+<span class="cstat-no" title="statement not covered" >    tokens.forEach(<span class="fstat-no" title="function not covered" >to</span>ken =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >      if (!grouped[token.memory_group]) {</span>
+<span class="cstat-no" title="statement not covered" >        grouped[token.memory_group] = {</span>
+          groupName: token.memory_group,
+          groupMultiplier: token.group_multiplier,
+          tokens: []
+        };
+      }
+<span class="cstat-no" title="statement not covered" >      grouped[token.memory_group].tokens.push(token);</span>
+    });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        return grouped;</span>
-    }
+<span class="cstat-no" title="statement not covered" >    return grouped;</span>
+  }
 &nbsp;
-    /**
+  /**
      * Run the complete memory value computation pipeline
      * @returns {Object} - Computation results
      */
-<span class="fstat-no" title="function not covered" >    as</span>ync runComputePipeline() {
-        const startTime = <span class="cstat-no" title="statement not covered" >Date.now();</span>
-<span class="cstat-no" title="statement not covered" >        this.info('Starting memory value computation pipeline...');</span>
+<span class="fstat-no" title="function not covered" >  as</span>ync runComputePipeline() {
+    const startTime = <span class="cstat-no" title="statement not covered" >Date.now();</span>
+<span class="cstat-no" title="statement not covered" >    this.info('Starting memory value computation pipeline...');</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        try {</span>
-            // Note: Memory value extraction should be run first by MemoryValueExtractor
-            const updatedCharacters = <span class="cstat-no" title="statement not covered" >await this.computeAllCharacterMemoryValues();</span>
-            
-            const stats = <span class="cstat-no" title="statement not covered" >this.getMemoryValueStats();</span>
-            const distribution = <span class="cstat-no" title="statement not covered" >this.getMemoryValueDistribution();</span>
-            const memoryGroups = <span class="cstat-no" title="statement not covered" >this.getMemoryTokensByGroup();</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      // Note: Memory value extraction should be run first by MemoryValueExtractor
+      const updatedCharacters = <span class="cstat-no" title="statement not covered" >await this.computeAllCharacterMemoryValues();</span>
 &nbsp;
-            const duration = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
+      const stats = <span class="cstat-no" title="statement not covered" >this.getMemoryValueStats();</span>
+      const distribution = <span class="cstat-no" title="statement not covered" >this.getMemoryValueDistribution();</span>
+      const memoryGroups = <span class="cstat-no" title="statement not covered" >this.getMemoryTokensByGroup();</span>
 &nbsp;
-            const results = <span class="cstat-no" title="statement not covered" >{</span>
-                success: true,
-                duration,
-                updatedCharacters,
-                stats,
-                topCharacters: distribution.slice(0, 5), // Top 5 by memory value
-                memoryGroups: Object.keys(memoryGroups)
-            };
+      const duration = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            this.info(`Memory value computation pipeline completed in ${duration}ms`);</span>
-<span class="cstat-no" title="statement not covered" >            this.info(`Updated ${updatedCharacters} characters`);</span>
-<span class="cstat-no" title="statement not covered" >            this.info(`Total memory value across all characters: $${stats.totalMemoryValue}`);</span>
-<span class="cstat-no" title="statement not covered" >            this.info(`Memory groups found: ${Object.keys(memoryGroups).join(', ') || 'none'}`);</span>
+      const results = <span class="cstat-no" title="statement not covered" >{</span>
+        success: true,
+        duration,
+        updatedCharacters,
+        stats,
+        topCharacters: distribution.slice(0, 5), // Top 5 by memory value
+        memoryGroups: Object.keys(memoryGroups)
+      };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >            return results;</span>
+<span class="cstat-no" title="statement not covered" >      this.info(`Memory value computation pipeline completed in ${duration}ms`);</span>
+<span class="cstat-no" title="statement not covered" >      this.info(`Updated ${updatedCharacters} characters`);</span>
+<span class="cstat-no" title="statement not covered" >      this.info(`Total memory value across all characters: $${stats.totalMemoryValue}`);</span>
+<span class="cstat-no" title="statement not covered" >      this.info(`Memory groups found: ${Object.keys(memoryGroups).join(', ') || 'none'}`);</span>
 &nbsp;
-        } catch (error) {
-<span class="cstat-no" title="statement not covered" >            this.error('Error in memory value computation pipeline:', error);</span>
-<span class="cstat-no" title="statement not covered" >            throw error;</span>
-        }
+<span class="cstat-no" title="statement not covered" >      return results;</span>
+&nbsp;
+    } catch (error) {
+<span class="cstat-no" title="statement not covered" >      this.error('Error in memory value computation pipeline:', error);</span>
+<span class="cstat-no" title="statement not covered" >      throw error;</span>
     }
+  }
 }
 &nbsp;
 module.exports = MemoryValueComputer;</pre></td></tr></table></pre>
@@ -925,7 +928,7 @@ module.exports = MemoryValueComputer;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T20:43:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

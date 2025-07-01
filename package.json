@@ -13,7 +13,10 @@
     "verify:docs": "cd storyforge/backend && npm run verify-docs",
     "check-deps": "cd storyforge/backend && npm run check-deps",
     "verify:console": "echo 'Checking for console statements...' && result=$(grep -r 'console\\.' storyforge/frontend/src --include='*.js' --include='*.jsx' | grep -v test | grep -v logger.js | grep -v setupTests.js | wc -l) && if [ \"$result\" -eq 0 ]; then echo '✅ No console statements found'; else echo \"❌ Found $result console statements\" && exit 1; fi",
-    "verify:boundaries": "echo 'Checking error boundary implementations...' && count=$(grep -r 'ErrorBoundary' storyforge/frontend/src --include='*.jsx' --include='*.js' | grep -v 'ErrorBoundary.jsx' | wc -l) && echo \"✅ Found $count error boundary implementations (target: 7+)\" && if [ \"$count\" -lt 7 ]; then echo '❌ Below target of 7' && exit 1; fi"
+    "verify:boundaries": "echo 'Checking error boundary implementations...' && count=$(grep -r 'ErrorBoundary' storyforge/frontend/src --include='*.jsx' --include='*.js' | grep -v 'ErrorBoundary.jsx' | wc -l) && echo \"✅ Found $count error boundary implementations (target: 7+)\" && if [ \"$count\" -lt 7 ]; then echo '❌ Below target of 7' && exit 1; fi",
+    "dev": "concurrently \"cd storyforge/backend && npm run dev\" \"cd storyforge/frontend && npm run dev\" --names \"backend,frontend\" --prefix-colors \"bgBlue.bold,bgGreen.bold\"",
+    "test:all": "concurrently \"cd storyforge/backend && npm test\" \"cd storyforge/frontend && npm test\" --names \"backend,frontend\" --prefix-colors \"bgBlue.bold,bgGreen.bold\"",
+    "test:watch": "concurrently \"cd storyforge/backend && npm test -- --watch\" \"cd storyforge/frontend && npm test -- --watch\" --names \"backend,frontend\" --prefix-colors \"bgBlue.bold,bgGreen.bold\""
   },
   "repository": {
     "type": "git",
@@ -29,5 +32,8 @@
   "dependencies": {
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }

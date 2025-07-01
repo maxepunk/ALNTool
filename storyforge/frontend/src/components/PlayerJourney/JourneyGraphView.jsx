@@ -20,6 +20,7 @@ import FlashOnIcon from '@mui/icons-material/FlashOn';
 import InfoIcon from '@mui/icons-material/Info';
 
 import useJourneyStore from '../../stores/journeyStore';
+import { useJourney } from '../../hooks/useJourney';
 import useAutoLayout from '../../hooks/useAutoLayout';
 import ActivityNode from './customNodes/ActivityNode';
 import DiscoveryNode from './customNodes/DiscoveryNode';
@@ -131,7 +132,7 @@ const ExperienceFlowGraph = ({ initialNodes, initialEdges, characterData, analys
 
 
 const ExperienceFlowAnalyzer = ({ characterId }) => {
-  const journeyData = useJourneyStore(state => state.journeyData.get(characterId));
+  const { data: journeyData, isLoading, error } = useJourney(characterId);
   const [analysisMode, setAnalysisMode] = useState(false);
   const [experienceAnalysis, setExperienceAnalysis] = useState(null);
   const theme = useTheme();
@@ -159,7 +160,7 @@ const ExperienceFlowAnalyzer = ({ characterId }) => {
     setExperienceAnalysis(analysis);
   };
 
-  if (!journeyGraph || !journeyGraph.nodes || !journeyGraph.edges) {
+  if (isLoading) {
     return (
       <ErrorBoundary level="component">
         <Box sx={{ 
@@ -170,6 +171,38 @@ const ExperienceFlowAnalyzer = ({ characterId }) => {
           color: 'text.secondary'
         }}>
           <Typography>Loading experience flow...</Typography>
+        </Box>
+      </ErrorBoundary>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorBoundary level="component">
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100%',
+          color: 'error.main'
+        }}>
+          <Typography>Error loading journey: {error.message}</Typography>
+        </Box>
+      </ErrorBoundary>
+    );
+  }
+
+  if (!journeyGraph || !journeyGraph.nodes || !journeyGraph.edges) {
+    return (
+      <ErrorBoundary level="component">
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100%',
+          color: 'text.secondary'
+        }}>
+          <Typography>No journey data available</Typography>
         </Box>
       </ErrorBoundary>
     );

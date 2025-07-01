@@ -12,6 +12,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import '@testing-library/jest-dom';
 import JourneyGraphView from './JourneyGraphView';
 import useJourneyStore from '../../stores/journeyStore';
+import { useJourney } from '../../hooks/useJourney';
 
 // Mock ReactFlow to avoid complex canvas rendering in tests
 jest.mock('@xyflow/react', () => ({
@@ -32,7 +33,10 @@ jest.mock('../../hooks/useAutoLayout', () => ({
   default: (nodes, edges) => nodes, // useAutoLayout returns layouted nodes array
 }));
 
-// Mock journey store
+// Mock useJourney hook (data fetching)
+jest.mock('../../hooks/useJourney');
+
+// Mock journey store (UI state only)
 jest.mock('../../stores/journeyStore');
 
 const theme = createTheme();
@@ -82,25 +86,32 @@ const createMockEdges = (nodeCount) => {
 };
 
 const renderComponent = (props = {}) => {
-  const { characterId = 'char1', journeyData } = props;
+  const { characterId = 'char1', customNodes, customEdges } = props;
 
-  // Set up the mock journey data in the store
+  // Mock journey data from useJourney hook (current architecture)
   const mockJourneyData = {
     graph: {
-      nodes: journeyData?.nodes || createMockNodes(10),
-      edges: journeyData?.edges || createMockEdges(10),
+      nodes: customNodes || createMockNodes(10),
+      edges: customEdges || createMockEdges(10),
     },
     character_info: mockCharacterData,
   };
 
-  // Configure the store mock to return our test data
+  // Mock useJourney hook to return test data
+  useJourney.mockReturnValue({
+    data: mockJourneyData,
+    isLoading: false,
+    error: null,
+    refetch: jest.fn()
+  });
+
+  // Mock Zustand store for UI state only (current architecture)
   useJourneyStore.mockImplementation((selector) => {
     const state = {
-      journeyData: new Map([[characterId, mockJourneyData]]),
+      selectedNode: null,
+      setSelectedNode: jest.fn(),
       viewMode: 'design',
       setViewMode: jest.fn(),
-      selectedNodeId: null,
-      setSelectedNodeId: jest.fn(),
     };
     return selector ? selector(state) : state;
   });
@@ -144,14 +155,15 @@ describe('JourneyGraphView Performance Tests', () => {
     });
 
     it('should handle 100+ nodes without performance degradation', async () => {
-      const largeJourneyData = {
-        nodes: createMockNodes(100),
-        edges: createMockEdges(100),
-      };
+      const largeNodes = createMockNodes(100);
+      const largeEdges = createMockEdges(100);
       
       const startTime = performance.now();
       
-      renderComponent({ journeyData: largeJourneyData });
+      renderComponent({ 
+        customNodes: largeNodes,
+        customEdges: largeEdges 
+      });
       
       await waitFor(() => {
         expect(screen.getByTestId('react-flow')).toBeInTheDocument();
@@ -301,21 +313,28 @@ describe('JourneyGraphView Performance Tests', () => {
       // Trigger multiple rapid updates by changing journey data
       for (let i = 0; i < 5; i++) {
         const newJourneyData = {
-          nodes: createMockNodes(10 + i),
-          edges: createMockEdges(10 + i),
+          graph: {
+            nodes: createMockNodes(10 + i),
+            edges: createMockEdges(10 + i),
+          },
+          character_info: mockCharacterData,
         };
         
-        // Update the mock to return new data
+        // Update useJourney hook mock to return new data (current architecture)
+        useJourney.mockReturnValue({
+          data: newJourneyData,
+          isLoading: false,
+          error: null,
+          refetch: jest.fn()
+        });
+        
+        // Mock UI state only (current architecture)
         useJourneyStore.mockImplementation((selector) => {
           const state = {
-            journeyData: new Map([['char1', {
-              graph: newJourneyData,
-              character_info: mockCharacterData,
-            }]]),
+            selectedNode: null,
+            setSelectedNode: jest.fn(),
             viewMode: 'analysis',
             setViewMode: jest.fn(),
-            selectedNodeId: null,
-            setSelectedNodeId: jest.fn(),
           };
           return selector ? selector(state) : state;
         });

@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">2.98% </span>
+                <span class="strong">2.96% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/134</span>
+                <span class='fraction'>4/135</span>
             </div>
         
             
@@ -433,7 +433,9 @@
 <a name='L368'></a><a href='#L368'>368</a>
 <a name='L369'></a><a href='#L369'>369</a>
 <a name='L370'></a><a href='#L370'>370</a>
-<a name='L371'></a><a href='#L371'>371</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L371'></a><a href='#L371'>371</a>
+<a name='L372'></a><a href='#L372'>372</a>
+<a name='L373'></a><a href='#L373'>373</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -447,9 +449,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -535,6 +537,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -811,7 +815,7 @@
  * 1. Validating relationships between entities
  * 2. Computing character links based on shared experiences
  * 3. Ensuring referential integrity
- * 
+ *
  * The syncer operates after all entity syncers have completed their work,
  * ensuring that all referenced entities exist before creating relationships.
  */
@@ -845,11 +849,11 @@ class RelationshipSyncer extends BaseSyncer {
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync validateRelationships(relationships) {
     const errors = <span class="cstat-no" title="statement not covered" >[];</span>
-    
+&nbsp;
     // Check character existence
 <span class="cstat-no" title="statement not covered" >    if (relationships.characterIds) {</span>
       const missingChars = <span class="cstat-no" title="statement not covered" >await this._findMissingEntities(</span>
-        'characters', 
+        'characters',
         relationships.characterIds
       );
 <span class="cstat-no" title="statement not covered" >      if (missingChars.length &gt; 0) {</span>
@@ -860,7 +864,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check element existence
 <span class="cstat-no" title="statement not covered" >    if (relationships.elementIds) {</span>
       const missingElems = <span class="cstat-no" title="statement not covered" >await this._findMissingEntities(</span>
-        'elements', 
+        'elements',
         relationships.elementIds
       );
 <span class="cstat-no" title="statement not covered" >      if (missingElems.length &gt; 0) {</span>
@@ -871,7 +875,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check puzzle existence
 <span class="cstat-no" title="statement not covered" >    if (relationships.puzzleIds) {</span>
       const missingPuzzles = <span class="cstat-no" title="statement not covered" >await this._findMissingEntities(</span>
-        'puzzles', 
+        'puzzles',
         relationships.puzzleIds
       );
 <span class="cstat-no" title="statement not covered" >      if (missingPuzzles.length &gt; 0) {</span>
@@ -882,7 +886,7 @@ class RelationshipSyncer extends BaseSyncer {
     // Check timeline event existence
 <span class="cstat-no" title="statement not covered" >    if (relationships.eventIds) {</span>
       const missingEvents = <span class="cstat-no" title="statement not covered" >await this._findMissingEntities(</span>
-        'timeline_events', 
+        'timeline_events',
         relationships.eventIds
       );
 <span class="cstat-no" title="statement not covered" >      if (missingEvents.length &gt; 0) {</span>
@@ -904,13 +908,15 @@ class RelationshipSyncer extends BaseSyncer {
    * @returns {Promise&lt;string[]&gt;} Array of missing IDs
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync _findMissingEntities(table, ids) {
-<span class="cstat-no" title="statement not covered" >    if (!ids || ids.length === 0) <span class="cstat-no" title="statement not covered" >return [];</span></span>
-    
+<span class="cstat-no" title="statement not covered" >    if (!ids || ids.length === 0) {</span>
+<span class="cstat-no" title="statement not covered" >      return [];</span>
+    }
+&nbsp;
     const placeholders = <span class="cstat-no" title="statement not covered" >ids.map(<span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >'?')</span>.join(',');</span>
     const existing = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
       `SELECT id FROM ${table} WHERE id IN (${placeholders})`
     ).all(...ids);
-    
+&nbsp;
     const existingIds = <span class="cstat-no" title="statement not covered" >new Set(existing.map(<span class="fstat-no" title="function not covered" >e </span>=&gt; <span class="cstat-no" title="statement not covered" >e.id)</span>);</span>
 <span class="cstat-no" title="statement not covered" >    return ids.filter(<span class="fstat-no" title="function not covered" >id</span> =&gt; <span class="cstat-no" title="statement not covered" >!existingIds.has(id))</span>;</span>
   }
@@ -927,7 +933,7 @@ class RelationshipSyncer extends BaseSyncer {
 <span class="cstat-no" title="statement not covered" >    try {</span>
       // Get all characters from Notion to fetch their relationships
       const characters = <span class="cstat-no" title="statement not covered" >await this.notionService.getCharacters();</span>
-      
+&nbsp;
       // Prepare insert statements
       const insertEventRel = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
         'INSERT OR IGNORE INTO character_timeline_events (character_id, timeline_event_id) VALUES (?, ?)'
@@ -1048,20 +1054,20 @@ class RelationshipSyncer extends BaseSyncer {
 &nbsp;
       // Get all characters
       const characters = <span class="cstat-no" title="statement not covered" >this.db.prepare('SELECT id FROM characters').all();</span>
-      
+&nbsp;
       // For each character pair, compute link strength
 <span class="cstat-no" title="statement not covered" >      for (let i = <span class="cstat-no" title="statement not covered" >0;</span> i &lt; characters.length; i++) {</span>
 <span class="cstat-no" title="statement not covered" >        for (let j = <span class="cstat-no" title="statement not covered" >i + 1;</span> j &lt; characters.length; j++) {</span>
 <span class="cstat-no" title="statement not covered" >          try {</span>
             const char1Id = <span class="cstat-no" title="statement not covered" >characters[i].id;</span>
             const char2Id = <span class="cstat-no" title="statement not covered" >characters[j].id;</span>
-            
+&nbsp;
             // Compute link strength based on:
             // 1. Shared timeline events
             // 2. Shared puzzles
             // 3. Shared elements
             const strength = <span class="cstat-no" title="statement not covered" >await this._computeLinkStrength(char1Id, char2Id);</span>
-            
+&nbsp;
 <span class="cstat-no" title="statement not covered" >            if (strength &gt; 0) {</span>
 <span class="cstat-no" title="statement not covered" >              this.db.prepare(</span>
                 'INSERT INTO character_links (character_a_id, character_b_id, link_type, link_source_id, link_strength) VALUES (?, ?, ?, ?, ?)'
@@ -1079,7 +1085,7 @@ class RelationshipSyncer extends BaseSyncer {
 <span class="cstat-no" title="statement not covered" >      if (!wasInTransaction) {</span>
 <span class="cstat-no" title="statement not covered" >        this.db.prepare('COMMIT').run();</span>
       }
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return { processed, errors };</span>
     } catch (error) {
       // Only rollback if we started the transaction
@@ -1148,19 +1154,19 @@ class RelationshipSyncer extends BaseSyncer {
 <span class="cstat-no" title="statement not covered" >    try {</span>
       // Initialize database connection
 <span class="cstat-no" title="statement not covered" >      this.initDB();</span>
-      
+&nbsp;
       // Clear existing relationships
 <span class="cstat-no" title="statement not covered" >      await this.clearExistingData();</span>
 &nbsp;
       // Sync character-entity relationships
       const charRelStats = <span class="cstat-no" title="statement not covered" >await this.syncCharacterRelationships();</span>
 &nbsp;
-      // Compute character links based on shared experiences  
+      // Compute character links based on shared experiences
       const linkStats = <span class="cstat-no" title="statement not covered" >await this.computeCharacterLinks();</span>
 &nbsp;
       const duration = <span class="cstat-no" title="statement not covered" >Date.now() - startTime;</span>
 <span class="cstat-no" title="statement not covered" >      this.logger.info(`Relationship sync completed in ${duration}ms`);</span>
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return {</span>
         processed: charRelStats.processed + linkStats.processed,
         errors: charRelStats.errors + linkStats.errors,
@@ -1173,14 +1179,14 @@ class RelationshipSyncer extends BaseSyncer {
   }
 }
 &nbsp;
-module.exports = RelationshipSyncer; </pre></td></tr></table></pre>
+module.exports = RelationshipSyncer;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T20:43:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.36% </span>
+                <span class="strong">13.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/44</span>
+                <span class='fraction'>6/45</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.36% </span>
+                <span class="strong">13.33% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/44</span>
+                <span class='fraction'>6/45</span>
             </div>
         
             
@@ -159,7 +159,9 @@
 <a name='L94'></a><a href='#L94'>94</a>
 <a name='L95'></a><a href='#L95'>95</a>
 <a name='L96'></a><a href='#L96'>96</a>
-<a name='L97'></a><a href='#L97'>97</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -256,6 +258,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const fs = require('fs');
+const logger = require('../utils/logger');
 // This file will export a function to get the database instance and an initialization function.
 // The initialization function will:
 // - Create a new SQLite database file (e.g., production.db in a data/ directory at the backend root, or use the DATABASE_PATH environment variable).
@@ -287,12 +290,12 @@ function <span class="fstat-no" title="function not covered" >connect(</span>dbP
 <span class="cstat-no" title="statement not covered" >  if (!pathToUse) {</span>
 <span class="cstat-no" title="statement not covered" >    pathToUse = getProductionDbPath();</span>
 <span class="cstat-no" title="statement not covered" >    ensureDataDirectoryExists(pathToUse); </span>// Only ensure for file-based DBs
-<span class="cstat-no" title="statement not covered" >    console.log(`Connecting to database at: ${pathToUse}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`Connecting to database at: ${pathToUse}`);</span>
   } else <span class="cstat-no" title="statement not covered" >if (pathToUse !== ':memory:') {</span>
 <span class="cstat-no" title="statement not covered" >    ensureDataDirectoryExists(pathToUse); </span>// Ensure dir if custom file path
-<span class="cstat-no" title="statement not covered" >    console.log(`Connecting to database at: ${pathToUse}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`Connecting to database at: ${pathToUse}`);</span>
   } else {
-<span class="cstat-no" title="statement not covered" >    console.log('Connecting to in-memory database.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('Connecting to in-memory database.');</span>
   }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  db = new Database(pathToUse, { verbose: process.env.NODE_ENV !== 'test' ? console.log : undefined });</span>
@@ -307,7 +310,7 @@ function <span class="fstat-no" title="function not covered" >getDB(</span>) {
     // especially in production. For tests, initializeDatabase will set the in-memory DB.
     // If running app directly and initializeDatabase hasn't been called by startServer yet,
     // this will connect to production DB.
-<span class="cstat-no" title="statement not covered" >    console.warn('getDB() called before initializeDatabase or outside of test setup. Connecting to default production DB.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn('getDB() called before initializeDatabase or outside of test setup. Connecting to default production DB.');</span>
 <span class="cstat-no" title="statement not covered" >    connect();</span>
   }
 <span class="cstat-no" title="statement not covered" >  return db;</span>
@@ -315,22 +318,22 @@ function <span class="fstat-no" title="function not covered" >getDB(</span>) {
 &nbsp;
 function <span class="fstat-no" title="function not covered" >initializeDatabase(</span>dbPathOverride = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
 <span class="cstat-no" title="statement not covered" >  if (db) {</span>
-<span class="cstat-no" title="statement not covered" >    console.log('Database already initialized. Closing existing connection before re-initializing.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('Database already initialized. Closing existing connection before re-initializing.');</span>
 <span class="cstat-no" title="statement not covered" >    db.close();</span>
 <span class="cstat-no" title="statement not covered" >    db = null;</span>
   }
 &nbsp;
   const effectivePath = <span class="cstat-no" title="statement not covered" >dbPathOverride || (process.env.NODE_ENV === 'test' ? ':memory:' : getProductionDbPath());</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  console.log(`Initializing database with path: ${effectivePath}`);</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug(`Initializing database with path: ${effectivePath}`);</span>
 <span class="cstat-no" title="statement not covered" >  connect(effectivePath); </span>// `connect` now sets the global `db` instance
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  console.log('Running migrations...');</span>
+<span class="cstat-no" title="statement not covered" >  logger.debug('Running migrations...');</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
 <span class="cstat-no" title="statement not covered" >    runMigrations(db); </span>// Pass the already connected db instance
-<span class="cstat-no" title="statement not covered" >    console.log('Database initialization and migrations complete.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('Database initialization and migrations complete.');</span>
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error('Failed to initialize database or run migrations:', error);</span>
+<span class="cstat-no" title="statement not covered" >    logger.error('Failed to initialize database or run migrations:', error);</span>
 <span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
 <span class="cstat-no" title="statement not covered" >  return db; </span>// Return the instance for convenience, though getDB() will also work
@@ -340,9 +343,9 @@ function <span class="fstat-no" title="function not covered" >closeDB(</span>) {
 <span class="cstat-no" title="statement not covered" >  if (db) {</span>
 <span class="cstat-no" title="statement not covered" >    db.close();</span>
 <span class="cstat-no" title="statement not covered" >    db = null; </span>// Reset the singleton instance
-<span class="cstat-no" title="statement not covered" >    console.log('Database connection closed.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('Database connection closed.');</span>
   } else {
-<span class="cstat-no" title="statement not covered" >    console.log('No active database connection to close.');</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug('No active database connection to close.');</span>
   }
 }
 &nbsp;
@@ -358,7 +361,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-28T23:32:12.954Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../prettify.js"></script>
         <script>

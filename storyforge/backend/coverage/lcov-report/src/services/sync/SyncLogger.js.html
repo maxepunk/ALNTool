@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">6.45% </span>
+                <span class="strong">9.37% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>2/31</span>
+                <span class='fraction'>3/32</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">6.45% </span>
+                <span class="strong">9.37% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/31</span>
+                <span class='fraction'>3/32</span>
             </div>
         
             
@@ -242,8 +242,10 @@
 <a name='L177'></a><a href='#L177'>177</a>
 <a name='L178'></a><a href='#L178'>178</a>
 <a name='L179'></a><a href='#L179'>179</a>
-<a name='L180'></a><a href='#L180'>180</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -423,6 +425,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">const { getDB } = require('../../db/database');
 &nbsp;
+const logger = require('../../utils/logger');
 /**
  * Centralized logging service for sync operations.
  * Provides consistent logging interface and tracks sync progress in the database.
@@ -450,18 +453,18 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  st</span>artSync(entityType) {
 <span class="cstat-no" title="statement not covered" >    this.initDB();</span>
-    
+&nbsp;
     const stmt = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
       'INSERT INTO sync_log (start_time, status, entity_type) VALUES (?, ?, ?)'
     );
-    
+&nbsp;
     const { lastInsertRowid } = <span class="cstat-no" title="statement not covered" >stmt.run(</span>
-      new Date().toISOString(), 
-      'started', 
+      new Date().toISOString(),
+      'started',
       entityType
     );
-    
-<span class="cstat-no" title="statement not covered" >    console.log(`🔄 Starting sync for ${entityType}...`);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    logger.debug(`🔄 Starting sync for ${entityType}...`);</span>
 <span class="cstat-no" title="statement not covered" >    return lastInsertRowid;</span>
   }
 &nbsp;
@@ -475,28 +478,28 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  co</span>mpleteSync(logId, stats = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
 <span class="cstat-no" title="statement not covered" >    this.initDB();</span>
-    
+&nbsp;
     const { fetched = <span class="branch-0 cbranch-no" title="branch not covered" >0,</span> synced = <span class="branch-0 cbranch-no" title="branch not covered" >0,</span> errors = <span class="branch-0 cbranch-no" title="branch not covered" >0 </span>} = <span class="cstat-no" title="statement not covered" >stats;</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    this.db.prepare(</span>
       `UPDATE sync_log 
        SET end_time = ?, status = 'completed', 
            records_fetched = ?, records_synced = ?, errors = ?
        WHERE id = ?`
     ).run(
-      new Date().toISOString(), 
-      fetched, 
-      synced, 
-      errors, 
+      new Date().toISOString(),
+      fetched,
+      synced,
+      errors,
       logId
     );
-    
+&nbsp;
     // Get entity type for logging
     const { entity_type } = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
-    
-<span class="cstat-no" title="statement not covered" >    console.log(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` + </span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    logger.debug(`✅ ${entity_type}: ${synced}/${fetched} synced successfully` +</span>
                 (errors &gt; 0 ? ` (${errors} errors)` : ''));
   }
 &nbsp;
@@ -508,28 +511,28 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  fa</span>ilSync(logId, error, stats = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
 <span class="cstat-no" title="statement not covered" >    this.initDB();</span>
-    
+&nbsp;
     const { fetched = <span class="branch-0 cbranch-no" title="branch not covered" >0,</span> synced = <span class="branch-0 cbranch-no" title="branch not covered" >0 </span>} = <span class="cstat-no" title="statement not covered" >stats;</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    this.db.prepare(</span>
       `UPDATE sync_log 
        SET end_time = ?, status = 'failed', 
            error_details = ?, records_fetched = ?, records_synced = ?
        WHERE id = ?`
     ).run(
-      new Date().toISOString(), 
-      error.message || String(error), 
-      fetched, 
-      synced, 
+      new Date().toISOString(),
+      error.message || String(error),
+      fetched,
+      synced,
       logId
     );
-    
+&nbsp;
     // Get entity type for logging
     const { entity_type } = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
       'SELECT entity_type FROM sync_log WHERE id = ?'
     ).get(logId);
-    
-<span class="cstat-no" title="statement not covered" >    console.error(`❌ ${entity_type} sync failed:`, error.message);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    logger.error(`❌ ${entity_type} sync failed:`, error.message);</span>
   }
 &nbsp;
   /**
@@ -538,7 +541,7 @@ class SyncLogger {
    * @param {*} details - Additional details to log
    */
 <span class="fstat-no" title="function not covered" >  wa</span>rn(message, details = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
-<span class="cstat-no" title="statement not covered" >    console.warn(`⚠️  ${message}`, details || '');</span>
+<span class="cstat-no" title="statement not covered" >    logger.warn(`⚠️  ${message}`, details || '');</span>
   }
 &nbsp;
   /**
@@ -548,9 +551,9 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  er</span>ror(message, error = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
 <span class="cstat-no" title="statement not covered" >    if (error instanceof Error) {</span>
-<span class="cstat-no" title="statement not covered" >      console.error(`❌ ${message}:`, error.message);</span>
+<span class="cstat-no" title="statement not covered" >      logger.error(`❌ ${message}:`, error.message);</span>
     } else {
-<span class="cstat-no" title="statement not covered" >      console.error(`❌ ${message}`, error || '');</span>
+<span class="cstat-no" title="statement not covered" >      logger.error(`❌ ${message}`, error || '');</span>
     }
   }
 &nbsp;
@@ -559,7 +562,7 @@ class SyncLogger {
    * @param {string} message - Info message
    */
 <span class="fstat-no" title="function not covered" >  in</span>fo(message) {
-<span class="cstat-no" title="statement not covered" >    console.log(`📝 ${message}`);</span>
+<span class="cstat-no" title="statement not covered" >    logger.debug(`📝 ${message}`);</span>
   }
 &nbsp;
   /**
@@ -569,7 +572,7 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  ge</span>tRecentSyncHistory(limit = <span class="branch-0 cbranch-no" title="branch not covered" >10)</span> {
 <span class="cstat-no" title="statement not covered" >    this.initDB();</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    return this.db.prepare(</span>
       `SELECT * FROM sync_log 
        ORDER BY start_time DESC 
@@ -584,7 +587,7 @@ class SyncLogger {
    */
 <span class="fstat-no" title="function not covered" >  ge</span>tSyncStats(entityType) {
 <span class="cstat-no" title="statement not covered" >    this.initDB();</span>
-    
+&nbsp;
     const stats = <span class="cstat-no" title="statement not covered" >this.db.prepare(</span>
       `SELECT 
         COUNT(*) as total_syncs,
@@ -595,7 +598,7 @@ class SyncLogger {
        FROM sync_log 
        WHERE entity_type = ?`
     ).get(entityType);
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    return stats;</span>
   }
 }
@@ -607,7 +610,7 @@ module.exports = SyncLogger;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T17:57:52.392Z
+                at 2025-06-29T10:21:09.959Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

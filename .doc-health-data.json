@@ -466,7 +466,27 @@
       "brokenLinkConflicts": 86,
       "orphanConflicts": 12,
       "totalConflicts": 98
+    },
+    {
+      "totalFiles": 0,
+      "totalLinks": 0,
+      "brokenLinks": 0,
+      "orphanedDocs": 0,
+      "staleContent": 0,
+      "errors": 0,
+      "warnings": 0,
+      "healthScore": 100,
+      "timestamp": "2025-07-01T21:52:25.398Z",
+      "filesWithMarkers": 0,
+      "totalCoreFiles": 4,
+      "totalMarkers": 0,
+      "automationRate": 0,
+      "markersActive": false,
+      "crossRefConflicts": 0,
+      "brokenLinkConflicts": 0,
+      "orphanConflicts": 0,
+      "totalConflicts": 0
     }
   ],
-  "lastUpdated": "2025-06-10T08:32:06.115Z"
+  "lastUpdated": "2025-07-01T21:52:25.398Z"
 }

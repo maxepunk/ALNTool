@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10.81% </span>
+                <span class="strong">11.11% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>4/37</span>
+                <span class='fraction'>5/45</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>0/22</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.42% </span>
+                <span class="strong">11.36% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>4/35</span>
+                <span class='fraction'>5/44</span>
             </div>
         
             
@@ -153,16 +153,33 @@
 <a name='L88'></a><a href='#L88'>88</a>
 <a name='L89'></a><a href='#L89'>89</a>
 <a name='L90'></a><a href='#L90'>90</a>
-<a name='L91'></a><a href='#L91'>91</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -207,7 +224,18 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -244,15 +272,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span></td><td class="text"><pre class="prettyprint lang-js">const DerivedFieldComputer = require('./DerivedFieldComputer');
+const GameConstants = require('../../config/GameConstants');
+const ValidationUtils = require('../../utils/ValidationUtils');
 &nbsp;
+const logger = require('../../utils/logger');
 /**
  * Computes Act Focus for timeline events based on related elements
  * Act Focus is determined by the most common act from related elements
  */
 class ActFocusComputer extends DerivedFieldComputer {
-  constructor(db) {
-    super(db);
-    this.requiredFields = ['id', 'element_ids'];
+<span class="fstat-no" title="function not covered" >  co</span>nstructor(db) {
+<span class="cstat-no" title="statement not covered" >    super(db);</span>
+<span class="cstat-no" title="statement not covered" >    this.requiredFields = ['id', 'element_ids'];</span>
   }
 &nbsp;
   /**
@@ -264,7 +295,7 @@ class ActFocusComputer extends DerivedFieldComputer {
 <span class="fstat-no" title="function not covered" >  as</span>ync compute(event) {
 <span class="cstat-no" title="statement not covered" >    try {</span>
 <span class="cstat-no" title="statement not covered" >      this.validateRequiredFields(event, this.requiredFields);</span>
-      
+&nbsp;
       // Handle malformed JSON gracefully
       let elementIds;
 <span class="cstat-no" title="statement not covered" >      try {</span>
@@ -272,7 +303,7 @@ class ActFocusComputer extends DerivedFieldComputer {
       } catch (parseError) {
 <span class="cstat-no" title="statement not covered" >        return { act_focus: null };</span>
       }
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      if (elementIds.length === 0) {</span>
 <span class="cstat-no" title="statement not covered" >        return { act_focus: null };</span>
       }
@@ -291,13 +322,24 @@ class ActFocusComputer extends DerivedFieldComputer {
         }
       });
 &nbsp;
-      // Return most common act, with lexicographic ordering as tiebreaker
+      // Return most common act, with act sequence ordering as tiebreaker
       const sortedActs = <span class="cstat-no" title="statement not covered" >Object.entries(actCounts)</span>
         .sort(<span class="fstat-no" title="function not covered" >([</span>actA, countA], [actB, countB]) =&gt; {
-<span class="cstat-no" title="statement not covered" >          if (countB !== countA) <span class="cstat-no" title="statement not covered" >return countB - countA; </span></span>// Primary: sort by count desc
-<span class="cstat-no" title="statement not covered" >          return actA.localeCompare(actB); </span>// Secondary: sort by act name asc
+<span class="cstat-no" title="statement not covered" >          if (countB !== countA) {</span>
+<span class="cstat-no" title="statement not covered" >            return countB - countA;</span>
+          } // Primary: sort by count desc
+          // Secondary: sort by act sequence from GameConstants
+          const seqA = <span class="cstat-no" title="statement not covered" >GameConstants.ACTS.SEQUENCE[actA] || 999;</span>
+          const seqB = <span class="cstat-no" title="statement not covered" >GameConstants.ACTS.SEQUENCE[actB] || 999;</span>
+<span class="cstat-no" title="statement not covered" >          return seqA - seqB;</span>
         });
       const actFocus = <span class="cstat-no" title="statement not covered" >sortedActs[0]?.[0] || null;</span>
+&nbsp;
+      // Validate the computed act
+<span class="cstat-no" title="statement not covered" >      if (actFocus &amp;&amp; !ValidationUtils.isValidAct(actFocus)) {</span>
+<span class="cstat-no" title="statement not covered" >        logger.warn(`Invalid act computed: ${actFocus}, returning null`);</span>
+<span class="cstat-no" title="statement not covered" >        return { act_focus: null };</span>
+      }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      return { act_focus: actFocus };</span>
     } catch (error) {
@@ -311,21 +353,21 @@ class ActFocusComputer extends DerivedFieldComputer {
    */
 <span class="fstat-no" title="function not covered" >  as</span>ync computeAll() {
     const stats = <span class="cstat-no" title="statement not covered" >{ processed: 0, errors: 0 };</span>
-    
+&nbsp;
 <span class="cstat-no" title="statement not covered" >    try {</span>
       const events = <span class="cstat-no" title="statement not covered" >this.db.prepare('SELECT * FROM timeline_events').all();</span>
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      for (const event of events) {</span>
 <span class="cstat-no" title="statement not covered" >        try {</span>
           const { act_focus } = <span class="cstat-no" title="statement not covered" >await this.compute(event);</span>
 <span class="cstat-no" title="statement not covered" >          await this.updateDatabase('timeline_events', 'id', event, { act_focus });</span>
 <span class="cstat-no" title="statement not covered" >          stats.processed++;</span>
         } catch (error) {
-<span class="cstat-no" title="statement not covered" >          console.error(`Error processing event ${event.id}:`, error);</span>
+<span class="cstat-no" title="statement not covered" >          logger.error(`Error processing event ${event.id}:`, error);</span>
 <span class="cstat-no" title="statement not covered" >          stats.errors++;</span>
         }
       }
-      
+&nbsp;
 <span class="cstat-no" title="statement not covered" >      return stats;</span>
     } catch (error) {
 <span class="cstat-no" title="statement not covered" >      throw new Error(`Failed to compute all act focus values: ${error.message}`);</span>
@@ -333,14 +375,14 @@ class ActFocusComputer extends DerivedFieldComputer {
   }
 }
 &nbsp;
-module.exports = ActFocusComputer; </pre></td></tr></table></pre>
+module.exports = ActFocusComputer;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
             </div><!-- /wrapper -->
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-11T20:43:10.726Z
+                at 2025-06-30T22:23:25.712Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

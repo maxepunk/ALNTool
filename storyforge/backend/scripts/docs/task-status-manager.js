@@ -20,7 +20,6 @@ class TaskStatusManager {
         this.docFiles = {
             claude: path.join(this.rootDir, 'CLAUDE.md'),
             readme: path.join(this.rootDir, 'README.md'),
-            playbook: path.join(this.rootDir, 'DEVELOPMENT_PLAYBOOK.md'),
             schema: path.join(this.rootDir, 'SCHEMA_MAPPING_GUIDE.md'),
             authority: path.join(this.rootDir, 'AUTHORITY_MATRIX.md')
         };
@@ -31,13 +30,13 @@ class TaskStatusManager {
      * This would integrate with the TodoWrite system in a full implementation
      */
     getCurrentTaskStatus() {
-        // Extract from DEVELOPMENT_PLAYBOOK.md (authoritative source)
-        const playbookContent = this.readFile(this.docFiles.playbook);
+        // Extract from README.md (since DEVELOPMENT_PLAYBOOK.md is removed)
+        const readmeContent = this.readFile(this.docFiles.readme);
         
         // Extract current task using regex - handle both old and new format
-        let currentTaskMatch = playbookContent.match(/<!-- AUTO:CURRENT_TASK -->(.+?)<!-- \/AUTO:CURRENT_TASK -->/);
+        let currentTaskMatch = readmeContent.match(/<!-- AUTO:CURRENT_TASK -->(.+?)<!-- \/AUTO:CURRENT_TASK -->/);
         if (!currentTaskMatch) {
-            currentTaskMatch = playbookContent.match(/#### \*\*P\.DEBT\.\d+\.\d+:[^*]+\*\*/);
+            currentTaskMatch = readmeContent.match(/#### \*\*P\.DEBT\.\d+\.\d+:[^*]+\*\*/);
         }
         const currentTask = currentTaskMatch ? currentTaskMatch[1] || currentTaskMatch[0] : 'P.DEBT.3.11 – Complete Test Coverage';
         

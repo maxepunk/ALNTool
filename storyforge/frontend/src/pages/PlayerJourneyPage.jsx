@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useJourneyStore from '../stores/journeyStore';
+import { useJourney } from '../hooks/useJourney';
 import { ExperienceFlowAnalyzer } from '../components/PlayerJourney/JourneyGraphView';
 import DualLensLayout from '../components/Layout/DualLensLayout';
 import { 
@@ -22,21 +23,11 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
 function PlayerJourneyPage() {
-  const { activeCharacterId, loadJourney, journeyData } = useJourneyStore(state => ({
-    activeCharacterId: state.activeCharacterId,
-    loadJourney: state.loadJourney,
-    journeyData: state.journeyData,
-  }));
+  const activeCharacterId = useJourneyStore(state => state.activeCharacterId);
+  const { data: journeyData, isLoading } = useJourney(activeCharacterId);
   
   const [systemAnalysis, setSystemAnalysis] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    // Load journey data if an active character is selected and their data isn't already loaded.
-    if (activeCharacterId && !journeyData.has(activeCharacterId)) {
-      loadJourney(activeCharacterId);
-    }
-  }, [activeCharacterId, journeyData, loadJourney]);
 
   if (!activeCharacterId) {
     return (
@@ -54,14 +45,13 @@ function PlayerJourneyPage() {
 
   // Handle export functionality
   const handleExport = (format) => {
-    const journey = journeyData.get(activeCharacterId);
-    if (!journey) return null;
+    if (!journeyData) return null;
 
     // Prepare export data
     const exportData = {
-      characterInfo: journey.character_info,
-      nodes: journey.graph.nodes,
-      edges: journey.graph.edges,
+      characterInfo: journeyData.character_info,
+      nodes: journeyData.graph.nodes,
+      edges: journeyData.graph.edges,
       analysis: systemAnalysis,
       exportDate: new Date().toISOString()
     };
@@ -69,10 +59,10 @@ function PlayerJourneyPage() {
     return format === 'json' ? exportData : [
       // For CSV, flatten the data
       {
-        characterId: journey.character_info.id,
-        characterName: journey.character_info.name,
-        nodeCount: journey.graph.nodes.length,
-        edgeCount: journey.graph.edges.length,
+        characterId: journeyData.character_info.id,
+        characterName: journeyData.character_info.name,
+        nodeCount: journeyData.graph.nodes.length,
+        edgeCount: journeyData.graph.edges.length,
         pacingScore: systemAnalysis?.pacing?.score || 'N/A',
         memoryTokensCollected: systemAnalysis?.memoryTokenFlow?.collected || 0,
         bottleneckCount: systemAnalysis?.bottlenecks?.length || 0
@@ -96,13 +86,17 @@ function PlayerJourneyPage() {
         Production Insights
       </Typography>
       
-      {activeCharacterId && journeyData.has(activeCharacterId) ? (
+      {isLoading ? (
+        <Typography variant="body2" color="text.secondary">
+          Loading journey data...
+        </Typography>
+      ) : activeCharacterId && journeyData ? (
         <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
           {/* Character Info */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" gutterBottom>Character Profile</Typography>
             {(() => {
-              const charInfo = journeyData.get(activeCharacterId)?.character_info;
+              const charInfo = journeyData?.character_info;
               return charInfo ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Chip 
