@@ -33,6 +33,15 @@ const useJourneyStore = create(subscribeWithSelector((set, get) => ({
     set({ loadingJourneyCharacterId: characterId, error: null, selectedNode: null });
     try {
       const journeyResult = await api.getJourneyByCharacterId(characterId);
+      
+      // Log the journey data structure for debugging
+      logger.info(`Journey data loaded for character ${characterId}:`, {
+        hasCharacterInfo: !!journeyResult?.character_info,
+        hasGraph: !!journeyResult?.graph,
+        nodeCount: journeyResult?.graph?.nodes?.length || 0,
+        edgeCount: journeyResult?.graph?.edges?.length || 0,
+        sampleNode: journeyResult?.graph?.nodes?.[0]
+      });
 
       set(state => ({
         journeyData: new Map(state.journeyData).set(characterId, journeyResult),

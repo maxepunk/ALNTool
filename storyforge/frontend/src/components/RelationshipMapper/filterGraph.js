@@ -227,7 +227,7 @@ function filterGraph(
 
   // --- Node Type Filtering ---
   const activeNodeFilters = Object.keys(nodeFilters).filter((t) => nodeFilters[t]);
-  if (activeNodeFilters.length > 0 && activeNodeFilters.length < Object.keys(nodeFilters).length) {
+  if (activeNodeFilters.length > 0) {
     workingNodes = workingNodes.filter(n => {
         // Always keep the center node if it hasn't been filtered out by previous steps
         if (n.id === centerNodeId && workingNodeMap.has(n.id)) return true;
@@ -246,7 +246,7 @@ function filterGraph(
   const activeEdgeFilters = typeof edgeFilters === 'object' && edgeFilters !== null 
     ? Object.keys(edgeFilters).filter((et) => edgeFilters[et])
     : [];
-  if (activeEdgeFilters.length > 0 && (typeof edgeFilters === 'object' && edgeFilters !== null && activeEdgeFilters.length < Object.keys(edgeFilters).length)) {
+  if (activeEdgeFilters.length > 0) {
     workingEdges = workingEdges.filter(edge => {
       return edge.data?.type && activeEdgeFilters.includes(edge.data.type);
     });

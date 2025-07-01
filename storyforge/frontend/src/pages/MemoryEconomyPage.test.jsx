@@ -12,7 +12,7 @@ const GameConstants = {
 const VALUE_MAPPING = GameConstants.MEMORY_VALUE.BASE_VALUES;
 const TYPE_MULTIPLIERS = GameConstants.MEMORY_VALUE.TYPE_MULTIPLIERS;
 
-const KEYWORDS_TECHNICAL = ["ip", "algorithm", "breakthrough", "neurobiology", "sensory triggers", "ai pattern", "neurochemical catalyst", "validation system", "protocol", "patent", "research", "data model", "encryption"];
+const KEYWORDS_TECHNICAL = ["intellectual property", "algorithm", "breakthrough", "neurobiology", "sensory triggers", "ai pattern", "neurochemical catalyst", "validation system", "protocol", "patent", "research", "data model", "encryption"];
 const KEYWORDS_BUSINESS = ["deal", "corporate", "funding", "company", "market", "ledger", "investment", "ceo", "board", "acquisition", "merger", "stock", "trade secret", "client list", "supply chain"];
 const KEYWORDS_PERSONAL = ["relationship", "emotion", "personal", "secret", "rumor", "affair", "family", "love", "fear", "friendship", "betrayal"];
 

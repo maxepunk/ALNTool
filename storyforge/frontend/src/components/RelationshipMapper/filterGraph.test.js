@@ -49,8 +49,9 @@ describe('filterGraph', () => {
       createMockEdge('e2', centerNodeId, 'nodeA2'),
       createMockEdge('e3', 'nodeA1', 'nodeA3'),
       createMockEdge('e4', 'nodeA2', 'nodeB2'),
-      createMockEdge('e5', 'nodeB1', 'nodeC1'),
-      createMockEdge('e6', centerNodeId, 'nodeC2'),
+      createMockEdge('e5', centerNodeId, 'nodeB1'), // Connect nodeB1 to center for reachability
+      createMockEdge('e6', 'nodeB1', 'nodeC1'),   // nodeB1 connects to nodeC1
+      createMockEdge('e7', centerNodeId, 'nodeC2'),
     ];
 
     it('should return all nodes and edges if no filters are active (besides default depth)', () => {
@@ -164,9 +165,9 @@ describe('filterGraph', () => {
       const options = { centerNodeId, depth: 3, actFocusFilter: 'Act 3' }; // Keeps centerNodeId, nodeC2
       const { nodes: filteredNodes, edges: filteredEdges } = filterGraph(nodes, edges, options);
       expect(filteredNodes.map(n=>n.id).sort()).toEqual([centerNodeId, 'nodeC2'].sort());
-      // Only edge e6 (center -> nodeC2) should remain
+      // Only edge e7 (center -> nodeC2) should remain
       expect(filteredEdges.length).toBe(1);
-      expect(filteredEdges[0].id).toBe('e6');
+      expect(filteredEdges[0].id).toBe('e7');
     });
 
     // Test existing Node Type and Edge Type filters in conjunction with new filters

@@ -391,7 +391,7 @@ function getSyncStatus() {
     // Get last sync log entry
     const lastSync = db.prepare(`
       SELECT * FROM sync_log 
-      ORDER BY created_at DESC 
+      ORDER BY start_time DESC 
       LIMIT 1
     `).get();
 

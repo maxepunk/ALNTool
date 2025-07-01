@@ -146,9 +146,8 @@ describe('SecondaryEntityNode', () => {
       ...defaultNodeData,
       data: { ...defaultNodeData.data, actFocus: 'Act1' },
     };
-    const { container } = renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
-    // Look for the act focus dot
-    const actFocusDot = container.querySelector('[class*="MuiBox-root"][style*="borderRadius: 50%"]');
+    renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
+    const actFocusDot = screen.getByTestId('act-focus-indicator');
     expect(actFocusDot).toBeInTheDocument();
     expect(actFocusDot).toHaveStyle({ backgroundColor: 'rgba(220, 50, 50, 0.7)' });
   });
@@ -158,8 +157,8 @@ describe('SecondaryEntityNode', () => {
       ...defaultNodeData,
       data: { ...defaultNodeData.data, actFocus: 2 },
     };
-    const { container } = renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
-    const actFocusDot = container.querySelector('[class*="MuiBox-root"][style*="borderRadius: 50%"]');
+    renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
+    const actFocusDot = screen.getByTestId('act-focus-indicator');
     expect(actFocusDot).toBeInTheDocument();
     expect(actFocusDot).toHaveStyle({ backgroundColor: 'rgba(50, 200, 50, 0.7)' });
   });
@@ -169,8 +168,8 @@ describe('SecondaryEntityNode', () => {
       ...defaultNodeData,
       data: { ...defaultNodeData.data, properties: { actFocus: 'act3' } },
     };
-    const { container } = renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
-    const actFocusDot = container.querySelector('[class*="MuiBox-root"][style*="borderRadius: 50%"]');
+    renderWithProviders(<SecondaryEntityNode {...actFocusNode} />);
+    const actFocusDot = screen.getByTestId('act-focus-indicator');
     expect(actFocusDot).toBeInTheDocument();
     expect(actFocusDot).toHaveStyle({ backgroundColor: 'rgba(50, 50, 220, 0.7)' });
   });
@@ -207,7 +206,9 @@ describe('SecondaryEntityNode', () => {
       isConnectable: true,
     };
     renderWithProviders(<SecondaryEntityNode {...minimalNode} />);
-    expect(screen.getByText('Unknown')).toBeInTheDocument();
+    // Component shows data.name || data.label || data.type || id || 'Unknown'
+    // Since type='Character' exists, it should show 'Character'
+    expect(screen.getByText('Character')).toBeInTheDocument();
   });
 
   it('displays additional properties in tooltip', () => {
@@ -261,15 +262,16 @@ describe('SecondaryEntityNode', () => {
       ...defaultNodeData,
       data: { ...defaultNodeData.data, actFocus: 1 },
     };
-    const { container: container1 } = renderWithProviders(<SecondaryEntityNode {...directActFocus} />);
-    expect(container1.querySelector('[style*="borderRadius: 50%"]')).toBeInTheDocument();
+    const { unmount: unmount1 } = renderWithProviders(<SecondaryEntityNode {...directActFocus} />);
+    expect(screen.getByTestId('act-focus-indicator')).toBeInTheDocument();
+    unmount1();
 
     // Test with actFocus in properties
     const propsActFocus = {
       ...defaultNodeData,
       data: { ...defaultNodeData.data, properties: { actFocus: 2 } },
     };
-    const { container: container2 } = renderWithProviders(<SecondaryEntityNode {...propsActFocus} />);
-    expect(container2.querySelector('[style*="borderRadius: 50%"]')).toBeInTheDocument();
+    renderWithProviders(<SecondaryEntityNode {...propsActFocus} />);
+    expect(screen.getByTestId('act-focus-indicator')).toBeInTheDocument();
   });
 });

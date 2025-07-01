@@ -140,6 +140,7 @@ const SecondaryEntityNode = ({ data, isConnectable, selected, centralEntityType 
         {actFocusDisplayColor && (
           <Tooltip title={`Act Focus: ${actFocus}`} placement="top" arrow>
             <Box
+              data-testid="act-focus-indicator"
               sx={{
                 width: 5,
                 height: 5,

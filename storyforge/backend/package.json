@@ -47,6 +47,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.27.2",
     "@eslint/js": "^9.30.0",
+    "axios": "^1.10.0",
     "better-sqlite3": "^9.4.3",
     "cross-env": "^7.0.3",
     "eslint": "^9.30.0",

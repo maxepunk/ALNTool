@@ -9,6 +9,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import logger from '../utils/logger';
 
 /**
  * Hook for comprehensive narrative analysis data
@@ -25,7 +26,7 @@ export const useNarrativeData = () => {
     refetch: refetchCharacters
   } = useQuery({
     queryKey: ['charactersForNarrativeAnalysis'],
-    queryFn: () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
+    queryFn: () => api.getCharacters({ limit: 1000 }),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
@@ -90,14 +91,24 @@ export const useNarrativeData = () => {
   // Refetch all data function
   const refetchAll = async () => {
     try {
-      await Promise.all([
+      const results = await Promise.all([
         refetchCharacters(),
         refetchElements(),
         refetchPuzzles(),
         refetchTimelineEvents()
       ]);
+      
+      // Check if any refetch failed
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        const firstError = errors[0].error;
+        logger.error('Failed to refetch narrative data:', firstError);
+        throw firstError;
+      }
+      
+      return results;
     } catch (err) {
-      console.error('Failed to refetch narrative data:', err);
+      logger.error('Failed to refetch narrative data:', err);
       throw err;
     }
   };

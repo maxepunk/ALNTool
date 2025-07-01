@@ -20,57 +20,18 @@ import {
   Paper, 
   CircularProgress,
   Alert,
-  Button,
   IconButton,
   Tooltip,
-  Modal,
   useTheme,
   Chip,
-  // Fade, // No longer used for layout toggles
-  // Menu, // No longer used for layout toggles
-  // MenuItem, // No longer used for layout toggles
-  Divider,
-  // ListItemIcon, // No longer used for layout toggles
-  // ListItemText, // No longer used for layout toggles
-  Slider,
   Snackbar,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  ListSubheader, // For "Select All" / "Deselect All" in theme potentially
   Switch,
   FormControlLabel,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Badge,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import ZoomOutIcon from '@mui/icons-material/ZoomOut';
-import FitScreenIcon from '@mui/icons-material/FitScreen';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
-import InfoIcon from '@mui/icons-material/Info';
-// Icons for removed layout selectors (SchemaIcon, AccountTreeIcon, HubIcon) can be removed if not used elsewhere
-// import SchemaIcon from '@mui/icons-material/Schema';
-// import AccountTreeIcon from '@mui/icons-material/AccountTree';
-// import HubIcon from '@mui/icons-material/Hub';
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloseIcon from '@mui/icons-material/Close';
-// Dependency Choreographer icons
-import WarningIcon from '@mui/icons-material/Warning';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
-import GroupWorkIcon from '@mui/icons-material/GroupWork';
 import LinkIcon from '@mui/icons-material/Link';
-import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
-import NfcIcon from '@mui/icons-material/Nfc';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
-import BusinessIcon from '@mui/icons-material/Business';
 
 // Node types
 import EntityNode from './EntityNode';
@@ -85,100 +46,12 @@ import useGraphTransform from './useGraphTransform';
 import useLayoutManager from './useLayoutManager'; // Now simplified
 import useRelationshipMapperUIState from './useRelationshipMapperUIState';
 
-// Dependency analysis utilities
-const analyzeDependencies = (graphData, entityType) => {
-  if (!graphData?.nodes) return {
-    criticalPaths: [],
-    bottlenecks: [],
-    collaborationOpportunities: [],
-    isolationRisks: [],
-  };
+// Extracted components
+import { analyzeDependencies } from './DependencyAnalyzer';
+import DependencyAnalysisPanel from './DependencyAnalysisPanel';
+import ControlsPanel from './ControlsPanel';
+import InfoModal from './InfoModal';
 
-  const analysis = {
-    criticalPaths: [],
-    bottlenecks: [],
-    collaborationOpportunities: [],
-    isolationRisks: [],
-  };
-
-  // Detect UV Light dependency chain
-  const uvElements = graphData.nodes.filter(node => 
-    node.properties?.name?.toLowerCase().includes('uv') ||
-    node.properties?.themes?.includes('UV') ||
-    node.properties?.basicType?.toLowerCase().includes('uv')
-  );
-  if (uvElements.length > 0) {
-    analysis.criticalPaths.push({
-      type: 'UV Light Chain',
-      description: `${uvElements.length} UV-dependent elements detected`,
-      severity: 'high',
-      icon: <LightbulbIcon />
-    });
-  }
-
-  // Detect Company One-Pager dependencies
-  const onePagerElements = graphData.nodes.filter(node => 
-    node.properties?.name?.toLowerCase().includes('one-pager') ||
-    node.properties?.name?.toLowerCase().includes('company') ||
-    node.properties?.themes?.includes('Business')
-  );
-  if (onePagerElements.length > 0) {
-    analysis.criticalPaths.push({
-      type: 'Company One-Pager Network',
-      description: `${onePagerElements.length} business-critical elements`,
-      severity: 'medium',
-      icon: <BusinessIcon />
-    });
-  }
-
-  // Detect RFID bottlenecks (3 scanners for 20 players)
-  const rfidElements = graphData.nodes.filter(node => 
-    node.properties?.basicType?.toLowerCase().includes('rfid') ||
-    node.properties?.name?.toLowerCase().includes('rfid')
-  );
-  if (rfidElements.length > 3) {
-    analysis.bottlenecks.push({
-      type: 'RFID Scanner Bottleneck',
-      description: `${rfidElements.length} RFID elements with only 3 scanners`,
-      severity: 'high',
-      icon: <NfcIcon />
-    });
-  }
-
-  // Detect collaborative puzzles requiring 2+ players
-  const collaborativePuzzles = graphData.nodes.filter(node => 
-    node.type === 'Puzzle' && 
-    (node.properties?.minPlayers > 1 || 
-     node.properties?.name?.toLowerCase().includes('collab') ||
-     node.properties?.themes?.includes('Collaboration'))
-  );
-  if (collaborativePuzzles.length > 0) {
-    analysis.collaborationOpportunities.push({
-      type: 'Multi-Player Puzzles',
-      description: `${collaborativePuzzles.length} puzzles require collaboration`,
-      severity: 'medium',
-      icon: <GroupWorkIcon />
-    });
-  }
-
-  // Detect isolated characters (characters with < 2 connections)
-  if (entityType === 'Character') {
-    const connections = graphData.edges?.filter(edge => 
-      edge.source === entityId || edge.target === entityId
-    ).length || 0;
-    
-    if (connections < 2) {
-      analysis.isolationRisks.push({
-        type: 'Social Isolation Risk',
-        description: `Only ${connections} connections - may need interaction opportunities`,
-        severity: 'medium',
-        icon: <WarningIcon />
-      });
-    }
-  }
-
-  return analysis;
-};
 
 const RelationshipMapperContent = ({ 
   title,
@@ -201,10 +74,7 @@ const RelationshipMapperContent = ({
   
   // Analyze dependencies for orchestration insights
   const dependencyAnalysis = useMemo(() => 
-    analyzeDependencies(graphData, entityType), [graphData, entityType]);
-
-  // logger.debug('RelationshipMapper GraphData:', graphData); // Keep for debugging if needed
-  // logger.debug('EntityType:', entityType); // Keep for debugging if needed
+    analyzeDependencies(graphData, entityType, entityId), [graphData, entityType, entityId]);
 
   const { nodes: transformedNodes, edges: transformedEdges, error: graphError } = useGraphTransform({
     entityType,
@@ -253,7 +123,7 @@ const RelationshipMapperContent = ({
       if (sortedThemes.length > 0 && Object.keys(ui.themeFilters).length === 0) { // Check if not already initialized
         const initialThemeFilters = {};
         sortedThemes.forEach(theme => {
-          initialThemeFilters[themeName] = true; // Default to all selected
+          initialThemeFilters[theme] = true; // Default to all selected
         });
         ui.setThemeFilters(initialThemeFilters);
       } else if (sortedThemes.length === 0 && Object.keys(ui.themeFilters).length > 0) {
@@ -436,35 +306,7 @@ const RelationshipMapperContent = ({
             <Background color={theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[300]} gap={24} size={1.2} variant="dots" />
             <Controls showInteractive={false} position="bottom-left" />
             <MiniMap nodeColor={(n) => n.data?.isCenter ? theme.palette.primary.main : (theme.palette.text.secondary)} style={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }} maskColor={theme.palette.mode === 'dark' ? 'rgba(40,40,40,0.7)' : 'rgba(245,245,245,0.7)'}/>
-            <Modal open={ui.infoOpen} onClose={ui.closeInfoModal} aria-labelledby="info-modal-title" aria-describedby="info-modal-description" disableEnforceFocus>
-              <Paper sx={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: {xs: '90%', sm: 450, md: 500}, bgcolor: 'background.paper', boxShadow: 24, p: {xs: 2, sm: 3, md: 4}, borderRadius: 2 }}>
-                <Typography id="info-modal-title" variant="h6" component="h2">Relationship Mapper Guide</Typography>
-                <Typography id="info-modal-description" sx={{ mt: 2 }} component="div">
-                  <p>This map visualizes connections using a hierarchical layout.</p>
-                  <strong>Navigation:</strong>
-                  <ul>
-                    <li>Click on a node (entity) to navigate to its detail page.</li>
-                    <li>Drag the background to pan the view.</li>
-                    <li>Use mouse wheel or pinch to zoom.</li>
-                  </ul>
-                  <strong>Standard Controls:</strong>
-                  <ul>
-                    <li><strong>View:</strong> Zoom in/out, or fit all items to the screen.</li>
-                    <li><strong>Exploration Depth:</strong> Control how many levels of connections are shown.</li>
-                    <li><strong>Filter Nodes/Edges:</strong> Toggle visibility of specific entity types or relationships.</li>
-                    <li><strong>Signal Strength:</strong> Show or hide items deemed less critical connections.</li>
-                  </ul>
-                  <strong>Dependency Choreographer Mode:</strong>
-                  <ul>
-                    <li><strong>Production Mode:</strong> Highlights critical dependencies for About Last Night orchestration.</li>
-                    <li><strong>Critical Dependencies:</strong> UV Light chains, Company One-Pagers, collaborative puzzles.</li>
-                    <li><strong>Resource Bottlenecks:</strong> RFID scanner limitations, multi-player puzzle scheduling.</li>
-                    <li><strong>Social Balance:</strong> Character isolation risks and interaction opportunities.</li>
-                  </ul>
-                </Typography>
-                <Button onClick={ui.closeInfoModal} sx={{mt:3}} variant="contained">Got it!</Button>
-              </Paper>
-            </Modal>
+            <InfoModal open={ui.infoOpen} onClose={ui.closeInfoModal} />
             <Snackbar open={ui.snackbar.open} autoHideDuration={ui.snackbar.duration || 6000} onClose={ui.closeSnackbar} message={ui.snackbar.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} action={<IconButton size="small" aria-label="close" color="inherit" onClick={ui.closeSnackbar}><CloseIcon fontSize="small" /></IconButton>} sx={{ '.MuiSnackbarContent-root': { backgroundColor: ui.snackbar.severity ? `${ui.snackbar.severity}.main` : undefined } }}/>
           </ReactFlow>
           {/* ClusterHull rendering removed */}
@@ -498,284 +340,24 @@ const RelationshipMapperContent = ({
             })
           }}
         >
-          <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1}}>
-            <Typography variant="subtitle1" sx={{fontWeight: 600}}>
-              {dependencyAnalysisMode ? 'Production Controls' : 'Controls'}
-            </Typography>
-            <Tooltip title="Map Information & Help">
-              <IconButton onClick={ui.openInfoModal} size="small"> <InfoIcon /> </IconButton>
-            </Tooltip>
-          </Box>
-          
-          {/* Dependency Analysis Panel */}
           {dependencyAnalysisMode && (
-            <>
-              <Accordion defaultExpanded sx={{ mb: 2, boxShadow: 1 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <FlashOnIcon color="warning" fontSize="small" />
-                    Dependency Analysis
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0 }}>
-                  {/* Critical Paths */}
-                  {dependencyAnalysis.criticalPaths.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                        Critical Dependencies:
-                      </Typography>
-                      {dependencyAnalysis.criticalPaths.map((path, index) => (
-                        <Box key={index} sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1, 
-                          p: 1, 
-                          bgcolor: path.severity === 'high' ? 'error.light' : 'warning.light',
-                          borderRadius: 1,
-                          mt: 0.5,
-                          color: path.severity === 'high' ? 'error.contrastText' : 'warning.contrastText'
-                        }}>
-                          {path.icon}
-                          <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                              {path.type}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              {path.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  
-                  {/* Bottlenecks */}
-                  {dependencyAnalysis.bottlenecks.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                        Resource Bottlenecks:
-                      </Typography>
-                      {dependencyAnalysis.bottlenecks.map((bottleneck, index) => (
-                        <Box key={index} sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1, 
-                          p: 1, 
-                          bgcolor: 'error.light',
-                          borderRadius: 1,
-                          mt: 0.5,
-                          color: 'error.contrastText'
-                        }}>
-                          {bottleneck.icon}
-                          <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                              {bottleneck.type}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              {bottleneck.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  
-                  {/* Collaboration Opportunities */}
-                  {dependencyAnalysis.collaborationOpportunities.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'info.main' }}>
-                        Collaboration Points:
-                      </Typography>
-                      {dependencyAnalysis.collaborationOpportunities.map((opp, index) => (
-                        <Box key={index} sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1, 
-                          p: 1, 
-                          bgcolor: 'info.light',
-                          borderRadius: 1,
-                          mt: 0.5,
-                          color: 'info.contrastText'
-                        }}>
-                          {opp.icon}
-                          <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                              {opp.type}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              {opp.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  
-                  {/* Isolation Risks */}
-                  {dependencyAnalysis.isolationRisks.length > 0 && (
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
-                        Social Balance:
-                      </Typography>
-                      {dependencyAnalysis.isolationRisks.map((risk, index) => (
-                        <Box key={index} sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 1, 
-                          p: 1, 
-                          bgcolor: 'warning.light',
-                          borderRadius: 1,
-                          mt: 0.5,
-                          color: 'warning.contrastText'
-                        }}>
-                          {risk.icon}
-                          <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                              {risk.type}
-                            </Typography>
-                            <Typography variant="caption" display="block">
-                              {risk.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                  
-                  {/* Orchestration Controls */}
-                  <Typography variant="caption" sx={{ fontWeight: 'bold', mt: 1, mb: 1, display: 'block' }}>
-                    Production Highlights:
-                  </Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch 
-                        checked={highlightCriticalPaths} 
-                        onChange={(e) => setHighlightCriticalPaths(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Critical Dependencies"
-                    sx={{ display: 'block', mb: 0.5 }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch 
-                        checked={showBottlenecks} 
-                        onChange={(e) => setShowBottlenecks(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Resource Bottlenecks"
-                    sx={{ display: 'block', mb: 0.5 }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch 
-                        checked={showCollaborationOpps} 
-                        onChange={(e) => setShowCollaborationOpps(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Collaboration Opportunities"
-                    sx={{ display: 'block' }}
-                  />
-                </AccordionDetails>
-              </Accordion>
-              <Divider sx={{my:1}}/>
-            </>
+            <DependencyAnalysisPanel
+              dependencyAnalysis={dependencyAnalysis}
+              highlightCriticalPaths={highlightCriticalPaths}
+              setHighlightCriticalPaths={setHighlightCriticalPaths}
+              showBottlenecks={showBottlenecks}
+              setShowBottlenecks={setShowBottlenecks}
+              showCollaborationOpps={showCollaborationOpps}
+              setShowCollaborationOpps={setShowCollaborationOpps}
+            />
           )}
-          <Divider sx={{my:1}}/>
-          
-          <Typography variant="caption" display="block" gutterBottom>View</Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5, justifyContent: 'center' }}>
-            <Tooltip title="Zoom In"><IconButton onClick={onZoomIn} size="small"><ZoomInIcon /></IconButton></Tooltip>
-            <Tooltip title="Zoom Out"><IconButton onClick={onZoomOut} size="small"><ZoomOutIcon /></IconButton></Tooltip>
-            <Tooltip title="Fit View"><IconButton onClick={onFitView} size="small"><FitScreenIcon /></IconButton></Tooltip>
-          </Box>
-          <Divider sx={{my:1}}/>
-
-          <Typography variant="caption" display="block" id="depth-slider-label" gutterBottom>Exploration Depth: {ui.depth}</Typography>
-          <Slider size="small" value={ui.depth} onChange={(e, newValue) => ui.setDepth(newValue)} aria-labelledby="depth-slider-label" valueLabelDisplay="auto" step={1} marks min={1} max={ui.maxDepth || 3} sx={{mb:1.5, mx: 0.5}}/>
-          <Divider sx={{my:1}}/>
-
-          <Typography variant="caption" display="block" gutterBottom>Filter Nodes by Type</Typography>
-          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
-            {Object.entries(ui.nodeFilters || {}).map(([type, checked]) => (
-              <Chip key={type} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>} label={type} onClick={() => ui.toggleNodeFilter(type)} size="small" color={checked ? "primary" : "default"} variant={checked ? "filled" : "outlined"}/>
-            ))}
-          </Box>
-          <Divider sx={{my:1}}/>
-          
-          {/* Act Focus Filter */}
-          <Typography variant="caption" display="block" gutterBottom>Filter by Act Focus</Typography>
-          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-            <InputLabel id="act-focus-filter-label">Act Focus</InputLabel>
-            <Select
-              labelId="act-focus-filter-label"
-              value={ui.actFocusFilter}
-              label="Act Focus"
-              onChange={(e) => ui.setActFocusFilter(e.target.value)}
-            >
-              <MenuItem value="All">All Acts</MenuItem>
-              <MenuItem value="Act 1">Act 1</MenuItem>
-              <MenuItem value="Act 2">Act 2</MenuItem>
-              <MenuItem value="Act 3">Act 3</MenuItem>
-              {/* Add more acts if needed */}
-            </Select>
-          </FormControl>
-          <Divider sx={{my:1}}/>
-
-          {/* Theme Filters */}
-          <Typography variant="caption" display="block" gutterBottom>Filter by Theme</Typography>
-          <Box sx={{display: 'flex', gap: 0.5, mb: 0.5}}>
-            <Button size="small" onClick={() => ui.setAllThemeFilters(true)} sx={{fontSize: '0.7rem', mr:0.5}}>All</Button>
-            <Button size="small" onClick={() => ui.setAllThemeFilters(false)} sx={{fontSize: '0.7rem'}}>None</Button>
-          </Box>
-          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
-            {ui.availableThemes.map((themeName) => (
-              <Chip
-                key={themeName}
-                label={themeName}
-                onClick={() => ui.toggleThemeFilter(themeName)}
-                size="small"
-                color={ui.themeFilters[themeName] ? "info" : "default"}
-                variant={ui.themeFilters[themeName] ? "filled" : "outlined"}
-              />
-            ))}
-          </Box>
-          <Divider sx={{my:1}}/>
-
-          {/* Memory Set Filter */}
-          <Typography variant="caption" display="block" gutterBottom>Filter by Memory Set</Typography>
-          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-            <InputLabel id="memory-set-filter-label">Memory Set</InputLabel>
-            <Select
-              labelId="memory-set-filter-label"
-              value={ui.memorySetFilter}
-              label="Memory Set"
-              onChange={(e) => ui.setMemorySetFilter(e.target.value)}
-            >
-              <MenuItem value="All">All Sets</MenuItem>
-              {ui.availableMemorySets.map((setName) => (
-                <MenuItem key={setName} value={setName}>{setName}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Divider sx={{my:1}}/>
-
-          <Typography variant="caption" display="block" gutterBottom>Filter Edges by Type</Typography>
-          <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5}}>
-            {Object.entries(ui.edgeFilters || {}).map(([type, checked]) => (
-              <Chip key={type} label={type.charAt(0).toUpperCase() + type.slice(1)} onClick={() => ui.toggleEdgeFilter(type)} size="small" color={checked ? "secondary" : "default"} variant={checked ? "filled" : "outlined"} icon={checked ? <CheckBoxIcon fontSize="small"/> : <CheckBoxOutlineBlankIcon fontSize="small"/>}/ >
-            ))}
-          </Box>
-          <Divider sx={{my:1}}/>
-
-          <Tooltip title={ui.showLowSignal ? "Low signal items are visible" : "Low signal items are hidden"}>
-            <Button variant="outlined" size="small" fullWidth onClick={ui.toggleShowLowSignal} startIcon={ui.showLowSignal ? <VisibilityIcon /> : <VisibilityOffIcon />}>
-              {ui.showLowSignal ? 'Show All Connections' : 'Focus on Key Links'}
-            </Button>
-          </Tooltip>
+          <ControlsPanel
+            ui={ui}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onFitView={onFitView}
+            dependencyAnalysisMode={dependencyAnalysisMode}
+          />
         </Box>
       </Box>
     </Paper>

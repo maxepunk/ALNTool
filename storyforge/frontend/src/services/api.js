@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 import logger from '../utils/logger';
+import { logApiResponse } from '../utils/apiLogger';
+
 // Create axios instance with base URL
 const apiClient = axios.create({
   baseURL: '/api', // Ensure this matches your BFF's proxy path if using Vite/CRA proxy
@@ -145,11 +147,6 @@ export const api = {
     return response.data;
   },
 
-  // Endpoint for unique Narrative Threads
-  getAllUniqueNarrativeThreads: async () => {
-    const response = await apiClient.get('/narrative-threads/unique');
-    return response.data;
-  },
 
   // Endpoint for Characters with Warnings
   getCharactersWithWarnings: async () => {
@@ -166,9 +163,13 @@ export const api = {
   },
 };
 
-// Error interceptor for logging and potentially transforming errors
+// Response interceptor for logging successful responses
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful API responses
+    logApiResponse(response.config.url, response, response.data);
+    return response;
+  },
   (error) => {
     // Log more detailed error information
     if (error.response) {

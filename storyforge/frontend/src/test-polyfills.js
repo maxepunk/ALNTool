@@ -27,3 +27,14 @@ if (typeof global.structuredClone === 'undefined') {
     return JSON.parse(JSON.stringify(obj));
   };
 }
+
+// Mock import.meta for Jest compatibility with Vite
+Object.defineProperty(global, 'import.meta', {
+  value: {
+    env: {
+      DEV: false,
+      VITE_API_URL: 'http://localhost:3001'
+    }
+  },
+  writable: true
+});

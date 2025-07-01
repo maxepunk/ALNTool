@@ -116,7 +116,7 @@ describe('ResolutionPathAnalyzerPage Data Aggregation', () => {
     expect(result['Third Path'].elements.map(e => e.id).sort()).toEqual(['e1'].sort());
 
     // Unassigned Path
-    expect(result[UNASSIGNED_PATH].count).toBe(3); // c3, c5, p3, e3 - wait, c5 is null, p3 is undefined. c3,p3,e3 = 3
+    expect(result[UNASSIGNED_PATH].count).toBe(4); // c3, c5, p3, e3 - all should be counted as unassigned
     expect(result[UNASSIGNED_PATH].characters.map(c => c.id).sort()).toEqual(['c3', 'c5'].sort());
     expect(result[UNASSIGNED_PATH].puzzles.map(p => p.id).sort()).toEqual(['p3'].sort());
     expect(result[UNASSIGNED_PATH].elements.map(e => e.id).sort()).toEqual(['e3'].sort());

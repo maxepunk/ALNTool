@@ -37,8 +37,11 @@ function transformToGraphElements({ entityType, entityId, entityName, rawData, g
       id: n.id,
       type: 'entityNode',
       position: { x: 0, y: 0 },
+      width: isCenter ? 200 : 150, // Default width, can be overridden by layout
+      height: isCenter ? 100 : 80, // Default height, can be overridden by layout
       data: {
         label: n.name || n.description || n.puzzle || 'Unnamed',
+        name: n.name, // Preserve original name property
         type: n.type,
         id: n.id,
         isCenter,
@@ -120,7 +123,12 @@ function transformToGraphElements({ entityType, entityId, entityName, rawData, g
         },
       };
     });
-    return { nodes, edges };
+    
+    // Only filter out ALL edges if there are NO nodes at all
+    // If there are some nodes, include all edges (even those pointing to missing nodes)
+    const finalEdges = nodes.length === 0 ? [] : edges;
+    
+    return { nodes, edges: finalEdges };
   }
 
   return { nodes: [], edges: [] };

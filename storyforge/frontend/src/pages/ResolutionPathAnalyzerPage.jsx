@@ -1,40 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import ErrorBoundary from '../components/ErrorBoundary';
 import {
-  Box, Typography, CircularProgress, Alert, Paper, Grid, List, ListItem, ListItemText,
-  Chip, Divider, Tabs, Tab, ListItemIcon, ListItemButton, Container, Card, CardContent,
-  LinearProgress, Switch, FormControlLabel, Button, Accordion, AccordionSummary,
-  AccordionDetails, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Tooltip, Badge
+  Box, Typography, CircularProgress, Alert, Container, Switch, FormControlLabel
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PageHeader from '../components/PageHeader';
+import PathBalanceOverview from '../components/PathBalanceOverview';
+import PathAnalysisTabs from '../components/PathAnalysisTabs';
+import RecommendationsPanel from '../components/RecommendationsPanel';
+import QuickActionsPanel from '../components/QuickActionsPanel';
+import { calculatePathAnalysis } from '../utils/PathAnalysisCalculator';
 import { api } from '../services/api';
-import { useGameConstants, getConstant } from '../hooks/useGameConstants';
-import PeopleIcon from '@mui/icons-material/People';
-import ExtensionIcon from '@mui/icons-material/Extension';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; // Black Market
-import SearchIcon from '@mui/icons-material/Search'; // Detective
-import GroupsIcon from '@mui/icons-material/Groups'; // Third Path
-import BalanceIcon from '@mui/icons-material/Balance';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import WarningIcon from '@mui/icons-material/Warning';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import MemoryIcon from '@mui/icons-material/Memory';
-import TimelineIcon from '@mui/icons-material/Timeline';
-import InfoIcon from '@mui/icons-material/Info';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import BuildIcon from '@mui/icons-material/Build';
+import { useGameConstants } from '../hooks/useGameConstants';
 
 
 const ResolutionPathAnalyzerPageContent = () => {
-  const navigate = useNavigate();
   const [selectedPathTab, setSelectedPathTab] = useState(0);
   const [analysisMode, setAnalysisMode] = useState(true);
   
@@ -44,7 +24,7 @@ const ResolutionPathAnalyzerPageContent = () => {
   // Fetch all data needed for comprehensive path analysis
   const { data: charactersData, isLoading: charactersLoading, error: charactersError } = useQuery({
     queryKey: ['charactersForPathAnalysis'],
-    queryFn: () => api.getAllCharactersWithSociogramData({ limit: 1000 }),
+    queryFn: () => api.getCharacters({ limit: 1000 }),
     staleTime: 5 * 60 * 1000
   });
   
@@ -83,245 +63,12 @@ const ResolutionPathAnalyzerPageContent = () => {
       balanceMetrics: {},
       recommendations: []
     };
-
-    // Get constants from game config
-    const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
-    const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
-    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
-    const baseValues = getConstant(gameConstants, 'MEMORY_VALUE.BASE_VALUES', {});
-    const typeMultipliers = getConstant(gameConstants, 'MEMORY_VALUE.TYPE_MULTIPLIERS', {});
-
-    // Character path distribution
-    const charactersWithPaths = characters.filter(char => 
-      char.resolutionPaths && char.resolutionPaths.length > 0
-    );
     
-    const pathDistribution = {};
-    knownPaths.forEach(path => {
-      pathDistribution[path] = charactersWithPaths.filter(char => char.resolutionPaths.includes(path));
-    });
-    pathDistribution[unassignedPath] = characters.filter(char => !char.resolutionPaths || char.resolutionPaths.length === 0);
-
-    // Resource allocation per path (elements, puzzles, timeline events)
-    const pathResources = {};
-    knownPaths.forEach(path => {
-      const pathElements = elements.filter(el => 
-        el.resolutionPaths && el.resolutionPaths.includes(path)
-      );
-      const pathPuzzles = puzzles.filter(puzzle => 
-        puzzle.resolutionPaths && puzzle.resolutionPaths.includes(path)
-      );
-      const pathEvents = timelineEvents.filter(event => 
-        event.resolutionPaths && event.resolutionPaths.includes(path)
-      );
-
-      // Calculate memory token allocation
-      const memoryTokens = pathElements.filter(el => 
-        el.properties?.basicType?.toLowerCase().includes('memory') ||
-        el.properties?.basicType?.toLowerCase().includes('token') ||
-        el.properties?.basicType?.toLowerCase().includes('rfid')
-      );
-
-      const totalValue = pathElements.reduce((sum, el) => {
-        const valueRating = el.properties?.sf_value_rating || 0;
-        const memoryType = el.properties?.sf_memory_type || 'Personal';
-        const baseValue = baseValues[valueRating] || 0;
-        const multiplier = typeMultipliers[memoryType] || 1;
-        return sum + (baseValue * multiplier);
-      }, 0);
-
-      pathResources[path] = {
-        characters: pathDistribution[path]?.length || 0,
-        elements: pathElements.length,
-        puzzles: pathPuzzles.length,
-        timelineEvents: pathEvents.length,
-        memoryTokens: memoryTokens.length,
-        totalValue,
-        readyElements: pathElements.filter(el => 
-          el.properties?.status === 'Ready' || el.properties?.status === 'Complete'
-        ).length,
-        elementList: pathElements,
-        puzzleList: pathPuzzles,
-        characterList: pathDistribution[path] || []
-      };
-    });
-
-    // Cross-path dependencies analysis
-    const crossPathDependencies = [];
-    
-    // Find shared puzzles
-    puzzles.forEach(puzzle => {
-      if (puzzle.resolutionPaths && puzzle.resolutionPaths.length > 1) {
-        crossPathDependencies.push({
-          type: 'Shared Puzzle',
-          name: puzzle.name,
-          paths: puzzle.resolutionPaths,
-          impact: 'high',
-          description: 'Puzzle accessible from multiple paths'
-        });
-      }
-    });
-
-    // Find character interactions across paths
-    characters.forEach(char => {
-      if (char.resolutionPaths && char.resolutionPaths.length > 1) {
-        crossPathDependencies.push({
-          type: 'Cross-Path Character',
-          name: char.name,
-          paths: char.resolutionPaths,
-          impact: 'medium',
-          description: 'Character participates in multiple resolution paths'
-        });
-      }
-    });
-
-    // Balance metrics calculation
-    const totalCharacters = Object.values(pathDistribution).reduce((sum, chars) => sum + (chars?.length || 0), 0);
-    const pathCounts = knownPaths.map(path => pathResources[path].characters);
-    const maxCount = Math.max(...pathCounts);
-    const minCount = Math.min(...pathCounts);
-    const balanceScore = totalCharacters > 0 ? Math.max(0, 100 - ((maxCount - minCount) / totalCharacters * 100)) : 0;
-
-    const balanceMetrics = {
-      characterBalance: balanceScore,
-      resourceBalance: knownPaths.reduce((acc, path) => {
-        acc[path] = {
-          completion: pathResources[path].elements > 0 ? 
-            (pathResources[path].readyElements / pathResources[path].elements * 100) : 0,
-          memoryDensity: pathResources[path].characters > 0 ? 
-            (pathResources[path].memoryTokens / pathResources[path].characters) : 0
-        };
-        return acc;
-      }, {}),
-      crossPathComplexity: crossPathDependencies.length
-    };
-
-    // Generate recommendations using configurable thresholds
-    const recommendations = [];
-    
-    // Use balance threshold from game constants or default
-    const balanceThreshold = getConstant(gameConstants, 'MEMORY_VALUE.BALANCE_WARNING_THRESHOLD', 0.3) * 100; // Convert to percentage
-    const balanceScore70 = 70; // Could be configured in game constants in future
-    
-    if (balanceScore < balanceScore70) {
-      recommendations.push({
-        type: 'character-balance',
-        severity: 'warning',
-        message: 'Character distribution is unbalanced across paths',
-        action: 'Redistribute characters to achieve better path balance'
-      });
-    }
-
-    const unassignedThreshold = getConstant(gameConstants, 'MEMORY_VALUE.BALANCE_WARNING_THRESHOLD', 0.3);
-    if (pathDistribution[unassignedPath].length > totalCharacters * unassignedThreshold) {
-      recommendations.push({
-        type: 'unassigned-characters',
-        severity: 'info',
-        message: `${pathDistribution[unassignedPath].length} characters not assigned to resolution paths`,
-        action: 'Assign characters to appropriate resolution paths'
-      });
-    }
-
-    knownPaths.forEach(path => {
-      const metrics = balanceMetrics.resourceBalance[path];
-      const completionThreshold = 50; // Could be configured in game constants
-      const memoryDensityThreshold = 2; // Could be configured in game constants
-      
-      if (metrics.completion < completionThreshold) {
-        recommendations.push({
-          type: 'production-readiness',
-          severity: 'warning',
-          message: `${path} path only ${Math.round(metrics.completion)}% production ready`,
-          action: `Prioritize completion of ${path} path elements`
-        });
-      }
-      
-      if (metrics.memoryDensity < memoryDensityThreshold) {
-        recommendations.push({
-          type: 'memory-economy',
-          severity: 'info',
-          message: `${path} path has low memory token density (${metrics.memoryDensity.toFixed(1)} per character)`,
-          action: `Consider adding more memory tokens to ${path} path`
-        });
-      }
-    });
-
-    const complexityThreshold = 8; // Could be configured in game constants
-    if (crossPathDependencies.length > complexityThreshold) {
-      recommendations.push({
-        type: 'complexity',
-        severity: 'warning',
-        message: 'High cross-path complexity may cause production challenges',
-        action: 'Review shared elements and consider simplifying dependencies'
-      });
-    }
-
-    return {
-      pathDistribution,
-      pathResources,
-      crossPathDependencies,
-      balanceMetrics,
-      recommendations
-    };
+    return calculatePathAnalysis(characters, elements, puzzles, timelineEvents, gameConstants);
   }, [characters, elements, puzzles, timelineEvents, gameConstants]);
-
-  // Legacy compatibility for existing UI
-  const pathData = useMemo(() => {
-    if (!gameConstants) return {};
-    
-    const aggregator = {};
-    const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
-    const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
-    
-    [...knownPaths, unassignedPath].forEach(path => {
-      if (path === unassignedPath) {
-        aggregator[path] = { 
-          count: pathAnalysis.pathDistribution?.[unassignedPath]?.length || 0, 
-          characters: pathAnalysis.pathDistribution?.[unassignedPath] || [],
-          puzzles: [],
-          elements: []
-        };
-      } else {
-        const resources = pathAnalysis.pathResources?.[path] || {};
-        aggregator[path] = { 
-          count: (resources.characters || 0) + (resources.elements || 0) + (resources.puzzles || 0),
-          characters: resources.characterList || [],
-          puzzles: resources.puzzleList || [],
-          elements: resources.elementList || []
-        };
-      }
-    });
-    return aggregator;
-  }, [pathAnalysis, gameConstants]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedPathTab(newValue);
-  };
-
-  const knownPaths = getConstant(gameConstants, 'RESOLUTION_PATHS.TYPES', ['Black Market', 'Detective', 'Third Path']);
-  const unassignedPath = getConstant(gameConstants, 'RESOLUTION_PATHS.DEFAULT', 'Unassigned');
-  const allPathsForTabs = [...knownPaths, unassignedPath];
-  const currentSelectedPathName = allPathsForTabs[selectedPathTab];
-  const currentPathData = pathData[currentSelectedPathName];
-
-  const renderEntityList = (items, itemType, icon) => {
-    if (!items || items.length === 0) {
-      return <Typography color="text.secondary" sx={{pl:2, fontStyle:'italic'}}>No {itemType.toLowerCase()} contribute to this path.</Typography>;
-    }
-    return (
-      <List dense disablePadding>
-        {items.map(item => (
-          <ListItemButton
-            key={item.id}
-            onClick={() => navigate(`/${itemType.toLowerCase()}/${item.id}`)}
-            sx={{borderRadius:1}}
-          >
-            <ListItemIcon sx={{minWidth: 36}}>{icon}</ListItemIcon>
-            <ListItemText primary={item.name || item.puzzle || item.description /* puzzles use .puzzle, timeline .description */} />
-          </ListItemButton>
-        ))}
-      </List>
-    );
   };
 
 
@@ -362,382 +109,28 @@ const ResolutionPathAnalyzerPageContent = () => {
         Monitor and balance the three narrative resolution paths for About Last Night. Ensure equitable distribution of characters, resources, and production readiness.
       </Typography>
 
-      {/* Path Balance Overview */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }} elevation={2}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <BalanceIcon sx={{ mr: 1 }} />
-              Three-Path Balance Overview
-            </Typography>
-            <Grid container spacing={2}>
-              {knownPaths.map(path => {
-                const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
-                const pathConfig = pathThemes[path] || { color: 'default', theme: 'Unknown' };
-                const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
-                                     path === 'Detective' ? SearchIcon :
-                                     path === 'Third Path' ? GroupsIcon : HelpOutlineIcon;
-                const resources = pathResources[path] || {};
-                
-                return (
-                  <Grid item xs={12} md={4} key={path}>
-                    <Card sx={{ height: '100%', bgcolor: `${pathConfig.color}.light`, color: `${pathConfig.color}.contrastText` }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <IconComponent sx={{ fontSize: 28, mr: 1 }} />
-                          <Box>
-                            <Typography variant="h6">{path}</Typography>
-                            <Typography variant="caption">{pathConfig.theme}</Typography>
-                          </Box>
-                        </Box>
-                        
-                        <Typography variant="h3" sx={{ mb: 1 }}>{resources.characters || 0}</Typography>
-                        <Typography variant="body2" sx={{ mb: 2 }}>Characters</Typography>
-                        
-                        <Grid container spacing={1} sx={{ fontSize: 'small' }}>
-                          <Grid item xs={6}>
-                            <Typography variant="caption">Elements: {resources.elements || 0}</Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="caption">Puzzles: {resources.puzzles || 0}</Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="caption">Memory: {resources.memoryTokens || 0}</Typography>
-                          </Grid>
-                          <Grid item xs={6}>
-                            <Typography variant="caption">Ready: {resources.readyElements || 0}</Typography>
-                          </Grid>
-                        </Grid>
-                        
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={resources.elements > 0 ? (resources.readyElements / resources.elements * 100) : 0}
-                          sx={{ mt: 2, height: 6, borderRadius: 3 }}
-                          color="inherit"
-                        />
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          </Paper>
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <AssessmentIcon sx={{ mr: 1 }} />
-              Balance Metrics
-            </Typography>
-            
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>Character Balance</Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={balanceMetrics.characterBalance}
-                sx={{ height: 8, borderRadius: 4, mb: 1 }}
-                color={balanceMetrics.characterBalance >= 80 ? 'success' : balanceMetrics.characterBalance >= 60 ? 'warning' : 'error'}
-              />
-              <Typography variant="body2" color="text.secondary">
-                {Math.round(balanceMetrics.characterBalance)}% balanced
-              </Typography>
-            </Box>
-            
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>Cross-Path Dependencies</Typography>
-              <Chip 
-                label={`${crossPathDependencies.length} dependencies`}
-                color={crossPathDependencies.length <= 5 ? 'success' : crossPathDependencies.length <= 8 ? 'warning' : 'error'}
-                icon={<SwapHorizIcon />}
-              />
-            </Box>
-            
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>Unassigned Characters</Typography>
-              <Typography variant="h4" color={pathDistribution['Unassigned']?.length > 0 ? 'warning.main' : 'success.main'}>
-                {pathDistribution['Unassigned']?.length || 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Need path assignment
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+      <PathBalanceOverview 
+        pathAnalysis={pathAnalysis}
+        gameConstants={gameConstants}
+      />
 
       {analysisMode && (
         <>
-          {/* Detailed Analysis Tabs */}
-          <Paper sx={{ mb: 3 }} elevation={2}>
-            <Tabs value={selectedPathTab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tab label="Resource Distribution" />
-              <Tab label="Cross-Path Dependencies" />
-              <Tab label="Character Assignments" />
-            </Tabs>
-            
-            {/* Resource Distribution Tab */}
-            {selectedPathTab === 0 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>Resource Allocation by Path</Typography>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Resolution Path</TableCell>
-                        <TableCell align="right">Characters</TableCell>
-                        <TableCell align="right">Elements</TableCell>
-                        <TableCell align="right">Memory Tokens</TableCell>
-                        <TableCell align="right">Puzzles</TableCell>
-                        <TableCell align="right">Timeline Events</TableCell>
-                        <TableCell align="right">Total Value</TableCell>
-                        <TableCell align="right">Production Ready</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {knownPaths.map(path => {
-                        const resources = pathResources[path] || {};
-                        const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
-                        const pathConfig = pathThemes[path] || { color: 'default' };
-                        const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
-                                             path === 'Detective' ? SearchIcon :
-                                             path === 'Third Path' ? GroupsIcon : HelpOutlineIcon;
-                        
-                        return (
-                          <TableRow key={path}>
-                            <TableCell>
-                              <Chip 
-                                label={path} 
-                                color={pathConfig.color}
-                                icon={React.createElement(IconComponent)}
-                              />
-                            </TableCell>
-                            <TableCell align="right">{resources.characters || 0}</TableCell>
-                            <TableCell align="right">{resources.elements || 0}</TableCell>
-                            <TableCell align="right">{resources.memoryTokens || 0}</TableCell>
-                            <TableCell align="right">{resources.puzzles || 0}</TableCell>
-                            <TableCell align="right">{resources.timelineEvents || 0}</TableCell>
-                            <TableCell align="right">${(resources.totalValue || 0).toLocaleString()}</TableCell>
-                            <TableCell align="right">
-                              <Chip 
-                                label={`${resources.readyElements || 0}/${resources.elements || 0}`}
-                                color={resources.elements > 0 && resources.readyElements / resources.elements >= 0.7 ? 'success' : 'warning'}
-                                size="small"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-            
-            {/* Cross-Path Dependencies Tab */}
-            {selectedPathTab === 1 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>Cross-Path Dependencies</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Elements and characters that affect multiple resolution paths
-                </Typography>
-                
-                {crossPathDependencies.length === 0 ? (
-                  <Alert severity="success">No cross-path dependencies detected. All paths are independent.</Alert>
-                ) : (
-                  <List>
-                    {crossPathDependencies.map((dependency, index) => (
-                      <React.Fragment key={index}>
-                        <ListItem>
-                          <ListItemIcon>
-                            <Chip 
-                              label={dependency.type}
-                              color={dependency.impact === 'high' ? 'error' : dependency.impact === 'medium' ? 'warning' : 'info'}
-                              size="small"
-                            />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={dependency.name}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2">{dependency.description}</Typography>
-                                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                                  {dependency.paths.map(path => {
-                                    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
-                                    return (
-                                      <Chip 
-                                        key={path}
-                                        label={path} 
-                                        size="small" 
-                                        color={pathThemes[path]?.color || 'default'}
-                                        variant="outlined"
-                                      />
-                                    );
-                                  })}
-                                </Box>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {index < crossPathDependencies.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                  </List>
-                )}
-              </Box>
-            )}
-            
-            {/* Character Assignments Tab */}
-            {selectedPathTab === 2 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>Character Path Assignments</Typography>
-                
-                {pathDistribution[unassignedPath]?.length > 0 && (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    {pathDistribution[unassignedPath].length} characters need resolution path assignment
-                  </Alert>
-                )}
-                
-                <Grid container spacing={2}>
-                  {knownPaths.concat([unassignedPath]).map(path => {
-                    const characters = pathDistribution[path] || [];
-                    const pathThemes = getConstant(gameConstants, 'RESOLUTION_PATHS.THEMES', {});
-                    const pathConfig = pathThemes[path];
-                    const IconComponent = path === 'Black Market' ? AccountBalanceIcon :
-                                         path === 'Detective' ? SearchIcon :
-                                         path === 'Third Path' ? GroupsIcon : WarningIcon;
-                    
-                    return (
-                      <Grid item xs={12} md={6} lg={3} key={path}>
-                        <Paper sx={{ p: 2 }} variant="outlined">
-                          <Typography variant="subtitle1" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                            {pathConfig ? (
-                              <>
-                                <IconComponent sx={{ mr: 1, fontSize: 20 }} />
-                                {path}
-                              </>
-                            ) : (
-                              <>
-                                <WarningIcon sx={{ mr: 1, fontSize: 20, color: 'warning.main' }} />
-                                {path}
-                              </>
-                            )}
-                          </Typography>
-                          
-                          <Typography variant="h4" color={pathConfig?.color ? `${pathConfig.color}.main` : 'warning.main'}>
-                            {characters.length}
-                          </Typography>
-                          
-                          <Typography variant="caption" color="text.secondary" gutterBottom>
-                            characters assigned
-                          </Typography>
-                          
-                          {characters.length > 0 && (
-                            <Box sx={{ mt: 1, maxHeight: 150, overflowY: 'auto' }}>
-                              {characters.slice(0, 5).map(char => (
-                                <Chip 
-                                  key={char.id}
-                                  label={char.name}
-                                  size="small"
-                                  sx={{ mr: 0.5, mb: 0.5 }}
-                                  component={RouterLink}
-                                  to={`/characters/${char.id}`}
-                                  clickable
-                                />
-                              ))}
-                              {characters.length > 5 && (
-                                <Typography variant="caption" color="text.secondary">
-                                  +{characters.length - 5} more
-                                </Typography>
-                              )}
-                            </Box>
-                          )}
-                        </Paper>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Box>
-            )}
-          </Paper>
+          <PathAnalysisTabs 
+            pathAnalysis={pathAnalysis}
+            gameConstants={gameConstants}
+            selectedPathTab={selectedPathTab}
+            onTabChange={handleTabChange}
+          />
 
           {/* Recommendations Panel */}
           {recommendations.length > 0 && (
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <TrendingUpIcon color="info" />
-                  Production Recommendations ({recommendations.length})
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {recommendations.map((rec, index) => (
-                  <Alert 
-                    key={index} 
-                    severity={rec.severity}
-                    sx={{ mb: 1 }}
-                    action={
-                      <Button size="small" color="inherit">
-                        View Details
-                      </Button>
-                    }
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>{rec.message}</Typography>
-                    <Typography variant="caption">{rec.action}</Typography>
-                  </Alert>
-                ))}
-              </AccordionDetails>
-            </Accordion>
+            <RecommendationsPanel recommendations={recommendations} />
           )}
         </>
       )}
       
-      {/* Quick Actions */}
-      <Paper sx={{ p: 3, mt: 3 }} elevation={2}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Quick Actions</Typography>
-        <Grid container spacing={2}>
-          <Grid item>
-            <Button 
-              component={RouterLink} 
-              to="/characters" 
-              variant="outlined" 
-              startIcon={<PeopleIcon />}
-            >
-              Manage Characters
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              component={RouterLink} 
-              to="/memory-economy" 
-              variant="outlined" 
-              startIcon={<MemoryIcon />}
-            >
-              Memory Economy
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              component={RouterLink} 
-              to="/character-sociogram" 
-              variant="outlined" 
-              startIcon={<ExtensionIcon />}
-            >
-              Dependency Analysis
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              component={RouterLink} 
-              to="/" 
-              variant="contained" 
-              startIcon={<AssessmentIcon />}
-            >
-              Production Dashboard
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+      <QuickActionsPanel />
     </Container>
   );
 };

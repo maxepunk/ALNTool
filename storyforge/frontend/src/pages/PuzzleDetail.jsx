@@ -11,6 +11,7 @@ import {
   Link,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Paper,
   Tab,
@@ -28,8 +29,12 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import AccountTreeIcon from '@mui/icons-material/AccountTree'; // Icon for Puzzle Flow
 import PageHeader from '../components/PageHeader';
 import RelationshipMapper from '../components/RelationshipMapper';
+import PageActions from '../components/PuzzleDetail/PageActions';
+import NarrativeImpactSection from '../components/PuzzleDetail/NarrativeImpactSection';
+import TabsContent from '../components/PuzzleDetail/TabsContent';
 import { api } from '../services/api';
 import { Link as RouterLink } from 'react-router-dom';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 function PuzzleDetail() {
   const { id } = useParams();
@@ -78,77 +83,57 @@ function PuzzleDetail() {
   // Initial loading state: show spinner if isLoading is true AND there's no puzzle data yet
   if (isLoading && !puzzle) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
-        <CircularProgress size={50} /> <Typography sx={{ml:2}}>Loading Puzzle Details...</Typography>
-      </Box>
+      <ErrorBoundary level="page">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+          <CircularProgress size={50} /> <Typography sx={{ml:2}}>Loading Puzzle Details...</Typography>
+        </Box>
+      </ErrorBoundary>
     );
   }
   
   // Error state: show if an error occurred and we don't have puzzle data to display from a previous successful fetch
   if (error && !puzzle) {
     return (
-      <Paper sx={{ p: 3, m:1 }} elevation={3}>
-        <Alert severity="error" action={
-          <Button color="inherit" size="small" onClick={handleRefresh}>Retry</Button>
-        }>
-          Error loading puzzle: {error.message || 'An unknown error occurred.'}
-        </Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mt: 2 }}>
-          Back to Puzzles
-        </Button>
-      </Paper>
+      <ErrorBoundary level="page">
+        <Paper sx={{ p: 3, m:1 }} elevation={3}>
+          <Alert severity="error" action={
+            <Button color="inherit" size="small" onClick={handleRefresh}>Retry</Button>
+          }>
+            Error loading puzzle: {error.message || 'An unknown error occurred.'}
+          </Alert>
+          <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mt: 2 }}>
+            Back to Puzzles
+          </Button>
+        </Paper>
+      </ErrorBoundary>
     );
   }
   
   // If after loading and no error, puzzle is still not found
   if (!isLoading && !error && !puzzle) {
     return (
-      <Paper sx={{ p: 3, m:1 }} elevation={3}>
-        <Alert severity="warning">Puzzle data not available or puzzle not found.</Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mt: 2 }}>
-          Back to Puzzles
-        </Button>
-      </Paper>
+      <ErrorBoundary level="page">
+        <Paper sx={{ p: 3, m:1 }} elevation={3}>
+          <Alert severity="warning">Puzzle data not available or puzzle not found.</Alert>
+          <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mt: 2 }}>
+            Back to Puzzles
+          </Button>
+        </Paper>
+      </ErrorBoundary>
     );
   }
 
   // If puzzle data exists (even if stale while refetching), render the page actions
   // isFetching will indicate background activity
   const pageActions = puzzle ? (
-    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-      <Tooltip title={isFetching ? "Refreshing..." : "Refresh Data"}>
-        <span>
-          <IconButton onClick={handleRefresh} disabled={isFetching} aria-label="refresh puzzle data">
-            {isFetching ? <CircularProgress size={24} color="inherit" /> : <RefreshIcon />}
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Tooltip title={showMapper ? "Hide Relationship Map" : "Show Relationship Map"}>
-        <IconButton 
-          onClick={() => setShowMapper(prev => !prev)} 
-          aria-label="toggle relationship map" 
-          color={showMapper ? "primary" : "default"}
-        >
-          {showMapper ? <VisibilityOffIcon /> : <VisibilityIcon />}
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="Edit puzzle (Phase 3)">
-        <Button variant="contained" startIcon={<EditIcon />} onClick={handleEdit} size="medium">
-          Edit Puzzle
-        </Button>
-      </Tooltip>
-      <Tooltip title="View Puzzle Flow">
-        <Button
-          variant="outlined"
-          startIcon={<AccountTreeIcon />}
-          onClick={() => navigate(`/puzzles/${id}/flow`)}
-          size="medium"
-          sx={{ml: 1}} // Add some margin if needed
-        >
-          View Flow
-        </Button>
-      </Tooltip>
-    </Box>
+    <PageActions
+      isFetching={isFetching}
+      showMapper={showMapper}
+      onRefresh={handleRefresh}
+      onToggleMapper={() => setShowMapper(prev => !prev)}
+      onEdit={handleEdit}
+      puzzleId={id}
+    />
   ) : null;
 
   // Final fallback check
@@ -163,8 +148,9 @@ function PuzzleDetail() {
   }
   
   return (
-    <Box>
-      <PageHeader
+    <ErrorBoundary level="page">
+      <Box>
+        <PageHeader
         title={puzzle.puzzle || "Puzzle Details"}
         breadcrumbs={[
           { name: 'Puzzles', path: '/puzzles' },
@@ -290,63 +276,7 @@ function PuzzleDetail() {
           </Paper>
 
           {/* Narrative Impact Section */}
-          <Paper sx={{ p: 2, mt: 3 }} elevation={1}>
-            <Typography variant="h6" gutterBottom>Narrative Impact & Cohesion</Typography>
-            <Divider sx={{ mb: 2 }} />
-
-            {puzzle.storyReveals && (
-              <>
-                <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Key Story Reveals</Typography>
-                <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'pre-wrap', fontStyle: 'italic', color: 'text.secondary' }}>
-                  {puzzle.storyReveals}
-                </Typography>
-                <Divider sx={{ my: 2 }} />
-              </>
-            )}
-
-            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Impacted Characters</Typography>
-            {puzzle.impactedCharacters && puzzle.impactedCharacters.length > 0 ? (
-              <List dense disablePadding>
-                {puzzle.impactedCharacters.map(char => (
-                  <ListItem key={char.id} disablePadding>
-                    <ListItemButton component={RouterLink} to={`/characters/${char.id}`} sx={{borderRadius:1}}>
-                      <ListItemText primary={char.name} />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{mb:2}}>None specified.</Typography>
-            )}
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Related Timeline Events</Typography>
-            {puzzle.relatedTimelineEvents && puzzle.relatedTimelineEvents.length > 0 ? (
-              <List dense disablePadding>
-                {puzzle.relatedTimelineEvents.map(event => (
-                  <ListItem key={event.id} disablePadding>
-                    <ListItemButton component={RouterLink} to={`/timelines/${event.id}`} sx={{borderRadius:1}}>
-                      <ListItemText primary={event.name} />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Typography variant="body2" color="text.secondary" sx={{mb:2}}>None specified.</Typography>
-            )}
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="subtitle1" gutterBottom color="text.primary" sx={{fontWeight: 'medium'}}>Resolution Path Contributions</Typography>
-            {puzzle.resolutionPaths && puzzle.resolutionPaths.length > 0 ? (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {puzzle.resolutionPaths.map((path, index) => (
-                  <Chip key={index} label={path} color="secondary" variant="outlined" />
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="body2" color="text.secondary">None specified.</Typography>
-            )}
-          </Paper>
+          <NarrativeImpactSection puzzle={puzzle} />
         
           {/* Tabs for related content */}
           <Paper sx={{ p: 0, mt: 3 }} elevation={1}>
@@ -366,113 +296,15 @@ function PuzzleDetail() {
             </Tabs>
             
             <Box sx={{ p: {xs:1.5, sm:2}, minHeight: 180, maxHeight: 300, overflowY: 'auto' }}>
-              {/* Required Elements Tab */}
-              {activeTab === 0 && (
-                <>
-                  {puzzle.puzzleElements?.length > 0 ? (
-                    <List dense>
-                      {puzzle.puzzleElements.map((element) => {
-                        if (!element || !element.id) return null;
-                        return (
-                          <ListItem 
-                            key={element.id} 
-                            button 
-                            component={RouterLink}
-                            to={`/elements/${element.id}`}
-                            sx={{borderRadius:1, '&:hover': {bgcolor: 'action.selected'}}}
-                          >
-                            <ListItemText 
-                              primary={element.name || `Element ID: ${element.id}`} 
-                              secondary={element.basicType ? `Type: ${element.basicType}` : 'Unknown type'} 
-                            />
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  ) : (
-                    <Typography color="text.secondary" sx={{textAlign:'center', pt:3, fontStyle: 'italic'}}>
-                      No required elements found.
-                    </Typography>
-                  )}
-                </>
-              )}
-              
-              {/* Reward Elements Tab */}
-              {activeTab === 1 && (
-                <>
-                  {puzzle.rewards?.length > 0 ? (
-                    <List dense>
-                      {puzzle.rewards.map((element) => {
-                        if (!element || !element.id) return null;
-                        return (
-                          <ListItem 
-                            key={element.id} 
-                            button 
-                            component={RouterLink}
-                            to={`/elements/${element.id}`}
-                            sx={{borderRadius:1, '&:hover': {bgcolor: 'action.selected'}}}
-                          >
-                            <ListItemText 
-                              primary={element.name || `Element ID: ${element.id}`} 
-                              secondary={element.basicType ? `Type: ${element.basicType}` : 'Unknown type'} 
-                            />
-                          </ListItem>
-                        );
-                      })}
-                    </List>
-                  ) : (
-                    <Typography color="text.secondary" sx={{textAlign:'center', pt:3, fontStyle: 'italic'}}>
-                      No reward elements found.
-                    </Typography>
-                  )}
-                </>
-              )}
-              
-              {/* Locked Item Tab */}
-              {puzzle.lockedItem && activeTab === 2 && (
-                <List dense>
-                  {puzzle.lockedItem.id ? (
-                    <ListItem 
-                      button 
-                      component={RouterLink}
-                      to={`/elements/${puzzle.lockedItem.id}`}
-                      sx={{borderRadius:1, '&:hover': {bgcolor: 'action.selected'}}}
-                    >
-                      <ListItemText 
-                        primary={puzzle.lockedItem.name || `Element ID: ${puzzle.lockedItem.id}`} 
-                        secondary={puzzle.lockedItem.basicType ? `Type: ${puzzle.lockedItem.basicType}` : 'Unknown type'} 
-                      />
-                    </ListItem>
-                  ) : (
-                    <Typography color="text.secondary" sx={{textAlign:'center', pt:3, fontStyle: 'italic'}}>
-                      Locked item data is incomplete.
-                    </Typography>
-                  )}
-                </List>
-              )}
-              
-              {/* Sub Puzzles Tab */}
-              {puzzle.subPuzzles?.length > 0 && activeTab === (puzzle.lockedItem ? 3 : 2) && (
-                <List dense>
-                  {puzzle.subPuzzles.map((subPuzzle) => {
-                    if (!subPuzzle || !subPuzzle.id) return null;
-                    return (
-                      <ListItem 
-                        key={subPuzzle.id} 
-                        button 
-                        component={RouterLink}
-                        to={`/puzzles/${subPuzzle.id}`}
-                        sx={{borderRadius:1, '&:hover': {bgcolor: 'action.selected'}}}
-                      >
-                        <ListItemText 
-                          primary={subPuzzle.puzzle || `Puzzle ID: ${subPuzzle.id}`} 
-                          secondary={subPuzzle.timing ? `Timing: ${subPuzzle.timing}` : 'No timing specified'} 
-                        />
-                      </ListItem>
-                    );
-                  })}
-                </List>
-              )}
+              <TabsContent 
+                puzzle={{
+                  requiredElements: puzzle.puzzleElements,
+                  rewards: puzzle.rewards,
+                  lockedItem: puzzle.lockedItem,
+                  subPuzzles: puzzle.subPuzzles
+                }} 
+                activeTab={activeTab} 
+              />
             </Box>
           </Paper>
         </Grid>
@@ -503,6 +335,7 @@ function PuzzleDetail() {
         </Button>
       </Box>
     </Box>
+    </ErrorBoundary>
   );
 }
 

@@ -1,6 +1,6 @@
 const dbQueries = require('../db/queries');
 const QueryBuilder = require('../db/QueryBuilder');
-const Database = require('../db/database');
+const { getDB } = require('../db/database');
 const GameConstants = require('../config/GameConstants');
 
 /**
@@ -141,7 +141,7 @@ class GraphService {
 
     // 3. Fetch character-to-character links using QueryBuilder
     const characterLinksQuery = QueryBuilder.characterRelationships(characterId);
-    const characterLinks = Database.getDb().prepare(characterLinksQuery.sql).all(...characterLinksQuery.params);
+    const characterLinks = getDB().prepare(characterLinksQuery.sql).all(...characterLinksQuery.params);
 
     // 4. Process relations into nodes and edges
     relations.events.forEach(event => {
@@ -216,6 +216,27 @@ class GraphService {
       nodes,
       edges
     };
+  }
+
+  /**
+   * Placeholder for element graph - not implemented in backend
+   */
+  async getElementGraph(elementId, depth = 1) {
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Placeholder for puzzle graph - not implemented in backend
+   */
+  async getPuzzleGraph(puzzleId, depth = 1) {
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Placeholder for timeline graph - not implemented in backend
+   */
+  async getTimelineGraph(timelineId, depth = 1) {
+    throw new Error('Not implemented');
   }
 }
 

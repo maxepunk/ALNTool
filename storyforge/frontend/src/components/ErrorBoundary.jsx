@@ -32,9 +32,22 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // Allow custom fallback component
+      if (this.props.fallback) {
+        const FallbackComponent = this.props.fallback;
+        return (
+          <FallbackComponent
+            error={this.state.error}
+            errorInfo={this.state.errorInfo}
+            resetError={this.handleReset}
+          />
+        );
+      }
+
       return (
         <ErrorFallback
           error={this.state.error}
+          errorInfo={this.state.errorInfo}
           resetError={this.handleReset}
           level={this.props.level || 'page'}
         />
@@ -46,7 +59,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // Functional component for the error UI
-function ErrorFallback({ error, resetError, level }) {
+function ErrorFallback({ error, errorInfo, resetError, level }) {
   const navigate = useNavigate && typeof useNavigate === 'function' ? useNavigate() : null;
 
   const handleGoHome = () => {
@@ -99,7 +112,8 @@ function ErrorFallback({ error, resetError, level }) {
           {errorDescription}
         </Typography>
 
-        {error && (
+        {/* Only show error details in development */}
+        {error && process.env.NODE_ENV === 'development' && (
           <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
             <Typography variant="subtitle2" gutterBottom>
               Error Details:
@@ -111,6 +125,12 @@ function ErrorFallback({ error, resetError, level }) {
               maxHeight: 200
             }}>
               {error.toString()}
+              {errorInfo && errorInfo.componentStack && (
+                <>
+                  {'\n\nComponent Stack:'}
+                  {errorInfo.componentStack}
+                </>
+              )}
             </Typography>
           </Alert>
         )}

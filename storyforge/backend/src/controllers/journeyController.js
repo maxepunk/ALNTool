@@ -25,24 +25,6 @@ async function getCharacterJourney(req, res) {
 }
 
 /**
- * Get gaps for a character - DEPRECATED
- * Gaps are no longer part of the journey model
- */
-async function getCharacterGaps(req, res) {
-  // Return empty array for backward compatibility
-  res.json([]);
-}
-
-/**
- * Get all gaps across all characters - DEPRECATED
- * Gaps are no longer part of the journey model
- */
-async function getAllGaps(req, res) {
-  // Return empty array for backward compatibility
-  res.json([]);
-}
-
-/**
  * Get sync status
  */
 async function getSyncStatus(req, res) {
@@ -55,35 +37,7 @@ async function getSyncStatus(req, res) {
   }
 }
 
-/**
- * Get gap suggestions - DEPRECATED
- * This endpoint is no longer supported
- */
-async function getGapSuggestions(req, res) {
-  res.status(410).json({
-    error: 'Gap suggestions endpoint is deprecated',
-    message: 'The gap model has been replaced with a journey graph model',
-    migration: 'Use the journey graph endpoint at /api/journeys/:characterId instead'
-  });
-}
-
-/**
- * Resolve a gap - DEPRECATED
- * This endpoint is no longer supported
- */
-async function resolveGap(req, res) {
-  res.status(410).json({
-    error: 'Gap resolution endpoint is deprecated',
-    message: 'The gap model has been replaced with a journey graph model',
-    migration: 'Gaps no longer exist in the current data model'
-  });
-}
-
 module.exports = {
   getCharacterJourney,
-  getCharacterGaps,
-  getAllGaps,
-  getSyncStatus,
-  getGapSuggestions,
-  resolveGap
+  getSyncStatus
 };

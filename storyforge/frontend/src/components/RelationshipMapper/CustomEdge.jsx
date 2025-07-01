@@ -99,6 +99,7 @@ export default function CustomEdge({
     <>
       <path
         id={id}
+        data-testid={`edge-path-${id}`}
         style={finalEdgeStyle} // Use the refined style object
         className={`react-flow__edge-path ${animated || style.animated ? 'animated' : ''}`} // Respect animated prop from style or direct prop
         d={edgePath}

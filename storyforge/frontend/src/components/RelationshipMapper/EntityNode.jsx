@@ -1,55 +1,12 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
-import { Handle, Position, useViewport } from '@xyflow/react'; // Added useViewport
-import { Paper, Typography, Box, Chip, Tooltip, Divider, useTheme } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import { Handle, Position, useViewport } from '@xyflow/react';
+import { Paper, Typography, Box, Tooltip, Divider, useTheme } from '@mui/material';
+import ErrorBoundary from '../ErrorBoundary';
 import EventIcon from '@mui/icons-material/Event';
-import ExtensionIcon from '@mui/icons-material/Extension';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import MemoryIcon from '@mui/icons-material/Memory'; // Added MemoryIcon
-
-const getEntityPresentation = (type, properties = {}, isCenter = false) => {
-  let color = '#78909c'; // Default Blue Grey 400
-  let icon = <HelpOutlineIcon fontSize="inherit" />;
-  let contrastColor = 'rgba(0,0,0,0.87)'; // For chips on light backgrounds
-
-  if (isCenter) {
-    color = '#673ab7'; // Deep Purple 500 for center node
-    contrastColor = '#fff';
-  }
-  
-  // Check for Memory Element first as it's a subtype of Element
-  if (type === 'Element' && properties.basicType?.toLowerCase().includes('memory')) {
-    color = isCenter ? color : '#2196f3'; // Blue 500 for Memory Elements
-    icon = <MemoryIcon fontSize="inherit" />;
-    contrastColor = '#fff';
-  } else {
-    switch (type) {
-      case 'Character':
-        color = isCenter ? color : '#3f51b5'; // Indigo 500
-        icon = <PersonIcon fontSize="inherit" />;
-        contrastColor = '#fff';
-        break;
-      case 'Element': // General Elements (not Memory)
-        color = isCenter ? color : '#00897b'; // Teal 600
-        icon = <InventoryIcon fontSize="inherit" />;
-        contrastColor = '#fff';
-        break;
-      case 'Puzzle':
-        color = isCenter ? color : '#f57c00'; // Orange 700
-        icon = <ExtensionIcon fontSize="inherit" />;
-        contrastColor = '#fff';
-        break;
-      case 'Timeline':
-        color = isCenter ? color : '#d81b60'; // Pink 600
-        icon = <EventIcon fontSize="inherit" />;
-        contrastColor = '#fff';
-        break;
-    }
-  }
-  return { color, icon, contrastColor };
-};
+import { getEntityPresentation } from '../../utils/EntityPresentation';
+import NodeTooltipContent from '../NodeTooltipContent';
+import NodeChips from '../NodeChips';
 
 // Renamed existing component to avoid conflict and reflect its purpose
 const ContextualDetailsTooltipContent = ({ type, nodeData = {}, centralEntityType, label = '', isFullScreen = false }) => {
@@ -188,119 +145,6 @@ ContextualDetailsTooltipContent.propTypes = {
   isFullScreen: PropTypes.bool,
 };
 
-// New Tooltip Content component as per PRD requirements
-const NodeTooltipContent = ({ data }) => {
-  if (!data) return null;
-
-  const { label, type, properties } = data;
-  const props = properties || {}; // Ensure props is an object
-
-  // Helper to build property lines, avoiding errors if props is undefined
-  const renderProperty = (label, value) => {
-    if (value === undefined || value === null || value === '') return null;
-    return <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}><Box component="span" sx={{ fontWeight: 'bold' }}>{label}:</Box> {String(value)}</Typography>;
-  };
-
-  let keyProperties = [];
-
-  switch (type) {
-    case 'Character':
-      keyProperties.push(renderProperty('Tier', props.tier));
-      keyProperties.push(renderProperty('Role', props.role));
-      keyProperties.push(renderProperty('Primary Action Snippet', props.primaryActionSnippet));
-      break;
-    case 'Element':
-      keyProperties.push(renderProperty('Basic Type', props.basicType));
-      keyProperties.push(renderProperty('Status', props.status));
-      break;
-    case 'Puzzle':
-      keyProperties.push(renderProperty('Timing', props.timing));
-      keyProperties.push(renderProperty('Owner Name', props.ownerName));
-      break;
-    case 'Timeline':
-      keyProperties.push(renderProperty('Date String', props.dateString));
-      keyProperties.push(renderProperty('Participant Summary', props.participantSummary));
-      break;
-    default:
-      break;
-  }
-  // Filter out null entries from keyProperties
-  keyProperties = keyProperties.filter(Boolean);
-
-  // Add filter-related properties
-  const filterProperties = [];
-  if (props.actFocus) {
-    filterProperties.push(renderProperty('Act Focus', props.actFocus));
-  }
-  if (props.themes && props.themes.length > 0) {
-    filterProperties.push(renderProperty('Themes', props.themes.join(', ')));
-  }
-  if (type === 'Element' && props.memorySets && props.memorySets.length > 0) {
-    filterProperties.push(renderProperty('Memory Sets', props.memorySets.join(', ')));
-  }
-  const filteredFilterProperties = filterProperties.filter(Boolean);
-
-
-  return (
-    <Box sx={{ p: 1, maxWidth: 350 }}> {/* Increased maxWidth for better content display */}
-      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>{props.name || label}</Typography>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-        Type: {type} {props.type && props.type !== type ? `(${props.type})` : ''} {/* Display internal type if different */}
-      </Typography>
-
-      {keyProperties.length > 0 && (
-        <>
-          <Divider sx={{ my: 0.5 }} />
-          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Key Properties</Typography>
-          {keyProperties}
-        </>
-      )}
-
-      {filteredFilterProperties.length > 0 && (
-        <>
-          <Divider sx={{ my: 0.5 }} />
-          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Filter Attributes</Typography>
-          {filteredFilterProperties}
-        </>
-      )}
-
-      {props.fullDescription && (
-        <>
-          <Divider sx={{ my: 0.5 }} />
-          <Typography variant="overline" display="block" sx={{ lineHeight: 1.2, mb: 0.25, color: 'text.secondary' }}>Description</Typography>
-          <Typography variant="body2" sx={{ maxHeight: 150, overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-            {props.fullDescription}
-          </Typography>
-        </>
-      )}
-    </Box>
-  );
-};
-
-NodeTooltipContent.propTypes = {
-  data: PropTypes.shape({
-    label: PropTypes.string,
-    type: PropTypes.string.isRequired,
-    properties: PropTypes.shape({
-      name: PropTypes.string, // Full name often in properties
-      type: PropTypes.string, // Internal type if different from general type
-      tier: PropTypes.string,
-      role: PropTypes.string,
-      primaryActionSnippet: PropTypes.string,
-      basicType: PropTypes.string,
-      status: PropTypes.string,
-      timing: PropTypes.string,
-      ownerName: PropTypes.string,
-      dateString: PropTypes.string,
-      participantSummary: PropTypes.string,
-      fullDescription: PropTypes.string,
-      // For filter properties
-      actFocus: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-      themes: PropTypes.arrayOf(PropTypes.string),
-      memorySets: PropTypes.arrayOf(PropTypes.string),
-    }),
-  }).isRequired,
-};
 
 
 // Zoom thresholds for dynamic label display
@@ -321,39 +165,6 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
 
   const { color: entityColor, icon: entityIcon } = getEntityPresentation(presentationType, properties, isCenter);
   
-  // Chip generation logic remains, but their individual tooltips might be redundant
-  const getNodeChips = () => {
-    const chips = [];
-    if (!properties || Object.keys(properties).length === 0) return chips;
-
-    switch (actualDataType) {
-      case 'Character':
-        if (properties.tier) chips.push({ label: properties.tier, originalTitle: `Tier: ${properties.tier}` });
-        if (properties.role) chips.push({ label: properties.role, originalTitle: `Role: ${properties.role}` });
-        break;
-      case 'Element':
-        if (properties.basicType) chips.push({ label: properties.basicType, originalTitle: `Basic Type: ${properties.basicType}` });
-        if (properties.status) chips.push({ label: properties.status, originalTitle: `Status: ${properties.status}` });
-        if (properties.basicType?.toLowerCase().includes('memory') && properties.SF_RFID) {
-          const rfidLabel = properties.SF_RFID.length > 8 ? `${properties.SF_RFID.substring(0,8)}…` : properties.SF_RFID;
-          chips.push({ label: `RFID: ${rfidLabel}`, originalTitle: `SF_RFID: ${properties.SF_RFID}` });
-        }
-        break;
-      case 'Puzzle':
-        if (properties.timing) chips.push({ label: properties.timing, originalTitle: `Timing: ${properties.timing}` });
-        break;
-      case 'Timeline':
-        if (properties.dateString) chips.push({ label: properties.dateString, originalTitle: properties.dateString });
-        break;
-      default: return chips;
-    }
-    return chips.map(chip => ({
-      ...chip,
-      displayLabel: chip.label.length > 15 ? chip.label.substring(0, 12) + '...' : chip.label,
-    }));
-  };
-  
-  const nodeChips = getNodeChips();
   const fullNodeName = properties?.name || label || actualDataType || id || 'Unknown'; // Used for aria-label and potentially displayedLabel
   
   let displayedNodeLabel = '';
@@ -377,7 +188,7 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
   // Use the new NodeTooltipContent, passing the consolidated nodeDisplayData
   const tooltipContent = <NodeTooltipContent data={nodeDisplayData} />;
   // The aria-label should reflect the most accurate name and type
-  const nodeAriaLabel = `${isCenter ? 'Central Entity: ' : ''}${actualDataType}: ${fullNodeName}${nodeChips.map(c => `, ${c.label}`).join('')}`;
+  const nodeAriaLabel = `${isCenter ? 'Central Entity: ' : ''}${actualDataType}: ${fullNodeName}`;
 
   // Character Tier specific styling
   const characterTier = properties?.tier;
@@ -546,28 +357,12 @@ const EntityNode = ({ data, isConnectable = true, selected = false, centralEntit
           )}
         </Box>
         
-        {(showLabel || zoom >= ICON_ONLY_ZOOM_THRESHOLD ) && nodeChips.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center', mt: 0.5, maxWidth: '95%', mx: 'auto', opacity: zoom < SHORT_LABEL_ZOOM_THRESHOLD ? 0.7 : 1, transition: 'opacity 0.2s' }}>
-            {nodeChips.map((chipInfo, index) => (
-              <Chip 
-                key={index}
-                label={chipInfo.displayLabel}
-                size="small" 
-                title={chipInfo.originalTitle}
-                sx={{ 
-                  bgcolor: `${entityColor}33`, 
-                  color: entityColor, 
-                  fontSize: '0.65rem', 
-                  fontWeight: 500,
-                  height: 18, 
-                  maxWidth: '100%',
-                  overflow: 'hidden',
-                  '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-                }}
-              />
-            ))}
-          </Box>
-        )}
+        <NodeChips 
+          data={{ type: actualDataType, properties }}
+          entityColor={entityColor}
+          showChips={(showLabel || zoom >= ICON_ONLY_ZOOM_THRESHOLD)}
+          zoomOpacity={zoom < SHORT_LABEL_ZOOM_THRESHOLD ? 0.7 : 1}
+        />
         
         {hasTimeline && (
           <Tooltip title={timelineTooltipContent} placement="top" arrow disableInteractive>
@@ -616,4 +411,11 @@ EntityNode.propTypes = {
   isFullScreen: PropTypes.bool,
 };
 
-export default memo(EntityNode);
+// Wrap EntityNode component with ErrorBoundary for better error handling
+const EntityNodeWithErrorBoundary = (props) => (
+  <ErrorBoundary level="component">
+    <EntityNode {...props} />
+  </ErrorBoundary>
+);
+
+export default memo(EntityNodeWithErrorBoundary);

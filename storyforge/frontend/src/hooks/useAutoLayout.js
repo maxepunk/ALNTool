@@ -16,7 +16,29 @@ const useAutoLayout = (nodes, edges) => {
       dagreGraph.setNode(node.id, { width: 172, height: 36 });
     });
 
-    edges.forEach((edge) => {
+    // If no edges provided, create timeline-based edges for proper layout
+    let layoutEdges = edges;
+    if (edges.length === 0 && nodes.length > 1) {
+      // Sort nodes by date if available, otherwise by ID
+      const sortedNodes = [...nodes].sort((a, b) => {
+        if (a.data?.date && b.data?.date) {
+          return new Date(a.data.date) - new Date(b.data.date);
+        }
+        return a.id.localeCompare(b.id);
+      });
+
+      // Create linear edges for layout purposes
+      layoutEdges = [];
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        layoutEdges.push({
+          id: `layout-edge-${i}`,
+          source: sortedNodes[i].id,
+          target: sortedNodes[i + 1].id
+        });
+      }
+    }
+
+    layoutEdges.forEach((edge) => {
       dagreGraph.setEdge(edge.source, edge.target);
     });
 

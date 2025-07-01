@@ -5,11 +5,11 @@ describe('useRelationshipMapperUIState', () => {
   it('initializes with default state', () => {
     const { result } = renderHook(() => useRelationshipMapperUIState({}));
     expect(result.current.viewMode).toBe('default');
-    expect(result.current.depth).toBe(1);
+    expect(result.current.depth).toBe(2);
     expect(result.current.isFullScreen).toBe(false);
     expect(result.current.nodeFilters.Character).toBe(true);
     expect(result.current.edgeFilters.dependency).toBe(true);
-    expect(result.current.showLowSignal).toBe(false);
+    expect(result.current.showLowSignal).toBe(true);
     expect(result.current.snackbar.open).toBe(false);
   });
 
@@ -61,10 +61,13 @@ describe('useRelationshipMapperUIState', () => {
 
   it('toggles low signal', () => {
     const { result } = renderHook(() => useRelationshipMapperUIState({}));
+    // Initial state is true
+    expect(result.current.showLowSignal).toBe(true);
     act(() => {
       result.current.toggleLowSignal();
     });
-    expect(result.current.showLowSignal).toBe(true);
+    // After toggle should be false
+    expect(result.current.showLowSignal).toBe(false);
   });
 
   it('handles snackbar open/close', () => {

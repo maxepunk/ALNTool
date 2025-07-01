@@ -113,7 +113,7 @@ function DataTable({
   );
   
   return (
-    <Box>
+    <Box data-testid="data-table">
       {searchable && (
         <Box sx={{ mb: 2, maxWidth: {sm: 400} }}> {/* Limit search bar width */}
           <TextField
@@ -196,6 +196,7 @@ function DataTable({
                   <TableRow 
                     hover 
                     key={row.id || `row-${index}`} // Prefer row.id, fallback to index
+                    data-testid={`row-${index}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     tabIndex={onRowClick ? 0 : -1} // Make row focusable if clickable
                     onKeyPress={onRowClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onRowClick(row) : undefined}

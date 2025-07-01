@@ -58,8 +58,18 @@ app.get('/health', (req, res) => {
 
 // Error handling
 app.use((err, req, res, next) => {
-  logger.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  logger.error('Error occurred:', err.message);
+  logger.error('Stack trace:', err.stack);
+  
+  // In development, send more detailed error info
+  if (process.env.NODE_ENV !== 'production') {
+    res.status(500).json({ 
+      error: err.message || 'Something went wrong!',
+      stack: err.stack 
+    });
+  } else {
+    res.status(500).json({ error: 'Something went wrong!' });
+  }
 });
 
 // Start server

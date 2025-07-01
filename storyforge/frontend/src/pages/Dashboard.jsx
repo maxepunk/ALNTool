@@ -21,6 +21,9 @@ import { api } from '../services/api';
 import { Link as RouterLink } from 'react-router-dom';
 import { Divider } from '@mui/material';
 import { useGameConstants, getConstant } from '../hooks/useGameConstants';
+import ErrorBoundary from '../components/ErrorBoundary';
+import MemoryEconomySection from '../components/Dashboard/MemoryEconomySection';
+import ProductionMetrics from '../components/Dashboard/ProductionMetrics';
 
 function StatCard({ title, count, icon, color = "primary", navigateTo, queryParams, isLoading, warning = false }) {
   const navigate = useNavigate();
@@ -176,15 +179,18 @@ function ProductionCommandCenter() {
   // Early return if constants are still loading to prevent errors with getConstant calls
   if (constantsLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
-        <CircularProgress /> <Typography sx={{ml:2}}>Loading Production Command Center...</Typography>
-      </Box>
+      <ErrorBoundary level="page">
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, height: 'calc(100vh - 200px)' }}>
+          <CircularProgress /> <Typography sx={{ml:2}}>Loading Production Command Center...</Typography>
+        </Box>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <Box>
-      <PageHeader title="About Last Night - Production Command Center" />
+    <ErrorBoundary level="page">
+      <Box>
+        <PageHeader title="About Last Night - Production Command Center" />
       
       <Typography variant="subtitle1" sx={{ mb: 3 }}>
         Design & Prep orchestration for the 90-minute murder mystery experience. Monitor three-path balance, memory economy, and critical dependencies.
@@ -193,68 +199,23 @@ function ProductionCommandCenter() {
       <Grid container spacing={3}>
         {/* Three-Path Balance Monitor */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <SwapHorizIcon sx={{ mr: 1 }} />
-              Three-Path Balance Monitor
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.light', borderRadius: 1, color: 'warning.contrastText' }}>
-                  <AccountBalanceIcon sx={{ fontSize: 32, mb: 1 }} />
-                  <Typography variant="h4">{blackMarketCount}</Typography>
-                  <Typography variant="body2">Black Market</Typography>
-                  <Typography variant="caption">Wealth Path</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'error.light', borderRadius: 1, color: 'error.contrastText' }}>
-                  <SearchIcon sx={{ fontSize: 32, mb: 1 }} />
-                  <Typography variant="h4">{detectiveCount}</Typography>
-                  <Typography variant="body2">Detective</Typography>
-                  <Typography variant="caption">Truth Path</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'secondary.light', borderRadius: 1, color: 'secondary.contrastText' }}>
-                  <GroupsIcon sx={{ fontSize: 32, mb: 1 }} />
-                  <Typography variant="h4">{thirdPathCount}</Typography>
-                  <Typography variant="body2">Third Path</Typography>
-                  <Typography variant="caption">Community Path</Typography>
-                </Box>
-              </Grid>
-            </Grid>
-            {charactersWithPaths.length > 0 && (
-              <Alert severity={Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > getConstant(gameConstants, 'DASHBOARD.PATH_IMBALANCE_THRESHOLD', 3) ? "warning" : "success"} sx={{ mt: 2 }}>
-                {Math.max(blackMarketCount, detectiveCount, thirdPathCount) - Math.min(blackMarketCount, detectiveCount, thirdPathCount) > getConstant(gameConstants, 'DASHBOARD.PATH_IMBALANCE_THRESHOLD', 3)
-                  ? "Path imbalance detected - consider redistributing character paths"
-                  : "Three paths are well balanced"}
-              </Alert>
-            )}
-          </Paper>
+          <ProductionMetrics
+            blackMarketCount={blackMarketCount}
+            detectiveCount={detectiveCount}
+            thirdPathCount={thirdPathCount}
+            charactersWithPaths={charactersWithPaths}
+            gameConstants={gameConstants}
+            getConstant={getConstant}
+          />
         </Grid>
 
         {/* Memory Economy Status */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: '100%' }} elevation={2}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-              <MemoryIcon sx={{ mr: 1 }} />
-              Memory Economy
-            </Typography>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="primary">{memoryTokensCompleted}</Typography>
-              <Typography variant="body1" color="text.secondary">of {memoryTokensTotal} tokens</Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={memoryCompletionPercentage} 
-                sx={{ mt: 2, mb: 1, height: 8, borderRadius: 4 }}
-              />
-              <Typography variant="h6" color="primary">{memoryCompletionPercentage}% Complete</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {memoryTokensTotal - memoryTokensCompleted} tokens remaining
-              </Typography>
-            </Box>
-          </Paper>
+          <MemoryEconomySection
+            memoryTokensCompleted={memoryTokensCompleted}
+            memoryTokensTotal={memoryTokensTotal}
+            memoryCompletionPercentage={memoryCompletionPercentage}
+          />
         </Grid>
 
         {/* Act Focus & Discovery Coverage */}
@@ -404,6 +365,7 @@ function ProductionCommandCenter() {
 
       </Grid>
     </Box>
+    </ErrorBoundary>
   );
 }
 

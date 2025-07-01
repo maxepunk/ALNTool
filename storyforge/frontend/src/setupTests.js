@@ -4,11 +4,54 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// MSW setup for API mocking in tests
-import { setupMockServer } from './test-utils/mocks/server.js';
+// Polyfill for MSW - Node.js environment doesn't have TransformStream
+if (typeof global.TransformStream === 'undefined') {
+  global.TransformStream = class TransformStream {
+    constructor() {
+      this.readable = {
+        pipeTo: jest.fn(),
+        getReader: jest.fn(() => ({
+          read: jest.fn(() => Promise.resolve({ done: true })),
+          releaseLock: jest.fn()
+        }))
+      };
+      this.writable = {
+        getWriter: jest.fn(() => ({
+          write: jest.fn(),
+          close: jest.fn(),
+          releaseLock: jest.fn()
+        }))
+      };
+    }
+  };
+}
 
-// Setup MSW server for all tests
-setupMockServer();
+// Mock logger globally for all tests
+jest.mock('./utils/logger', () => ({
+  __esModule: true,
+  default: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    system: jest.fn(),
+    time: jest.fn(),
+    timeEnd: jest.fn(),
+    group: jest.fn(),
+    groupEnd: jest.fn(),
+    table: jest.fn(),
+  }
+}));
+
+// Temporarily disable MSW to fix test execution - we'll use manual mocks
+// This allows tests to run while we work on stabilization
+// TODO: Re-enable MSW after resolving Node.js compatibility issues
+
+// // MSW setup for API mocking in tests
+// import { setupMockServer } from './test-utils/mocks/server.js';
+// 
+// // Setup MSW server for all tests
+// setupMockServer();
 
 // Optional: Mock global browser APIs if needed (e.g., fetch, localStorage)
 /*

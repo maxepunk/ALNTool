@@ -22,7 +22,7 @@ class QueryBuilder {
             WHEN cl.character_b_id = ? THEN cl.character_a_id
           END as linked_character_id,
           cl.link_type,
-          cl.link_count,
+          cl.link_strength as link_count,
           CASE 
             WHEN cl.character_a_id = ? THEN cb.name
             WHEN cl.character_b_id = ? THEN ca.name
@@ -31,7 +31,7 @@ class QueryBuilder {
         LEFT JOIN characters ca ON cl.character_a_id = ca.id
         LEFT JOIN characters cb ON cl.character_b_id = cb.id
         WHERE cl.character_a_id = ? OR cl.character_b_id = ?
-        ORDER BY cl.link_count DESC
+        ORDER BY cl.link_strength DESC
       `,
       params: [characterId, characterId, characterId, characterId, characterId, characterId]
     };

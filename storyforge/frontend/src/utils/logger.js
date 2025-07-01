@@ -6,6 +6,7 @@
  * - Production: Silently handles or sends to monitoring service
  */
 
+// Determine if we're in development mode
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Production monitoring integration placeholder
