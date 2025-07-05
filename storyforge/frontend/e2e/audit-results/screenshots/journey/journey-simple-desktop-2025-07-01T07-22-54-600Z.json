@@ -1,0 +1,9 @@
+{
+  "name": "journey-simple",
+  "category": "journey",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-22-54-600Z",
+  "url": "http://localhost:3000/player-journey",
+  "state": "simple",
+  "nodeCount": "low"
+}

@@ -1,17 +1,41 @@
 const { Client } = require('@notionhq/client');
 const NodeCache = require('node-cache');
+const logger = require('../utils/logger');
+const propertyMapper = require('../utils/notionPropertyMapper'); // Migrated from legacy propertyMapper
+const { getDB } = require('../db/database');
+const dbQueries = require('../db/queries');
 
-// Initialize Notion client
-const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
-});
+// Lazy Notion client initialization to handle environment loading
+let notion = null;
+
+function getNotionClient() {
+  if (!notion) {
+    // Load environment if not already loaded
+    if (!process.env.NOTION_API_KEY) {
+      try {
+        require('dotenv').config();
+      } catch (error) {
+        // Ignore dotenv errors - env might be loaded another way
+      }
+    }
+
+    if (!process.env.NOTION_API_KEY) {
+      throw new Error('NOTION_API_KEY not found in environment variables. Please check your .env file.');
+    }
+
+    notion = new Client({
+      auth: process.env.NOTION_API_KEY
+    });
+  }
+  return notion;
+}
 
 // Database IDs
 const DB_IDS = {
   CHARACTERS: process.env.NOTION_CHARACTERS_DB || '18c2f33d583f8060a6abde32ff06bca2',
   TIMELINE: process.env.NOTION_TIMELINE_DB || '1b52f33d583f80deae5ad20020c120dd',
   PUZZLES: process.env.NOTION_PUZZLES_DB || '1b62f33d583f80cc87cfd7d6c4b0b265',
-  ELEMENTS: process.env.NOTION_ELEMENTS_DB || '18c2f33d583f802091bcd84c7dd94306',
+  ELEMENTS: process.env.NOTION_ELEMENTS_DB || '18c2f33d583f802091bcd84c7dd94306'
 };
 
 const notionCache = new NodeCache({ stdTTL: 300 }); // 5 minutes
@@ -30,13 +54,13 @@ async function queryDatabase(databaseId, filter = {}) {
   const cacheKey = makeCacheKey('queryDatabase', { databaseId, filter });
   const cached = notionCache.get(cacheKey);
   if (cached) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     return cached;
   }
   try {
     // Initialize parameters for the query
     const params = {
-      database_id: databaseId,
+      database_id: databaseId
     };
 
     // Add filter if provided
@@ -45,14 +69,14 @@ async function queryDatabase(databaseId, filter = {}) {
     }
 
     // Query the database
-    const response = await notion.databases.query(params);
-    
+    const response = await getNotionClient().databases.query(params);
+
     notionCache.set(cacheKey, response.results);
-    console.log(`[CACHE MISS] ${cacheKey}`);
+    logger.debug(`[CACHE MISS] ${cacheKey}`);
     // Return the results
     return response.results;
   } catch (error) {
-    console.error(`Error querying Notion database ${databaseId}:`, error);
+    logger.error(`Error querying Notion database ${databaseId}:`, error);
     throw error;
   }
 }
@@ -66,16 +90,16 @@ async function getPage(pageId) {
   const cacheKey = makeCacheKey('getPage', { pageId });
   const cached = notionCache.get(cacheKey);
   if (cached) {
-    console.log(`[CACHE HIT] ${cacheKey}`);
+    logger.debug(`[CACHE HIT] ${cacheKey}`);
     return cached;
   }
   try {
-    const page = await notion.pages.retrieve({ page_id: pageId });
+    const page = await getNotionClient().pages.retrieve({ page_id: pageId });
     notionCache.set(cacheKey, page);
-    console.log(`[CACHE MISS] ${cacheKey}`);
+    logger.debug(`[CACHE MISS] ${cacheKey}`);
     return page;
   } catch (error) {
-    console.error(`Error retrieving Notion page ${pageId}:`, error);
+    logger.error(`Error retrieving Notion page ${pageId}:`, error);
     throw error;
   }
 }
@@ -125,10 +149,10 @@ async function getElementsByType(type) {
   const filter = {
     property: 'Basic Type',
     select: {
-      equals: type,
-    },
+      equals: type
+    }
   };
-  
+
   return queryDatabase(DB_IDS.ELEMENTS, filter);
 }
 
@@ -138,7 +162,9 @@ async function getElementsByType(type) {
  * @returns {Promise<Object[]>} Array of page objects
  */
 async function getPagesByIds(ids) {
-  if (!Array.isArray(ids) || ids.length === 0) return [];
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return [];
+  }
   // Notion API does not support batch fetch, so fetch sequentially or in parallel
   const results = await Promise.all(
     ids.map(id => getPage(id).catch(() => null))
@@ -149,7 +175,7 @@ async function getPagesByIds(ids) {
 
 function clearCache() {
   notionCache.flushAll();
-  console.log('[CACHE CLEARED]');
+  logger.debug('[CACHE CLEARED]');
 }
 
 module.exports = {
@@ -165,4 +191,142 @@ module.exports = {
   clearCache,
   notionCache,
   makeCacheKey,
-}; 
+  fetchPuzzleFlowDataStructure,
+  // New functions for journey computation:
+  getCharacterDetails,
+  getAllCharacterOverviews,
+  getCharactersForList,
+  getTimelineEventsForList
+};
+
+// --- Start of new functions for journey computation ---
+
+/**
+ * Fetches full character details including related events, puzzles, and elements.
+ * @param {string} characterId - The Notion page ID of the character.
+ * @returns {Promise<Object|null>} Object with character, events, puzzles, elements, or null if not found.
+ */
+async function getCharacterDetails(characterId) {
+  const characterPage = await getPage(characterId);
+  if (!characterPage) {
+    logger.warn(`[NotionService] Character page not found for ID: ${characterId}`);
+    return null;
+  }
+
+  const mappedCharacter = propertyMapper.mapCharacter(characterPage);
+  if (!mappedCharacter) {
+    logger.warn(`[NotionService] Failed to map character page for ID: ${characterId}`);
+    return null;
+  }
+
+  // Fetch and map related events
+  const eventPages = mappedCharacter.event_ids ? await getPagesByIds(mappedCharacter.event_ids) : [];
+  const mappedEvents = eventPages.map(propertyMapper.mapTimelineEvent).filter(Boolean);
+
+  // Fetch and map related puzzles
+  const puzzlePages = mappedCharacter.puzzle_ids ? await getPagesByIds(mappedCharacter.puzzle_ids) : [];
+  const mappedPuzzles = puzzlePages.map(propertyMapper.mapPuzzle).filter(Boolean);
+
+  // Fetch and map related elements (owned and associated)
+  const elementIds = [
+    ...(mappedCharacter.owned_element_ids || []),
+    ...(mappedCharacter.associated_element_ids || [])
+  ];
+  const uniqueElementIds = [...new Set(elementIds)]; // Ensure unique IDs
+  const elementPages = uniqueElementIds.length > 0 ? await getPagesByIds(uniqueElementIds) : [];
+  const mappedElements = await Promise.all(elementPages.map(element => propertyMapper.mapElementWithNames(element, { getPagesByIds })));
+
+  return {
+    character: mappedCharacter,
+    events: mappedEvents,
+    puzzles: mappedPuzzles,
+    elements: mappedElements
+  };
+}
+
+/**
+ * Fetches overview data (ID and name) for all characters.
+ * @returns {Promise<Array<Object>>} Array of character overview objects.
+ */
+async function getAllCharacterOverviews() {
+  // Assuming getCharacters() fetches all characters from the correct DB
+  // The existing getCharacters() uses queryDatabase(DB_IDS.CHARACTERS)
+  const characterPages = await getCharacters();
+  return characterPages.map(propertyMapper.mapCharacterOverview).filter(Boolean);
+}
+
+// --- End of new functions for journey computation ---
+
+// Commenting out fetchPuzzleFlowDataStructure as it seems to use a different set of mappers
+// or is part of an incomplete feature not related to this subtask.
+// If propertyMapper.js was intended to have map...WithNames, this would need reconciliation.
+// For now, focusing on the journey-related mappers defined in this subtask.
+
+async function fetchPuzzleFlowDataStructure(puzzleId, notionServiceInstance = module.exports) {
+  const puzzlePage = await notionServiceInstance.getPage(puzzleId);
+  if (!puzzlePage) {
+    throw new Error('Puzzle not found');
+  }
+
+  const centralPuzzle = await propertyMapper.mapPuzzleWithNames(puzzlePage, notionServiceInstance);
+  if (centralPuzzle.error) {
+    throw new Error(`Failed to map central puzzle data: ${centralPuzzle.error}`);
+  }
+
+  const relatedEntityIds = new Set();
+  (centralPuzzle.puzzleElements || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.rewards || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.lockedItem || []).forEach(el => el.id && relatedEntityIds.add(el.id));
+  (centralPuzzle.parentItem || []).forEach(p => p.id && relatedEntityIds.add(p.id));
+  (centralPuzzle.subPuzzles || []).forEach(p => p.id && relatedEntityIds.add(p.id));
+  (centralPuzzle.owner || []).forEach(o => o.id && relatedEntityIds.add(o.id));
+
+  const relatedPages = await notionServiceInstance.getPagesByIds(Array.from(relatedEntityIds));
+  const mappedRelatedEntities = new Map();
+
+  for (const page of relatedPages) {
+    if (!page || !page.id) {
+      continue;
+    }
+
+    let mappedEntity;
+    if ((centralPuzzle.puzzleElements || []).find(s => s.id === page.id) ||
+        (centralPuzzle.rewards || []).find(s => s.id === page.id) ||
+        (centralPuzzle.lockedItem || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapElementWithNames(page, notionServiceInstance);
+    } else if ((centralPuzzle.parentItem || []).find(s => s.id === page.id) ||
+               (centralPuzzle.subPuzzles || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionServiceInstance);
+    } else if ((centralPuzzle.owner || []).find(s => s.id === page.id)) {
+      mappedEntity = await propertyMapper.mapCharacterWithNames(page, notionServiceInstance);
+    } else {
+      if (page.properties.Puzzle) {
+        mappedEntity = await propertyMapper.mapPuzzleWithNames(page, notionServiceInstance);
+      } else if (page.properties.Name && page.properties['Basic Type']) {
+        mappedEntity = await propertyMapper.mapElementWithNames(page, notionServiceInstance);
+      } else if (page.properties.Name && page.properties.Tier) {
+        mappedEntity = await propertyMapper.mapCharacterWithNames(page, notionServiceInstance);
+      } else {
+        logger.warn(`[fetchPuzzleFlowDataStructure] Could not determine type for related page ${page.id}`);
+        continue;
+      }
+    }
+
+    if (mappedEntity && !mappedEntity.error) {
+      mappedRelatedEntities.set(page.id, mappedEntity);
+    } else if (mappedEntity && mappedEntity.error) {
+      logger.warn(`[fetchPuzzleFlowDataStructure] Error mapping entity ${page.id}: ${mappedEntity.error}`);
+    }
+  }
+  return { centralPuzzle, mappedRelatedEntities };
+}
+
+async function getCharactersForList(filter) {
+  // This is the new lightweight function.
+  return dbQueries.getCharactersForList();
+}
+
+async function getTimelineEventsForList(filter) {
+  // Database-backed timeline events for dashboard
+  return dbQueries.getTimelineEventsForList();
+}

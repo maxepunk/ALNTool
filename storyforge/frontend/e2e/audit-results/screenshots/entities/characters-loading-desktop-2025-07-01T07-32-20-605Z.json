@@ -1,0 +1,9 @@
+{
+  "name": "characters-loading",
+  "category": "entities",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-32-20-605Z",
+  "url": "http://localhost:3000/characters",
+  "entity": "characters",
+  "state": "loading"
+}

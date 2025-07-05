@@ -68,6 +68,7 @@ const MOCK_PUZZLES = [
     id: 'puzzle-id-1',
     properties: {
       Puzzle: { title: [{ plain_text: 'Locked Safe' }] },
+      Description: { rich_text: [{ plain_text: 'A safe that is locked.' }] },
       Owner: { relation: [{ id: 'char-id-1' }] },
       Timing: { select: { name: 'Act 1' } },
       Rewards: { relation: [{ id: 'element-id-1' }] },
@@ -79,6 +80,7 @@ const MOCK_PUZZLES = [
     id: 'puzzle-id-2',
     properties: {
       Puzzle: { title: [{ plain_text: 'Computer Password' }] },
+      Description: { rich_text: [{ plain_text: 'A computer needs a password.' }] },
       Owner: { relation: [{ id: 'char-id-2' }] },
       Timing: { select: { name: 'Act 1' } },
       Rewards: { relation: [{ id: 'element-id-2' }] },

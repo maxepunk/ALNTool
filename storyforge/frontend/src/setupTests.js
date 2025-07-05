@@ -4,18 +4,47 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Mock logger globally for all tests
+jest.mock('./utils/logger', () => ({
+  __esModule: true,
+  default: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    system: jest.fn(),
+    time: jest.fn(),
+    timeEnd: jest.fn(),
+    group: jest.fn(),
+    groupEnd: jest.fn(),
+    table: jest.fn(),
+  }
+}));
+
+// Mock apiLogger to avoid import.meta issues in tests
+jest.mock('./utils/apiLogger', () => ({
+  __esModule: true,
+  logApiResponse: jest.fn(),
+  logComponentData: jest.fn(),
+  wrapFetch: (fetch) => fetch
+}));
+
 // MSW setup for API mocking in tests
-import { server } from './mocks/server.js'; // Assuming mocks are in src/mocks/
+import { setupMockServer } from './test-utils/mocks/server.js';
 
-// Establish API mocking before all tests.
-beforeAll(() => server.listen());
+// Setup MSW server for all tests
+setupMockServer();
 
-// Reset any request handlers that we may add during the tests,
-// so they don't affect other tests.
-afterEach(() => server.resetHandlers());
+// Mock the API service
+jest.mock('./services/api.js');
 
-// Clean up after the tests are finished.
-afterAll(() => server.close());
+// Mock ResizeObserver for ReactFlow
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 
 // Optional: Mock global browser APIs if needed (e.g., fetch, localStorage)
 /*

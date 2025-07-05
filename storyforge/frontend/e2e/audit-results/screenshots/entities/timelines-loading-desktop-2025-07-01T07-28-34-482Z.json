@@ -1,0 +1,9 @@
+{
+  "name": "timelines-loading",
+  "category": "entities",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-28-34-482Z",
+  "url": "http://localhost:3000/timelines",
+  "entity": "timelines",
+  "state": "loading"
+}

@@ -1,1 +1,0 @@
-# Maze on wall to get out a key

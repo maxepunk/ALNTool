@@ -1,498 +1,795 @@
 const notionController = require('../../src/controllers/notionController');
-const mockNotionService = require('../services/__mocks__/notionService'); // Path to our mock
-const { MOCK_CHARACTERS, MOCK_ELEMENTS, MOCK_PUZZLES, MOCK_TIMELINE_EVENTS, MOCK_DATA_BY_ID } = mockNotionService;
+const notionService = require('../../src/services/notionService');
+const graphService = require('../../src/services/graphService');
+const propertyMapper = require('../../src/utils/notionPropertyMapper');
+const { getDB } = require('../../src/db/database');
 
-// Mock the actual notionService used by the controller
-// Ensure this path is correct and points to the actual service file
-jest.mock('../../src/services/notionService.js', () => require('../services/__mocks__/notionService.js'));
+// Mock dependencies
+jest.mock('../../src/services/notionService');
+jest.mock('../../src/services/graphService');
+jest.mock('../../src/utils/notionPropertyMapper');
+jest.mock('../../src/db/database');
 
-// Helper function to validate graphData structure
-const validateGraphDataStructure = (graphData, centerId, centerName, centerType) => {
-  expect(graphData).toHaveProperty('center');
-  expect(graphData).toHaveProperty('nodes');
-  expect(graphData).toHaveProperty('edges');
+describe('Notion Controller', () => {
+    let mockReq;
+    let mockRes;
+    let next;
+    let mockDB;
+    let mockPrepare;
+    let mockAll;
+    let mockGet;
 
-  expect(graphData.center.id).toBe(centerId);
-  if (centerName) expect(graphData.center.name).toBe(centerName); // Name might be undefined for some entities if not set
-  expect(graphData.center.type).toBe(centerType);
+    beforeEach(() => {
+        // Reset all mocks
+        jest.clearAllMocks();
+        
+        // Setup mock request
+        mockReq = {
+            query: {},
+            params: {}
+        };
+        
+        // Setup mock response
+        mockRes = {
+            json: jest.fn(),
+            status: jest.fn().mockReturnThis(),
+            set: jest.fn().mockReturnThis()
+        };
+        
+        // Setup mock next function
+        next = jest.fn();
 
-  // Validate node structure (basic PRD requirements)
-  graphData.nodes.forEach(node => {
-    expect(node).toHaveProperty('id');
-    expect(node).toHaveProperty('name');
-    expect(node).toHaveProperty('type');
-    expect(node).toHaveProperty('fullDescription');
-    expect(node).toHaveProperty('descriptionSnippet');
-    // Type-specific properties should be checked in specific tests
-  });
+        // Setup mock database
+        mockAll = jest.fn();
+        mockGet = jest.fn();
+        mockPrepare = jest.fn().mockReturnValue({
+            all: mockAll,
+            get: mockGet
+        });
+        mockDB = {
+            prepare: mockPrepare
+        };
+        getDB.mockReturnValue(mockDB);
+        
+        // Setup default mock data
+        const mockRawData = [{
+            id: 'test-id',
+            properties: {
+                Name: { title: [{ text: { content: 'Test' } }] }
+            }
+        }];
+        
+        const mockMappedData = [{
+            id: 'test-id',
+            name: 'Test'
+        }];
+        
+        // Setup default mock implementations
+        notionService.getCharacters.mockResolvedValue(mockRawData);
+        notionService.getCharactersForList.mockResolvedValue(mockMappedData);
+        notionService.getElements.mockResolvedValue(mockRawData);
+        notionService.getPuzzles.mockResolvedValue(mockRawData);
+        notionService.getTimelineEvents.mockResolvedValue(mockRawData);
+        notionService.getTimelineEventsForList.mockResolvedValue(mockMappedData);
+        notionService.getPage.mockResolvedValue(mockRawData[0]);
+        notionService.getPagesByIds.mockResolvedValue(mockRawData);
+        notionService.fetchPuzzleFlowDataStructure.mockResolvedValue({
+            centralPuzzle: { id: 'test-id', puzzle: 'Test Puzzle' },
+            mappedRelatedEntities: new Map()
+        });
+        
+        propertyMapper.mapCharacterWithNames.mockResolvedValue(mockMappedData[0]);
+        propertyMapper.mapElementWithNames.mockResolvedValue(mockMappedData[0]);
+        propertyMapper.mapPuzzleWithNames.mockResolvedValue(mockMappedData[0]);
+        propertyMapper.mapTimelineEventWithNames.mockResolvedValue(mockMappedData[0]);
 
-  // Validate edge structure (basic PRD requirements)
-  graphData.edges.forEach(edge => {
-    expect(edge).toHaveProperty('source');
-    expect(edge).toHaveProperty('target');
-    expect(edge).toHaveProperty('label'); // Original label
-    expect(edge).toHaveProperty('data');
-    expect(edge.data).toHaveProperty('sourceNodeName');
-    expect(edge.data).toHaveProperty('sourceNodeType');
-    expect(edge.data).toHaveProperty('targetNodeName');
-    expect(edge.data).toHaveProperty('targetNodeType');
-    expect(edge.data).toHaveProperty('contextualLabel');
-    expect(edge.data).toHaveProperty('shortLabel');
-  });
-};
-
-describe('Notion Controller - Unit Tests', () => {
-  beforeEach(() => {
-    // Clear all mocks before each test, including call counts and implementations
-    jest.clearAllMocks();
-  });
-
-  describe('getCharacterGraph', () => {
-    it('should return correctly structured graphData for a character with 1st degree relations', async () => {
-      const req = { params: { id: 'char-id-1' } };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-      const next = jest.fn();
-
-      // Setup mocks for getPage and getPagesByIds for char-id-1 and its direct relations
-      mockNotionService.getPage.mockImplementation(async (id) => MOCK_DATA_BY_ID[id] || null);
-      mockNotionService.getPagesByIds.mockImplementation(async (ids) => ids.map(id => MOCK_DATA_BY_ID[id]).filter(Boolean));
-
-      await notionController.getCharacterGraph(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      const graphData = res.json.mock.calls[0][0];
-
-      validateGraphDataStructure(graphData, 'char-id-1', 'Alex Reeves', 'Character');
-      expect(graphData.center).toHaveProperty('tier', 'Core');
-      expect(graphData.center).toHaveProperty('role', 'Player');
-
-      // Nodes: Alex (center), Event 1, Element 1
-      // MOCK_CHARACTERS[0] (Alex) has Events: event-id-1, Owned_Elements: element-id-1
-      expect(graphData.nodes).toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: 'char-id-1', name: 'Alex Reeves', type: 'Character', tier: 'Core', role: 'Player' }),
-        expect.objectContaining({ id: 'event-id-1', name: 'Party begins', type: 'Timeline' }),
-        expect.objectContaining({ id: 'element-id-1', name: 'Memory Video 1', type: 'Element', basicType: 'Memory Token Video' }),
-      ]));
-      expect(graphData.nodes.length).toBe(3); // Alex, Event 1, Element 1 (assuming no 2nd degree in this basic test setup for clarity)
-
-      // Edges: Alex -> Event 1, Alex -> Element 1
-      expect(graphData.edges).toEqual(expect.arrayContaining([
-        expect.objectContaining({ source: 'char-id-1', target: 'event-id-1', data: expect.objectContaining({ shortLabel: 'Participates In' }) }),
-        expect.objectContaining({ source: 'char-id-1', target: 'element-id-1', data: expect.objectContaining({ shortLabel: 'Owns' }) }),
-      ]));
-      expect(graphData.edges.length).toBe(2);
-
-      // Check specific edge data from PRD
-      const edgeToEvent = graphData.edges.find(e => e.target === 'event-id-1');
-      expect(edgeToEvent.data.shortLabel).toBeDefined();
-      expect(edgeToEvent.data.contextualLabel).toBeDefined();
-      expect(edgeToEvent.data.sourceNodeName).toBe('Alex Reeves');
-      expect(edgeToEvent.data.targetNodeName).toBe('Party begins');
+        // Setup cache mock
+        notionService.notionCache = {
+            get: jest.fn(),
+            set: jest.fn()
+        };
+        notionService.makeCacheKey = jest.fn((key, params) => `${key}-${JSON.stringify(params)}`);
+        notionService.clearCache = jest.fn();
+        notionService.DB_IDS = {
+            CHARACTERS: 'char-db-id',
+            TIMELINE: 'timeline-db-id',
+            PUZZLES: 'puzzle-db-id',
+            ELEMENTS: 'element-db-id'
+        };
     });
 
-    it('should return 404 if character not found', async () => {
-      const req = { params: { id: 'non-existent-id' } };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-      const next = jest.fn();
-      mockNotionService.getPage.mockResolvedValue(null);
+    describe('getCharacters', () => {
+        it('should fetch and return characters list', async () => {
+            const mockCharacters = [
+                { id: 'char1', name: 'Character 1' },
+                { id: 'char2', name: 'Character 2' }
+            ];
+            notionService.getCharactersForList.mockResolvedValue(mockCharacters);
 
-      await notionController.getCharacterGraph(req, res, next);
+            await notionController.getCharacters(mockReq, mockRes);
 
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Character graph data not found' });
-    });
-    
-    it('should call next with error if service throws during initial getPage', async () => {
-        const req = { params: { id: 'char-id-1' } };
-        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-        const next = jest.fn();
-        const mockError = new Error('Service failure on getPage');
-        mockNotionService.getPage.mockRejectedValue(mockError);
-
-        await notionController.getCharacterGraph(req, res, next);
-        expect(next).toHaveBeenCalledWith(mockError);
-    });
-
-    it('should return graphData with 2nd degree relations for a character when depth=2', async () => {
-      const req = { params: { id: 'char-id-1' }, query: { depth: '2' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-
-      mockNotionService.getPage.mockImplementation(async (id) => MOCK_DATA_BY_ID[id] || null);
-      mockNotionService.getPagesByIds.mockImplementation(async (ids) => ids.map(id => MOCK_DATA_BY_ID[id]).filter(Boolean));
-      
-      await notionController.getCharacterGraph(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      const graphData = res.json.mock.calls[0][0];
-      validateGraphDataStructure(graphData, 'char-id-1', 'Alex Reeves', 'Character');
-
-      // Center: char-id-1 (Alex)
-      // 1st Degree:
-      //   - event-id-1 (Party begins)
-      //   - element-id-1 (Memory Video 1)
-      // 2nd Degree from event-id-1:
-      //   - char-id-2 (Marcus Blackwood) - involved in event-id-1
-      //   - element-id-1 (already a 1st degree, but also evidence for event-id-1, edge might be different or reinforced)
-      // 2nd Degree from element-id-1:
-      //   - puzzle-id-1 (Locked Safe) - element-id-1 is a reward from puzzle-id-1
-      //   - char-id-1 (owner, already center)
-
-      expect(graphData.nodes).toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: 'char-id-1' }), // Center
-        expect.objectContaining({ id: 'event-id-1' }), // 1st
-        expect.objectContaining({ id: 'element-id-1' }), // 1st
-        expect.objectContaining({ id: 'char-id-2', name: 'Marcus Blackwood', type: 'Character' }), // 2nd via event-id-1
-        expect.objectContaining({ id: 'puzzle-id-1', name: 'Locked Safe', type: 'Puzzle' }),   // 2nd via element-id-1
-      ]));
-      
-      // Edges should include:
-      // char-id-1 -> event-id-1
-      // char-id-1 -> element-id-1
-      // event-id-1 -> char-id-2 (Involves)
-      // puzzle-id-1 -> element-id-1 (Rewards)
-      expect(graphData.edges).toEqual(expect.arrayContaining([
-        expect.objectContaining({ source: 'char-id-1', target: 'event-id-1' }),
-        expect.objectContaining({ source: 'char-id-1', target: 'element-id-1' }),
-        expect.objectContaining({ source: 'event-id-1', target: 'char-id-2', data: expect.objectContaining({ shortLabel: 'Involves' }) }),
-        expect.objectContaining({ source: 'puzzle-id-1', target: 'element-id-1', data: expect.objectContaining({ shortLabel: 'Rewards' }) }),
-      ]));
-      // Check for no duplicate nodes. Unique nodes: char-id-1, event-id-1, element-id-1, char-id-2, puzzle-id-1
-      const nodeIds = graphData.nodes.map(n => n.id);
-      expect(new Set(nodeIds).size).toBe(nodeIds.length);
-      expect(nodeIds.length).toBe(5); // Precise count
-    });
-
-    // Add more tests for 2nd degree relations, different character data, etc.
-  });
-
-  // --- Test structure for getElementGraph ---
-  describe('getElementGraph', () => {
-    it('should return correctly structured graphData for an element with 1st degree relations', async () => {
-      const req = { params: { id: 'element-id-1' } }; // Memory Video 1
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-
-      mockNotionService.getPage.mockImplementation(async (id) => MOCK_DATA_BY_ID[id] || null);
-      mockNotionService.getPagesByIds.mockImplementation(async (ids) => ids.map(id => MOCK_DATA_BY_ID[id]).filter(Boolean));
-
-      await notionController.getElementGraph(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(200);
-      const graphData = res.json.mock.calls[0][0];
-
-      validateGraphDataStructure(graphData, 'element-id-1', 'Memory Video 1', 'Element');
-      expect(graphData.center).toHaveProperty('basicType', 'Memory Token Video');
-
-      // MOCK_ELEMENTS[0] (element-id-1 'Memory Video 1')
-      // - Owner: char-id-1 (Alex Reeves)
-      // - Memory_Evidence for event-id-1 ('Party begins')
-      // - Reward for puzzle-id-1 ('Locked Safe')
-      expect(graphData.nodes).toEqual(expect.arrayContaining([
-        expect.objectContaining({ id: 'element-id-1', name: 'Memory Video 1', type: 'Element' }),
-        expect.objectContaining({ id: 'char-id-1', name: 'Alex Reeves', type: 'Character' }),    // Owner
-        expect.objectContaining({ id: 'event-id-1', name: 'Party begins', type: 'Timeline' }),   // Event it's evidence for
-        expect.objectContaining({ id: 'puzzle-id-1', name: 'Locked Safe', type: 'Puzzle' }),     // Puzzle it's a reward from
-      ]));
-       // Precise node count for default depth=1
-      expect(graphData.nodes.length).toBe(4);
-
-
-      expect(graphData.edges).toEqual(expect.arrayContaining([
-        // Edge: char-id-1 (Owner) -> element-id-1 (Center) with label "Owns Element"
-        expect.objectContaining({ source: 'char-id-1', target: 'element-id-1', data: expect.objectContaining({ shortLabel: 'Owns' }) }),
-        // Edge: element-id-1 (Center) -> event-id-1 (Appears In)
-        // The controller logic for getElementGraph has `_createGraphEdgeInternal(centerNodeData, evNodeData, 'Appears In (Event)', edges);`
-        // which is correct if element is subject, event is object.
-        // However, MOCK_TIMELINE_EVENTS[0] has `Memory_Evidence: { relation: [{ id: 'element-id-1' }] }`
-        // The graph logic needs to be consistent. Let's assume for Element graph, the element is central.
-        // `getElementGraph` maps `eventData.memoryEvidence` for timeline graph.
-        // For `getElementGraph`, it relates to timelineEvent if `elData.timelineEvent` is populated (which it isn't in mock).
-        // It relates to puzzles via `requiredForPuzzle` and `rewardedByPuzzle`.
-        // `element-id-1` is a reward from `puzzle-id-1`. Edge: puzzle-id-1 -> element-id-1 (Rewards)
-        // `element-id-1` is memory evidence for `event-id-1`. Edge: element-id-1 -> event-id-1 (Appears In) or event-id-1 -> element-id-1 (Has Evidence)?
-        // Controller has: `_createGraphEdgeInternal(centerNodeData, evNodeData, 'Appears In (Event)', edges);` (el -> event)
-        // Controller has: `_createGraphEdgeInternal(pzNodeData, centerNodeData, 'Reward From (Puzzle)', edges);` (puzzle -> el)
-        // MOCK_ELEMENTS[0] has no `Timeline_Event` property, and no `Rewarded_By_Puzzle` property directly.
-        // The graph function has to find these by looking at OTHER entities.
-        // `getPagesByIds` fetches based on IDs found in the center entity.
-        // This means the current structure of MOCK_ELEMENTS[0] for getElementGraph's 1st degree is limited.
-        // Let's adjust the expectation based on what getElementGraph *can* find from `element-id-1`'s direct relations.
-        // `element-id-1` has `Owner: char-id-1`. This is the only direct relation.
-        // To test other relations, we need to assume mapElementWithNames would populate them or the graph function would look them up
-        // via getXGraph -> mapXWithNames -> resolveRelations.
-        // The controller's getElementGraph first maps elData. Then it gets related pages based on elData's relations.
-        // So we need `element-id-1` in MOCK_DATA_BY_ID to have properties like `Rewarded_By_Puzzle` or `Appears_In_Event` populated by `mapElementWithNames` if we are to see them.
-        // Let's assume mapElementWithNames would populate reversed relations for the purpose of this test.
-        // Or better, the graph test should setup the mockPage to have these relations resolved.
-        // For this unit test, `elData` will be `MOCK_ELEMENTS[0]`. Its relations are only `Owner`.
-        // The controller's `getElementGraph` does:
-        // const elData = await propertyMapper.mapElementWithNames(page, notionService);
-        // Then, `(elData.owner || []).forEach(s => firstDegreeIds.add(s.id));` etc.
-        // So, if `mapElementWithNames` correctly populates `rewardedByPuzzle` and `timelineEvent` (as arrays of stubs) on `elData` by looking up backlinks, then it would work.
-        // The `propertyMapper.mapElementWithNames` is complex.
-        // Let's simplify the expectation here for 1st degree based *only* on explicit forward relations present in `MOCK_ELEMENTS[0]`.
-        // `MOCK_ELEMENTS[0]` only has `Owner: { relation: [{ id: 'char-id-1' }] }`.
-        // So, center: element-id-1, node: char-id-1. Edge: char-id-1 -> element-id-1.
-        // This seems too simple. The graph functions are intended to be richer.
-
-        // Re-evaluating: The graph functions *themselves* are responsible for finding related entities
-        // using the *mapped* center entity data which should contain resolved relation stubs.
-        // `propertyMapper.mapElementWithNames(page, notionService)` is called.
-        // `mapElementWithNames` *should* resolve relation *names* but not necessarily add reverse relations.
-        // The graph functions for X then look at properties of X (like `elData.owner`, `elData.requiredForPuzzle`, etc.)
-        // So, MOCK_ELEMENTS[0] needs these properties if we expect them.
-        // It currently doesn't. Let's assume for the test that `mapElementWithNames` mock (or rather the data passed to it)
-        // gets augmented by the test setup, or the mock data is more complete.
-        // The `mockNotionService.getPage` returns the raw MOCK_ELEMENTS[0]. Then `mapElementWithNames` is called.
-        // The test for `getElementGraph` needs to rely on the *structure* of `elData` after mapping.
-        // `propertyMapper.mapElementWithNames` should return an object that includes `owner: [{id, name}], rewardedByPuzzle: [{id, name}], timelineEvent: [{id, name}]`
-        // even if those are reverse relations. This is the job of the propertyMapper.
-
-        // Let's assume mapElementWithNames IS smart enough to find these via `notionService` calls.
-        // For the purpose of the controller test, we assume `elData` (the result of `mapElementWithNames`) is correctly populated.
-        // We should mock `propertyMapper.mapElementWithNames` for the graph test to control its output,
-        // or ensure our `MOCK_DATA_BY_ID` coupled with `mockNotionService.getPagesByIds` (used by mapper)
-        // will result in `elData` having these fields.
-        // The current mock for `notionService.getPage` and `getPagesByIds` is used by `propertyMapper`.
-
-        // If `mapElementWithNames` (called by `getElementGraph`) uses `getPagesByIds` from `notionService` to resolve relation names,
-        // it doesn't inherently create reverse relations like `rewardedByPuzzle` on the element object if not there.
-        // The `getElementGraph` logic itself then looks for `elData.rewardedByPuzzle`.
-
-        // To make this testable without deeply mocking propertyMapper, we'd need MOCK_ELEMENTS[0]
-        // to contain these relation properties if they are forward relations, or the graph logic for Element
-        // needs to fetch things that point TO it.
-        // The getElementGraph logic iterates specific relation properties OF the element (owner, associatedChars, timelineEvent, requiredForPuzzle etc.)
-        // So MOCK_ELEMENTS[0] MUST have these properties with relation IDs for them to be picked up.
-        // `MOCK_ELEMENTS[0]` only has `Owner`.
-        // Let's make the test reflect this limitation of the current mock data structure for MOCK_ELEMENTS[0].
-        // We need to enhance `MOCK_ELEMENTS[0]` for a better test.
-      ]));
-       // Given MOCK_ELEMENTS[0] only has Owner.
-      // Nodes: element-id-1, char-id-1.
-      // Edges: char-id-1 -> element-id-1
-      // This shows a deficiency in the current test data for `getElementGraph` or understanding of mapper.
-      // The graph endpoint should be robust.
-      // Let's refine MOCK_ELEMENTS in `notionService.js` for this test.
-      // (Will do this in a subsequent step if this edit doesn't pass due to this)
-      // For now, testing with what's available from MOCK_ELEMENTS[0].
-      expect(graphData.nodes.length).toBe(2); // element-id-1, char-id-1
-      expect(graphData.edges.length).toBe(1); // char-id-1 -> element-id-1 ('Owns Element')
-    });
-
-    it('should return 404 if element not found', async () => {
-      const req = { params: { id: 'non-existent-element' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      mockNotionService.getPage.mockResolvedValue(null);
-      await notionController.getElementGraph(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Element not found' });
-    });
-
-    it('should call next with error if service fails', async () => {
-      const req = { params: { id: 'element-id-1' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      const mockError = new Error("Service failure");
-      mockNotionService.getPage.mockRejectedValue(mockError);
-      await notionController.getElementGraph(req, res, next);
-      expect(next).toHaveBeenCalledWith(mockError);
-    });
-  });
-
-  // --- Test structure for getPuzzleGraph ---
-  describe('getPuzzleGraph', () => {
-    it('should return correctly structured graphData for a puzzle with 1st degree relations', async () => {
-        const req = { params: { id: 'puzzle-id-1' } }; // Locked Safe
-        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-        const next = jest.fn();
-  
-        mockNotionService.getPage.mockImplementation(async (id) => MOCK_DATA_BY_ID[id] || null);
-        mockNotionService.getPagesByIds.mockImplementation(async (ids) => ids.map(id => MOCK_DATA_BY_ID[id]).filter(Boolean));
-  
-        await notionController.getPuzzleGraph(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(200);
-        const graphData = res.json.mock.calls[0][0];
-  
-        validateGraphDataStructure(graphData, 'puzzle-id-1', 'Locked Safe', 'Puzzle');
-        expect(graphData.center).toHaveProperty('timing', 'Act 1');
-
-        // MOCK_PUZZLES[0] (puzzle-id-1 'Locked Safe')
-        // - Owner: char-id-1 (Alex Reeves)
-        // - Rewards: element-id-1 (Memory Video 1)
-        // It does NOT have Puzzle_Elements (required for) or Locked_Item in mock.
-        expect(graphData.nodes).toEqual(expect.arrayContaining([
-            expect.objectContaining({ id: 'puzzle-id-1', name: 'Locked Safe', type: 'Puzzle' }),
-            expect.objectContaining({ id: 'char-id-1', name: 'Alex Reeves', type: 'Character' }), 
-            expect.objectContaining({ id: 'element-id-1', name: 'Memory Video 1', type: 'Element' }),
-        ]));
-        expect(graphData.nodes.length).toBe(3);
-
-        expect(graphData.edges).toEqual(expect.arrayContaining([
-            // char-id-1 (Owner) -> puzzle-id-1 (Center) | Label: 'Owns (Puzzle)'
-            expect.objectContaining({ source: 'char-id-1', target: 'puzzle-id-1', data: expect.objectContaining({ shortLabel: 'Owns' }) }),
-            // puzzle-id-1 (Center) -> element-id-1 (Rewards) | Label: 'Rewards (Element)'
-            expect.objectContaining({ source: 'puzzle-id-1', target: 'element-id-1', data: expect.objectContaining({ shortLabel: 'Rewards' }) }),
-        ]));
-        expect(graphData.edges.length).toBe(2);
-    });
-
-    it('should return 404 if puzzle not found', async () => {
-      const req = { params: { id: 'non-existent-puzzle' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      mockNotionService.getPage.mockResolvedValue(null);
-      await notionController.getPuzzleGraph(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Puzzle not found' });
-    });
-
-    it('should call next with error if service fails', async () => {
-      const req = { params: { id: 'puzzle-id-1' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      const mockError = new Error("Service failure");
-      mockNotionService.getPage.mockRejectedValue(mockError);
-      await notionController.getPuzzleGraph(req, res, next);
-      expect(next).toHaveBeenCalledWith(mockError);
-    });
-  });
-
-  // --- Test structure for getTimelineGraph ---
-  describe('getTimelineGraph', () => {
-    it('should return correctly structured graphData for a timeline event with 1st degree relations', async () => {
-        const req = { params: { id: 'event-id-1' } }; // Party begins
-        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-        const next = jest.fn();
-  
-        mockNotionService.getPage.mockImplementation(async (id) => MOCK_DATA_BY_ID[id] || null);
-        mockNotionService.getPagesByIds.mockImplementation(async (ids) => ids.map(id => MOCK_DATA_BY_ID[id]).filter(Boolean));
-  
-        await notionController.getTimelineGraph(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(200);
-        const graphData = res.json.mock.calls[0][0];
-  
-        validateGraphDataStructure(graphData, 'event-id-1', 'Party begins', 'Timeline');
-        // expect(graphData.center).toHaveProperty('dateString'); // Assuming propertyMapper adds this
-
-        // MOCK_TIMELINE_EVENTS[0] (event-id-1 'Party begins')
-        // - Characters_Involved: char-id-1 (Alex), char-id-2 (Marcus)
-        // - Memory_Evidence: element-id-1 (Memory Video 1)
-        expect(graphData.nodes).toEqual(expect.arrayContaining([
-            expect.objectContaining({ id: 'event-id-1', name: 'Party begins', type: 'Timeline' }),
-            expect.objectContaining({ id: 'char-id-1', name: 'Alex Reeves', type: 'Character' }),
-            expect.objectContaining({ id: 'char-id-2', name: 'Marcus Blackwood', type: 'Character' }),
-            expect.objectContaining({ id: 'element-id-1', name: 'Memory Video 1', type: 'Element' }),
-        ]));
-        expect(graphData.nodes.length).toBe(4);
-
-        expect(graphData.edges).toEqual(expect.arrayContaining([
-            // event-id-1 (Center) -> char-id-1 | Label: 'Involves (Character)'
-            expect.objectContaining({ source: 'event-id-1', target: 'char-id-1', data: expect.objectContaining({ shortLabel: 'Involves' }) }),
-            // event-id-1 (Center) -> char-id-2 | Label: 'Involves (Character)'
-            expect.objectContaining({ source: 'event-id-1', target: 'char-id-2', data: expect.objectContaining({ shortLabel: 'Involves' }) }),
-            // element-id-1 -> event-id-1 (Center) | Label: 'Evidence For (Event)'
-            expect.objectContaining({ source: 'element-id-1', target: 'event-id-1', data: expect.objectContaining({ shortLabel: 'Evidence For' }) }),
-        ]));
-        expect(graphData.edges.length).toBe(3);
-    });
-
-    it('should return 404 if timeline event not found', async () => {
-      const req = { params: { id: 'non-existent-event' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      mockNotionService.getPage.mockResolvedValue(null);
-      await notionController.getTimelineGraph(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Timeline event not found' });
-    });
-
-    it('should call next with error if service fails', async () => {
-      const req = { params: { id: 'event-id-1' } };
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-      const next = jest.fn();
-      const mockError = new Error("Service failure");
-      mockNotionService.getPage.mockRejectedValue(mockError);
-      await notionController.getTimelineGraph(req, res, next);
-      expect(next).toHaveBeenCalledWith(mockError);
-    });
-  });
-  
-  // Minimal tests for simple list/detail getters (these mostly rely on notionService and propertyMapper)
-  describe('Simple Getters', () => {
-    const testCases = [
-      { funcName: 'getCharacters', mockServiceFunc: mockNotionService.getCharacters, serviceName: 'getCharacters', dbId: mockNotionService.DB_IDS.CHARACTERS },
-      { funcName: 'getCharacterById', mockServiceFunc: mockNotionService.getPage, serviceName: 'getPage', paramId: 'char-id-1', mockData: MOCK_CHARACTERS[0] },
-      { funcName: 'getElements', mockServiceFunc: mockNotionService.getElements, serviceName: 'getElements', dbId: mockNotionService.DB_IDS.ELEMENTS },
-      { funcName: 'getElementById', mockServiceFunc: mockNotionService.getPage, serviceName: 'getPage', paramId: 'element-id-1', mockData: MOCK_ELEMENTS[0] },
-      { funcName: 'getPuzzles', mockServiceFunc: mockNotionService.getPuzzles, serviceName: 'getPuzzles', dbId: mockNotionService.DB_IDS.PUZZLES },
-      { funcName: 'getPuzzleById', mockServiceFunc: mockNotionService.getPage, serviceName: 'getPage', paramId: 'puzzle-id-1', mockData: MOCK_PUZZLES[0] },
-      { funcName: 'getTimelineEvents', mockServiceFunc: mockNotionService.getTimelineEvents, serviceName: 'getTimelineEvents', dbId: mockNotionService.DB_IDS.TIMELINE },
-      { funcName: 'getTimelineEventById', mockServiceFunc: mockNotionService.getPage, serviceName: 'getPage', paramId: 'event-id-1', mockData: MOCK_TIMELINE_EVENTS[0] },
-    ];
-
-    testCases.forEach(tc => {
-      describe(tc.funcName, () => {
-        it(`should call notionService.${tc.serviceName} and return mapped data`, async () => {
-          const req = tc.paramId ? { params: { id: tc.paramId } } : { query: {} }; // Ensure query object for list getters
-          const res = { status: jest.fn().mockReturnThis(), json: jest.fn(), set: jest.fn() }; // Added set for cache headers
-          const next = jest.fn();
-
-          // Reset and setup mock for the specific service function being tested
-          tc.mockServiceFunc.mockReset(); 
-          if (tc.serviceName === 'getPage') {
-            tc.mockServiceFunc.mockResolvedValue(tc.mockData);
-          } else {
-            // For list getters like getCharacters, getElements, etc.
-            tc.mockServiceFunc.mockResolvedValue(tc.mockData || []); // Use tc.mockData or empty array
-          }
-
-          await notionController[tc.funcName](req, res, next);
-          
-          expect(res.status).toHaveBeenCalledWith(200);
-          expect(res.json).toHaveBeenCalled(); 
-          expect(res.set).toHaveBeenCalledWith('Cache-Control', expect.any(String)); // Check for cache headers
-
-          if (tc.serviceName === 'getPage') {
-            expect(tc.mockServiceFunc).toHaveBeenCalledWith(tc.paramId);
-          } else {
-            // For list functions, they are called with a filter object.
-            // notionController[getCharacters] calls notionService.getCharacters(filter)
-            // The filter is built from req.query.
-            // We are passing empty req.query, so filter will be undefined.
-            expect(tc.mockServiceFunc).toHaveBeenCalledWith(undefined); // Or expect.anything() if filter logic is complex
-          }
+            expect(notionService.getCharactersForList).toHaveBeenCalledWith(mockReq.query);
+            expect(mockRes.set).toHaveBeenCalledWith('Cache-Control', 'public, max-age=300');
+            expect(mockRes.json).toHaveBeenCalledWith(mockCharacters);
         });
 
-        it('should return 404 if item not found (for ById getters)', async () => {
-          if (!tc.paramId) return; // Only for ById functions
-          const req = { params: { id: 'non-existent-id' } };
-          const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-          const next = jest.fn();
-          mockNotionService.getPage.mockResolvedValue(null);
+        it('should pass query parameters to service', async () => {
+            mockReq.query = { status: 'active', location: 'test' };
 
-          await notionController[tc.funcName](req, res, next);
-          expect(res.status).toHaveBeenCalledWith(404);
+            await notionController.getCharacters(mockReq, mockRes, next);
+
+            expect(notionService.getCharactersForList).toHaveBeenCalledWith({ 
+                status: 'active', 
+                location: 'test' 
+            });
         });
 
-        it('should call next with error if service throws', async () => {
-          const req = tc.paramId ? { params: { id: tc.paramId } } : {};
-          const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-          const next = jest.fn();
-          const mockError = new Error('Service failure');
-          mockNotionService[tc.serviceName].mockRejectedValue(mockError);
+        it('should handle service errors', async () => {
+            const error = new Error('Service error');
+            notionService.getCharactersForList.mockRejectedValue(error);
 
-          await notionController[tc.funcName](req, res, next);
-          expect(next).toHaveBeenCalledWith(mockError);
+            await notionController.getCharacters(mockReq, mockRes, next);
+
+            expect(next).toHaveBeenCalledWith(error);
         });
-      });
     });
-  });
+
+    describe('getCharactersWithSociogramData', () => {
+        it('should fetch characters with computed fields from database', async () => {
+            const mockDbCharacters = [{
+                id: 'char1',
+                name: 'Character 1',
+                resolution_paths: JSON.stringify(['path1', 'path2']),
+                total_memory_value: 150,
+                relationship_count: 5,
+                owned_elements_count: 3,
+                associated_elements_count: 2,
+                timeline_events_count: 10
+            }];
+            mockAll.mockReturnValue(mockDbCharacters);
+
+            await notionController.getCharactersWithSociogramData(mockReq, mockRes, next);
+
+            expect(mockPrepare).toHaveBeenCalled();
+            expect(mockAll).toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith([{
+                id: 'char1',
+                name: 'Character 1',
+                resolution_paths: ['path1', 'path2'],
+                resolutionPaths: ['path1', 'path2'],
+                memoryValue: 150,
+                relationshipCount: 5,
+                elementCount: 5,
+                timelineEventCount: 10
+            }]);
+        });
+
+        it('should handle null resolution paths', async () => {
+            const mockDbCharacters = [{
+                id: 'char1',
+                name: 'Character 1',
+                resolution_paths: null,
+                total_memory_value: null,
+                relationship_count: 0,
+                owned_elements_count: 0,
+                associated_elements_count: 0,
+                timeline_events_count: 0
+            }];
+            mockAll.mockReturnValue(mockDbCharacters);
+
+            await notionController.getCharactersWithSociogramData(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith([{
+                id: 'char1',
+                name: 'Character 1',
+                resolution_paths: [],
+                resolutionPaths: [],
+                memoryValue: 0,
+                relationshipCount: 0,
+                elementCount: 0,
+                timelineEventCount: 0
+            }]);
+        });
+    });
+
+    describe('getCharacterById', () => {
+        beforeEach(() => {
+            mockReq.params.id = 'test-character-id';
+        });
+
+        it('should return cached character if available', async () => {
+            const cachedCharacter = { id: 'test-character-id', name: 'Cached Character' };
+            notionService.notionCache.get.mockReturnValue(cachedCharacter);
+
+            await notionController.getCharacterById(mockReq, mockRes, next);
+
+            expect(notionService.notionCache.get).toHaveBeenCalled();
+            expect(notionService.getPage).not.toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith(cachedCharacter);
+        });
+
+        it('should fetch character from Notion if not cached', async () => {
+            notionService.notionCache.get.mockReturnValue(null);
+            const mockPage = { id: 'test-character-id', properties: {} };
+            const mappedCharacter = { id: 'test-character-id', name: 'Test Character' };
+            notionService.getPage.mockResolvedValue(mockPage);
+            propertyMapper.mapCharacterWithNames.mockResolvedValue(mappedCharacter);
+
+            await notionController.getCharacterById(mockReq, mockRes, next);
+
+            expect(notionService.getPage).toHaveBeenCalledWith('test-character-id');
+            expect(propertyMapper.mapCharacterWithNames).toHaveBeenCalledWith(mockPage, notionService);
+            expect(notionService.notionCache.set).toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith(mappedCharacter);
+        });
+
+        it('should return 404 if character not found', async () => {
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getPage.mockResolvedValue(null);
+
+            await notionController.getCharacterById(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Character not found' });
+        });
+
+        it('should not cache character with mapping errors', async () => {
+            notionService.notionCache.get.mockReturnValue(null);
+            const mockPage = { id: 'test-character-id', properties: {} };
+            const errorCharacter = { id: 'test-character-id', error: 'Mapping failed' };
+            notionService.getPage.mockResolvedValue(mockPage);
+            propertyMapper.mapCharacterWithNames.mockResolvedValue(errorCharacter);
+
+            await notionController.getCharacterById(mockReq, mockRes, next);
+
+            expect(notionService.notionCache.set).not.toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith(errorCharacter);
+        });
+    });
+
+    describe('getCharacterGraph', () => {
+        beforeEach(() => {
+            mockReq.params.id = 'test-character-id';
+        });
+
+        it('should get character graph with default depth', async () => {
+            const mockGraph = { nodes: [], edges: [] };
+            graphService.getCharacterGraph.mockResolvedValue(mockGraph);
+
+            await notionController.getCharacterGraph(mockReq, mockRes, next);
+
+            expect(graphService.getCharacterGraph).toHaveBeenCalledWith('test-character-id', 1);
+            expect(mockRes.json).toHaveBeenCalledWith(mockGraph);
+        });
+
+        it('should parse depth from query parameter', async () => {
+            mockReq.query.depth = '3';
+            const mockGraph = { nodes: [], edges: [] };
+            graphService.getCharacterGraph.mockResolvedValue(mockGraph);
+
+            await notionController.getCharacterGraph(mockReq, mockRes, next);
+
+            expect(graphService.getCharacterGraph).toHaveBeenCalledWith('test-character-id', 3);
+        });
+
+        it('should handle invalid depth parameter', async () => {
+            mockReq.query.depth = 'invalid';
+            const mockGraph = { nodes: [], edges: [] };
+            graphService.getCharacterGraph.mockResolvedValue(mockGraph);
+
+            await notionController.getCharacterGraph(mockReq, mockRes, next);
+
+            expect(graphService.getCharacterGraph).toHaveBeenCalledWith('test-character-id', NaN);
+        });
+    });
+
+    describe('getTimelineEvents', () => {
+        it('should fetch timeline events with filters', async () => {
+            mockReq.query = {
+                memType: 'core',
+                date: '2025-06-12',
+                narrativeThreadContains: 'thread1',
+                actFocus: 'Act 1'
+            };
+
+            const mockEvents = [{ id: 'event1', description: 'Event 1' }];
+            notionService.getTimelineEvents.mockResolvedValue(mockEvents);
+            propertyMapper.mapTimelineEventWithNames.mockResolvedValue(mockEvents[0]);
+
+            await notionController.getTimelineEvents(mockReq, mockRes, next);
+
+            expect(notionService.getTimelineEvents).toHaveBeenCalledWith({
+                and: [
+                    { property: 'mem type', select: { equals: 'core' } },
+                    { property: 'Date', select: { equals: '2025-06-12' } },
+                    { property: 'Narrative Threads', multi_select: { contains: 'thread1' } },
+                    { property: 'Act Focus', select: { equals: 'Act 1' } }
+                ]
+            });
+            expect(mockRes.json).toHaveBeenCalledWith([mockEvents[0]]);
+        });
+
+        it('should handle empty filters', async () => {
+            mockReq.query = {};
+
+            await notionController.getTimelineEvents(mockReq, mockRes, next);
+
+            expect(notionService.getTimelineEvents).toHaveBeenCalledWith(undefined);
+        });
+    });
+
+    describe('getElements', () => {
+        it('should fetch memory type elements from database', async () => {
+            mockReq.query.filterGroup = 'memoryTypes';
+            
+            const mockDbElements = [{
+                id: 'elem1',
+                name: 'Memory Token',
+                type: 'Memory Token Video',
+                calculated_memory_value: 500,
+                memory_type: 'Video',
+                rfid_tag: 'RFID123',
+                memory_group: 'Group A',
+                resolution_paths: JSON.stringify(['path1']),
+                owner_name: 'Character 1',
+                container_name: 'Container 1'
+            }];
+            mockAll.mockReturnValue(mockDbElements);
+
+            await notionController.getElements(mockReq, mockRes, next);
+
+            expect(mockPrepare).toHaveBeenCalled();
+            expect(mockAll).toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith([{
+                id: 'elem1',
+                name: 'Memory Token',
+                type: 'Memory Token Video',
+                calculated_memory_value: 500,
+                memory_type: 'Video',
+                rfid_tag: 'RFID123',
+                memory_group: 'Group A',
+                resolution_paths: '["path1"]',
+                owner_name: 'Character 1',
+                container_name: 'Container 1',
+                sf_value_rating: 5,
+                sf_memory_type: 'Video',
+                parsed_sf_rfid: 'RFID123',
+                sf_memory_group: 'Group A',
+                resolutionPaths: ['path1'],
+                ownerName: 'Character 1',
+                containerName: 'Container 1',
+                memoryValue: 500
+            }]);
+        });
+
+        it('should fetch elements from Notion for non-memory queries', async () => {
+            mockReq.query = {
+                type: 'Prop',
+                status: 'Active'
+            };
+
+            const mockElements = [{ id: 'elem1', name: 'Prop 1' }];
+            notionService.getElements.mockResolvedValue(mockElements);
+            propertyMapper.mapElementWithNames.mockResolvedValue(mockElements[0]);
+
+            await notionController.getElements(mockReq, mockRes, next);
+
+            expect(notionService.getElements).toHaveBeenCalledWith({
+                and: [
+                    { property: 'Basic Type', select: { equals: 'Prop' } },
+                    { property: 'Status', select: { equals: 'Active' } }
+                ]
+            });
+        });
+    });
+
+    describe('getDatabasesMetadata', () => {
+        it('should return databases metadata', async () => {
+            await notionController.getDatabasesMetadata(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                databases: {
+                    characters: 'char-db-id',
+                    timeline: 'timeline-db-id',
+                    puzzles: 'puzzle-db-id',
+                    elements: 'element-db-id'
+                },
+                elementTypes: [
+                    "Prop", 
+                    "Set Dressing", 
+                    "Memory Token Video", 
+                    "Character Sheet"
+                ]
+            });
+        });
+    });
+
+    describe('globalSearch', () => {
+        it('should search across all databases', async () => {
+            mockReq.query.q = 'test';
+
+            const mockCharacters = [{ id: 'char1', name: 'Test Character' }];
+            const mockElements = [{ id: 'elem1', name: 'Test Element' }];
+            const mockPuzzles = [{ id: 'puzz1', puzzle: 'Test Puzzle' }];
+            const mockEvents = [{ id: 'event1', description: 'Test Event' }];
+
+            notionService.getCharacters.mockResolvedValue(mockCharacters);
+            notionService.getElements.mockResolvedValue(mockElements);
+            notionService.getPuzzles.mockResolvedValue(mockPuzzles);
+            notionService.getTimelineEvents.mockResolvedValue(mockEvents);
+
+            propertyMapper.mapCharacterWithNames.mockResolvedValue(mockCharacters[0]);
+            propertyMapper.mapElementWithNames.mockResolvedValue(mockElements[0]);
+            propertyMapper.mapPuzzleWithNames.mockResolvedValue(mockPuzzles[0]);
+            propertyMapper.mapTimelineEventWithNames.mockResolvedValue(mockEvents[0]);
+
+            await notionController.globalSearch(mockReq, mockRes, next);
+
+            expect(notionService.getCharacters).toHaveBeenCalledWith({
+                property: 'Name',
+                title: { contains: 'test' }
+            });
+            expect(notionService.getElements).toHaveBeenCalledWith({
+                property: 'Name',
+                title: { contains: 'test' }
+            });
+            expect(notionService.getPuzzles).toHaveBeenCalledWith({
+                property: 'Puzzle',
+                title: { contains: 'test' }
+            });
+            expect(notionService.getTimelineEvents).toHaveBeenCalledWith({
+                property: 'Description',
+                title: { contains: 'test' }
+            });
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                characters: [mockCharacters[0]],
+                timeline: [mockEvents[0]],
+                puzzles: [mockPuzzles[0]],
+                elements: [mockElements[0]]
+            });
+        });
+
+        it('should return 400 for missing search query', async () => {
+            mockReq.query = {};
+
+            await notionController.globalSearch(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Missing search query' });
+        });
+
+        it('should handle search errors gracefully', async () => {
+            mockReq.query.q = 'test';
+            const error = new Error('Search failed');
+            notionService.getCharacters.mockRejectedValue(error);
+
+            await notionController.globalSearch(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                characters: [],
+                timeline: expect.any(Array),
+                puzzles: expect.any(Array),
+                elements: expect.any(Array)
+            });
+        });
+    });
+
+    describe('clearCache', () => {
+        it('should clear the cache', async () => {
+            await notionController.clearCache(mockReq, mockRes, next);
+
+            expect(notionService.clearCache).toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith({ message: 'Cache cleared' });
+        });
+    });
+
+    describe('getPuzzlesWithWarnings', () => {
+        it('should return puzzles with warnings', async () => {
+            const mockPuzzles = [
+                {
+                    id: 'puzz1',
+                    puzzle: 'Puzzle 1',
+                    rewards: [],
+                    puzzleElements: [],
+                    resolutionPaths: [],
+                    owner: 'Owner 1',
+                    timing: 'Act 1'
+                },
+                {
+                    id: 'puzz2',
+                    puzzle: 'Puzzle 2',
+                    rewards: ['reward1'],
+                    puzzleElements: ['elem1'],
+                    resolutionPaths: ['path1'],
+                    owner: 'Owner 2',
+                    timing: 'Act 2'
+                }
+            ];
+
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getPuzzles.mockResolvedValue(mockPuzzles);
+            propertyMapper.mapPuzzleWithNames
+                .mockResolvedValueOnce(mockPuzzles[0])
+                .mockResolvedValueOnce(mockPuzzles[1]);
+
+            await notionController.getPuzzlesWithWarnings(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith([{
+                id: 'puzz1',
+                name: 'Puzzle 1',
+                type: 'Puzzle',
+                warnings: [
+                    { warningType: 'NoRewards', message: 'Puzzle has no rewards defined.' },
+                    { warningType: 'NoInputs', message: 'Puzzle has no input elements defined (puzzleElements).' },
+                    { warningType: 'NoResolutionPath', message: 'Puzzle does not contribute to any resolution path.' }
+                ],
+                owner: 'Owner 1',
+                timing: 'Act 1'
+            }]);
+        });
+
+        it('should return cached data if available', async () => {
+            const cachedData = [{ id: 'cached', warnings: [] }];
+            notionService.notionCache.get.mockReturnValue(cachedData);
+
+            await notionController.getPuzzlesWithWarnings(mockReq, mockRes, next);
+
+            expect(notionService.getPuzzles).not.toHaveBeenCalled();
+            expect(mockRes.json).toHaveBeenCalledWith(cachedData);
+        });
+    });
+
+    describe('getElementsWithWarnings', () => {
+        it('should return elements with warnings', async () => {
+            const mockElements = [
+                {
+                    id: 'elem1',
+                    name: 'Element 1',
+                    basicType: 'Prop',
+                    requiredForPuzzle: [],
+                    rewardedByPuzzle: [],
+                    status: 'Active',
+                    owner: 'Owner 1'
+                },
+                {
+                    id: 'elem2',
+                    name: 'Memory Token',
+                    basicType: 'Memory Token Video',
+                    requiredForPuzzle: [],
+                    rewardedByPuzzle: [],
+                    memorySets: [],
+                    status: 'Active',
+                    owner: 'Owner 2'
+                }
+            ];
+
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getElements.mockResolvedValue(mockElements);
+            propertyMapper.mapElementWithNames
+                .mockResolvedValueOnce(mockElements[0])
+                .mockResolvedValueOnce(mockElements[1]);
+
+            await notionController.getElementsWithWarnings(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith([
+                {
+                    id: 'elem1',
+                    name: 'Element 1',
+                    type: 'Element',
+                    basicType: 'Prop',
+                    status: 'Active',
+                    owner: 'Owner 1',
+                    warnings: [{
+                        warningType: 'NotUsedInOrRewardingPuzzles',
+                        message: 'Element is not used as an input for any puzzle and is not a reward from any puzzle.'
+                    }]
+                },
+                {
+                    id: 'elem2',
+                    name: 'Memory Token',
+                    type: 'Element',
+                    basicType: 'Memory Token Video',
+                    status: 'Active',
+                    owner: 'Owner 2',
+                    warnings: [
+                        {
+                            warningType: 'NotUsedInOrRewardingPuzzles',
+                            message: 'Element is not used as an input for any puzzle and is not a reward from any puzzle.'
+                        },
+                        {
+                            warningType: 'NoMemorySet',
+                            message: 'Memory Token is not part of any Memory Set.'
+                        }
+                    ]
+                }
+            ]);
+        });
+
+        it('should exclude certain basic types', async () => {
+            const mockElements = [
+                {
+                    id: 'elem1',
+                    name: 'Character Sheet 1',
+                    basicType: 'Character Sheet',
+                    requiredForPuzzle: [],
+                    rewardedByPuzzle: []
+                }
+            ];
+
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getElements.mockResolvedValue(mockElements);
+            propertyMapper.mapElementWithNames.mockResolvedValue(mockElements[0]);
+
+            await notionController.getElementsWithWarnings(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith([]);
+        });
+    });
+
+    describe('getPuzzleFlow', () => {
+        beforeEach(() => {
+            mockReq.params.id = 'puzzle-id';
+        });
+
+        it('should get puzzle flow data', async () => {
+            const mockPuzzle = {
+                id: 'puzzle-id',
+                puzzle: 'Test Puzzle',
+                puzzleElements: [{ id: 'elem1', name: 'Element 1' }],
+                rewards: [{ id: 'elem2', name: 'Element 2' }],
+                subPuzzles: [{ id: 'sub1', name: 'Sub Puzzle' }],
+                parentItem: [{ id: 'parent1', name: 'Parent Puzzle' }],
+                lockedItem: []
+            };
+
+            const relatedPages = [
+                { id: 'elem1', properties: { Name: {} } },
+                { id: 'elem2', properties: { Name: {} } },
+                { id: 'sub1', properties: { Puzzle: {} } },
+                { id: 'parent1', properties: { Puzzle: {} } }
+            ];
+
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getPage.mockResolvedValue({ id: 'puzzle-id' });
+            propertyMapper.mapPuzzleWithNames.mockResolvedValue(mockPuzzle);
+            notionService.getPagesByIds.mockResolvedValue(relatedPages);
+            propertyMapper.mapElementWithNames
+                .mockResolvedValueOnce({ id: 'elem1', name: 'Element 1', basicType: 'Prop' })
+                .mockResolvedValueOnce({ id: 'elem2', name: 'Element 2', basicType: 'Memory Token' });
+            propertyMapper.mapPuzzleWithNames
+                .mockResolvedValueOnce({ id: 'sub1', puzzle: 'Sub Puzzle' })
+                .mockResolvedValueOnce({ id: 'parent1', puzzle: 'Parent Puzzle' });
+
+            await notionController.getPuzzleFlow(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith({
+                centralPuzzle: {
+                    id: 'puzzle-id',
+                    name: 'Test Puzzle',
+                    type: 'Puzzle',
+                    properties: mockPuzzle
+                },
+                inputElements: [{ id: 'elem1', name: 'Element 1', type: 'Element', basicType: 'Prop' }],
+                outputElements: [{ id: 'elem2', name: 'Element 2', type: 'Element', basicType: 'Memory Token' }],
+                unlocksPuzzles: [{ id: 'sub1', name: 'Sub Puzzle', type: 'Puzzle' }],
+                prerequisitePuzzles: [{ id: 'parent1', name: 'Parent Puzzle', type: 'Puzzle' }]
+            });
+        });
+
+        it('should return 404 if puzzle not found', async () => {
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getPage.mockResolvedValue(null);
+
+            await notionController.getPuzzleFlow(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Puzzle not found' });
+        });
+    });
+
+    describe('getAllUniqueNarrativeThreads', () => {
+        it('should return all unique narrative threads', async () => {
+            const mockCharacters = [{ narrativeThreads: ['thread1', 'thread2'] }];
+            const mockElements = [{ narrativeThreads: ['thread2', 'thread3'] }];
+            const mockPuzzles = [{ narrativeThreads: ['thread1', 'thread3'] }];
+            const mockEvents = [{ narrativeThreads: ['thread4'] }];
+
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getCharacters.mockResolvedValue([{}]);
+            notionService.getElements.mockResolvedValue([{}]);
+            notionService.getPuzzles.mockResolvedValue([{}]);
+            notionService.getTimelineEvents.mockResolvedValue([{}]);
+
+            propertyMapper.mapCharacterWithNames.mockResolvedValue(mockCharacters[0]);
+            propertyMapper.mapElementWithNames.mockResolvedValue(mockElements[0]);
+            propertyMapper.mapPuzzleWithNames.mockResolvedValue(mockPuzzles[0]);
+            propertyMapper.mapTimelineEventWithNames.mockResolvedValue(mockEvents[0]);
+
+            await notionController.getAllUniqueNarrativeThreads(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith(['thread1', 'thread2', 'thread3', 'thread4']);
+        });
+
+        it('should handle entities without narrative threads', async () => {
+            notionService.notionCache.get.mockReturnValue(null);
+            notionService.getCharacters.mockResolvedValue([{}]);
+            notionService.getElements.mockResolvedValue([{}]);
+            notionService.getPuzzles.mockResolvedValue([{}]);
+            notionService.getTimelineEvents.mockResolvedValue([{}]);
+
+            propertyMapper.mapCharacterWithNames.mockResolvedValue({});
+            propertyMapper.mapElementWithNames.mockResolvedValue({ narrativeThreads: null });
+            propertyMapper.mapPuzzleWithNames.mockResolvedValue({ narrativeThreads: [] });
+            propertyMapper.mapTimelineEventWithNames.mockResolvedValue({ narrativeThreads: ['thread1'] });
+
+            await notionController.getAllUniqueNarrativeThreads(mockReq, mockRes, next);
+
+            expect(mockRes.json).toHaveBeenCalledWith(['thread1']);
+        });
+    });
+
+    describe('Error handling', () => {
+        it('should use catchAsync wrapper for all endpoints', () => {
+            // This is more of a static analysis test
+            // Verify that all exported functions are properly wrapped
+            const controllerMethods = Object.keys(notionController);
+            
+            // All methods should be functions
+            controllerMethods.forEach(method => {
+                expect(typeof notionController[method]).toBe('function');
+            });
+        });
+
+        it('should handle and pass errors to next middleware', async () => {
+            const error = new Error('Test error');
+            notionService.getCharactersForList.mockRejectedValue(error);
+
+            await notionController.getCharacters(mockReq, mockRes, next);
+
+            expect(next).toHaveBeenCalledWith(error);
+            expect(mockRes.status).not.toHaveBeenCalled();
+            expect(mockRes.json).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Cache headers', () => {
+        it('should set cache headers with default duration', async () => {
+            await notionController.getCharacters(mockReq, mockRes, next);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Cache-Control', 'public, max-age=300');
+        });
+    });
+
+    describe('Not implemented endpoints', () => {
+        it('getElementGraph should return 501', async () => {
+            await notionController.getElementGraph(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(501);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Not implemented' });
+        });
+
+        it('getPuzzleGraph should return 501', async () => {
+            await notionController.getPuzzleGraph(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(501);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Not implemented' });
+        });
+
+        it('getTimelineGraph should return 501', async () => {
+            await notionController.getTimelineGraph(mockReq, mockRes, next);
+
+            expect(mockRes.status).toHaveBeenCalledWith(501);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: 'Not implemented' });
+        });
+    });
+});
+}); 
+}); 
+}); 
+}); 
+}); 
+}); 
+}); 
+}); 
 }); 

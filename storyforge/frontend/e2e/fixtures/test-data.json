@@ -1,0 +1,69 @@
+{
+  "characters": [
+    {
+      "id": "18c2f33d583f80868ff8fdb97283e1a8",
+      "name": "Alex Reeves",
+      "role": "Tech startup co-founder",
+      "memoryCount": 5
+    },
+    {
+      "id": "18c2f33d583f80c883b4ef43b7c9c4b1",
+      "name": "Marcus Blackwood",
+      "role": "CEO of NeurAI",
+      "memoryCount": 8
+    },
+    {
+      "id": "18c2f33d583f804588f3c23116be2724",
+      "name": "Sarah Blackwood",
+      "role": "Art gallery curator",
+      "memoryCount": 3
+    }
+  ],
+  "elements": [
+    {
+      "id": "18c2f33d583f808db7edfdb82a55087b",
+      "name": "UV Light",
+      "type": "Tool",
+      "memoryValue": 0
+    },
+    {
+      "id": "18c2f33d583f805d8b21dd8980ddf377",
+      "name": "Sarah's Jewelry Box",
+      "type": "Container",
+      "memoryValue": 5
+    }
+  ],
+  "puzzles": [
+    {
+      "id": "1dc2f33d583f802ab24ad1c3fbdf24e9",
+      "name": "Pillow Puzzle",
+      "difficulty": "Medium",
+      "solution": "SARAH"
+    },
+    {
+      "id": "1b62f33d583f80caacfef90aea72d35d",
+      "name": "Collab One Pagers Puzzle",
+      "difficulty": "Hard",
+      "solution": "Multiple company analysis"
+    }
+  ],
+  "journeyNodes": {
+    "alex": [
+      {
+        "id": "puzzle-pillow",
+        "label": "Pillow Puzzle",
+        "type": "activityNode"
+      },
+      {
+        "id": "element-uv-light",
+        "label": "UV Light",
+        "type": "discoveryNode"
+      },
+      {
+        "id": "event-party-start",
+        "label": "Night of the Party",
+        "type": "loreNode"
+      }
+    ]
+  }
+}

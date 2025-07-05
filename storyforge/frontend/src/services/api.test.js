@@ -1,253 +1,294 @@
-import { fetchCharacterGraphData, fetchElementGraphData, fetchPuzzleGraphData, fetchTimelineGraphData, fetchCharacters, fetchElements, fetchPuzzles, fetchTimelineEvents, fetchEntityById, searchAll } from './api';
+import api from './api';
+import axios from 'axios';
 
-// Mock the global fetch function
-global.fetch = jest.fn();
+// Mock axios
+jest.mock('axios');
 
 describe('API Service', () => {
+  let mockAxiosInstance;
+
   beforeEach(() => {
-    fetch.mockClear();
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+    
+    // Create a mock axios instance
+    mockAxiosInstance = {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+      interceptors: {
+        request: { use: jest.fn() },
+        response: { use: jest.fn() }
+      }
+    };
+    
+    // Mock axios.create to return our mock instance
+    axios.create.mockReturnValue(mockAxiosInstance);
+    
+    // Re-import api to get fresh instance with mocked axios
+    jest.resetModules();
   });
 
-  // Test suite for fetchCharacterGraphData
-  describe('fetchCharacterGraphData', () => {
+  // Test suite for getCharacterGraph
+  describe('getCharacterGraph', () => {
     it('should fetch character graph data successfully', async () => {
       const mockId = 'char-alex-reeves';
       const mockGraphData = { center: { id: mockId, name: 'Alex Reeves' }, nodes: [], edges: [] };
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockGraphData,
-      });
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockGraphData });
 
-      const data = await fetchCharacterGraphData(mockId);
-      expect(fetch).toHaveBeenCalledWith(`/api/characters/${mockId}/graph`);
+      const data = await api.getCharacterGraph(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/characters/${mockId}/graph`, { params: { depth: 2 } });
       expect(data).toEqual(mockGraphData);
     });
 
-    it('should throw an error if fetchCharacterGraphData fails', async () => {
-      const mockId = 'char-unknown';
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({ error: 'Not Found' }),
-      });
+    it('should fetch character graph data with custom depth', async () => {
+      const mockId = 'char-alex-reeves';
+      const mockGraphData = { center: { id: mockId, name: 'Alex Reeves' }, nodes: [], edges: [] };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockGraphData });
 
-      await expect(fetchCharacterGraphData(mockId)).rejects.toThrow('Failed to fetch character graph data for char-unknown: 404');
+      const data = await api.getCharacterGraph(mockId, 3);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/characters/${mockId}/graph`, { params: { depth: 3 } });
+      expect(data).toEqual(mockGraphData);
     });
   });
 
-  // Test suite for fetchElementGraphData
-  describe('fetchElementGraphData', () => {
+  // Test suite for getElementGraph
+  describe('getElementGraph', () => {
     it('should fetch element graph data successfully', async () => {
       const mockId = 'elem-secure-briefcase';
       const mockGraphData = { center: { id: mockId, name: 'Secure Briefcase' }, nodes: [], edges: [] };
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockGraphData,
-      });
-      const data = await fetchElementGraphData(mockId);
-      expect(fetch).toHaveBeenCalledWith(`/api/elements/${mockId}/graph`);
-      expect(data).toEqual(mockGraphData);
-    });
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockGraphData });
 
-    it('should throw an error if fetchElementGraphData fails', async () => {
-      const mockId = 'elem-unknown';
-       fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({ error: 'Server Error' }),
-      });
-      await expect(fetchElementGraphData(mockId)).rejects.toThrow('Failed to fetch element graph data for elem-unknown: 500');
+      const data = await api.getElementGraph(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/elements/${mockId}/graph`, { params: { depth: 2 } });
+      expect(data).toEqual(mockGraphData);
     });
   });
 
-  // Test suite for fetchPuzzleGraphData
-  describe('fetchPuzzleGraphData', () => {
+  // Test suite for getPuzzleGraph
+  describe('getPuzzleGraph', () => {
     it('should fetch puzzle graph data successfully', async () => {
-      const mockId = 'puzzle-data-heist';
-      const mockGraphData = { center: { id: mockId, name: 'Data Heist' }, nodes: [], edges: [] };
-       fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockGraphData,
-      });
-      const data = await fetchPuzzleGraphData(mockId);
-      expect(fetch).toHaveBeenCalledWith(`/api/puzzles/${mockId}/graph`);
+      const mockId = 'puzzle-security-office';
+      const mockGraphData = { center: { id: mockId, name: 'Security Office Access' }, nodes: [], edges: [] };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockGraphData });
+
+      const data = await api.getPuzzleGraph(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/puzzles/${mockId}/graph`, { params: { depth: 2 } });
       expect(data).toEqual(mockGraphData);
-    });
-    
-    it('should throw an error if fetchPuzzleGraphData fails', async () => {
-      const mockId = 'puzzle-unknown';
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-        json: async () => ({ error: 'Forbidden' }),
-      });
-      await expect(fetchPuzzleGraphData(mockId)).rejects.toThrow('Failed to fetch puzzle graph data for puzzle-unknown: 403');
     });
   });
 
-  // Test suite for fetchTimelineGraphData
-  describe('fetchTimelineGraphData', () => {
-     it('should fetch timeline graph data successfully', async () => {
-      const mockId = 'event-ceo-speech';
-      const mockGraphData = { center: { id: mockId, name: 'CEO Speech' }, nodes: [], edges: [] };
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockGraphData,
-      });
-      const data = await fetchTimelineGraphData(mockId);
-      expect(fetch).toHaveBeenCalledWith(`/api/timeline/${mockId}/graph`);
-      expect(data).toEqual(mockGraphData);
-    });
+  // Test suite for getTimelineGraph
+  describe('getTimelineGraph', () => {
+    it('should fetch timeline graph data successfully', async () => {
+      const mockId = 'timeline-arrival';
+      const mockGraphData = { center: { id: mockId, name: 'Guest Arrival' }, nodes: [], edges: [] };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockGraphData });
 
-    it('should throw an error if fetchTimelineGraphData fails', async () => {
-      const mockId = 'timeline-unknown';
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        json: async () => ({ error: 'Bad Request' }),
-      });
-      await expect(fetchTimelineGraphData(mockId)).rejects.toThrow('Failed to fetch timeline graph data for timeline-unknown: 400');
+      const data = await api.getTimelineGraph(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/timeline/${mockId}/graph`, { params: { depth: 2 } });
+      expect(data).toEqual(mockGraphData);
     });
   });
 
-  // Test suite for fetchCharacters
-  describe('fetchCharacters', () => {
-    it('should fetch characters list successfully', async () => {
-      const mockCharacters = [{ id: 'char1', name: 'Character 1' }];
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockCharacters,
-      });
-      const data = await fetchCharacters();
-      expect(fetch).toHaveBeenCalledWith('/api/characters');
+  // Test suite for getCharacters
+  describe('getCharacters', () => {
+    it('should fetch characters successfully', async () => {
+      const mockCharacters = [
+        { id: 'char-alex-reeves', name: 'Alex Reeves' },
+        { id: 'char-jordan-hayes', name: 'Jordan Hayes' }
+      ];
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockCharacters });
+
+      const data = await api.getCharacters();
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/characters', { params: {} });
       expect(data).toEqual(mockCharacters);
     });
 
-    it('should throw an error if fetchCharacters fails', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-      await expect(fetchCharacters()).rejects.toThrow('Failed to fetch characters: 500');
+    it('should fetch characters with filters', async () => {
+      const mockCharacters = [{ id: 'char-alex-reeves', name: 'Alex Reeves' }];
+      const filters = { category: 'guest' };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockCharacters });
+
+      const data = await api.getCharacters(filters);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/characters', { params: filters });
+      expect(data).toEqual(mockCharacters);
     });
   });
-  
-  // Test suite for fetchElements
-  describe('fetchElements', () => {
-    it('should fetch elements list successfully', async () => {
-      const mockElements = [{ id: 'elem1', name: 'Element 1' }];
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockElements,
-      });
-      const data = await fetchElements();
-      expect(fetch).toHaveBeenCalledWith('/api/elements');
+
+  // Test suite for getElements
+  describe('getElements', () => {
+    it('should fetch elements successfully', async () => {
+      const mockElements = [
+        { id: 'elem-secure-briefcase', name: 'Secure Briefcase' },
+        { id: 'elem-mansion-key', name: 'Mansion Key' }
+      ];
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockElements });
+
+      const data = await api.getElements();
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/elements', { params: {} });
       expect(data).toEqual(mockElements);
     });
-
-    it('should throw an error if fetchElements fails', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-      await expect(fetchElements()).rejects.toThrow('Failed to fetch elements: 500');
-    });
   });
 
-  // Test suite for fetchPuzzles
-  describe('fetchPuzzles', () => {
-    it('should fetch puzzles list successfully', async () => {
-      const mockPuzzles = [{ id: 'puzz1', name: 'Puzzle 1' }];
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPuzzles,
-      });
-      const data = await fetchPuzzles();
-      expect(fetch).toHaveBeenCalledWith('/api/puzzles');
+  // Test suite for getPuzzles
+  describe('getPuzzles', () => {
+    it('should fetch puzzles successfully', async () => {
+      const mockPuzzles = [
+        { id: 'puzzle-security-office', name: 'Security Office Access' },
+        { id: 'puzzle-safe-combination', name: 'Safe Combination' }
+      ];
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockPuzzles });
+
+      const data = await api.getPuzzles();
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/puzzles', { params: {} });
       expect(data).toEqual(mockPuzzles);
     });
-    
-    it('should throw an error if fetchPuzzles fails', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-      await expect(fetchPuzzles()).rejects.toThrow('Failed to fetch puzzles: 500');
+  });
+
+  // Test suite for getTimelineEvents
+  describe('getTimelineEvents', () => {
+    it('should fetch timeline events successfully', async () => {
+      const mockEvents = [
+        { id: 'timeline-arrival', name: 'Guest Arrival' },
+        { id: 'timeline-discovery', name: 'Body Discovery' }
+      ];
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockEvents });
+
+      const data = await api.getTimelineEvents();
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/timeline', { params: {} });
+      expect(data).toEqual(mockEvents);
     });
   });
 
-  // Test suite for fetchTimelineEvents
-  describe('fetchTimelineEvents', () => {
-    it('should fetch timeline events list successfully', async () => {
-      const mockTimelineEvents = [{ id: 'time1', name: 'Timeline Event 1' }];
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockTimelineEvents,
-      });
-      const data = await fetchTimelineEvents();
-      expect(fetch).toHaveBeenCalledWith('/api/timeline');
-      expect(data).toEqual(mockTimelineEvents);
+  // Test suite for entity by ID methods
+  describe('Entity by ID methods', () => {
+    it('should fetch character by ID successfully', async () => {
+      const mockId = 'char-alex-reeves';
+      const mockCharacter = { id: mockId, name: 'Alex Reeves' };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockCharacter });
+
+      const data = await api.getCharacterById(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/characters/${mockId}`);
+      expect(data).toEqual(mockCharacter);
     });
 
-    it('should throw an error if fetchTimelineEvents fails', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-      await expect(fetchTimelineEvents()).rejects.toThrow('Failed to fetch timeline events: 500');
-    });
-  });
+    it('should fetch element by ID successfully', async () => {
+      const mockId = 'elem-secure-briefcase';
+      const mockElement = { id: mockId, name: 'Secure Briefcase' };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockElement });
 
-  // Test suite for fetchEntityById
-  describe('fetchEntityById', () => {
-    it('should fetch entity by ID successfully', async () => {
-      const mockEntityType = 'characters';
-      const mockId = 'char1';
-      const mockEntity = { id: mockId, name: 'Character 1' };
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockEntity,
-      });
-      const data = await fetchEntityById(mockEntityType, mockId);
-      expect(fetch).toHaveBeenCalledWith(`/api/${mockEntityType}/${mockId}`);
-      expect(data).toEqual(mockEntity);
+      const data = await api.getElementById(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/elements/${mockId}`);
+      expect(data).toEqual(mockElement);
     });
 
-    it('should throw an error if fetchEntityById fails', async () => {
-      const mockEntityType = 'elements';
-      const mockId = 'elem-unknown';
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
-      await expect(fetchEntityById(mockEntityType, mockId)).rejects.toThrow('Failed to fetch elements with id elem-unknown: 404');
-    });
-  });
+    it('should fetch puzzle by ID successfully', async () => {
+      const mockId = 'puzzle-security-office';
+      const mockPuzzle = { id: mockId, name: 'Security Office Access' };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockPuzzle });
 
-  // Test suite for searchAll
-  describe('searchAll', () => {
-    it('should search all entities successfully', async () => {
-      const mockQuery = 'testQuery';
-      const mockSearchResults = { characters: [], elements: [] };
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSearchResults,
-      });
-      const data = await searchAll(mockQuery);
-      expect(fetch).toHaveBeenCalledWith(`/api/search?q=${mockQuery}`);
-      expect(data).toEqual(mockSearchResults);
+      const data = await api.getPuzzleById(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/puzzles/${mockId}`);
+      expect(data).toEqual(mockPuzzle);
     });
 
-    it('should throw an error if searchAll fails', async () => {
-      const mockQuery = 'anotherQuery';
-       fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-      await expect(searchAll(mockQuery)).rejects.toThrow('Search failed: 500');
+    it('should fetch timeline event by ID successfully', async () => {
+      const mockId = 'timeline-arrival';
+      const mockEvent = { id: mockId, name: 'Guest Arrival' };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockEvent });
+
+      const data = await api.getTimelineEventById(mockId);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/timeline/${mockId}`);
+      expect(data).toEqual(mockEvent);
     });
   });
 
-  // Add more tests for other API functions (e.g., create, update, delete if they exist)
-  // and for different scenarios (e.g., network errors)
-}); 
+  // Test suite for globalSearch
+  describe('globalSearch', () => {
+    it('should perform global search successfully', async () => {
+      const query = 'briefcase';
+      const mockResults = {
+        characters: [],
+        elements: [{ id: 'elem-secure-briefcase', name: 'Secure Briefcase' }],
+        puzzles: [],
+        timeline: []
+      };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockResults });
+
+      const data = await api.globalSearch(query);
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/search', { params: { q: query } });
+      expect(data).toEqual(mockResults);
+    });
+  });
+
+  // Test suite for new endpoints
+  describe('New endpoints', () => {
+    it('should clear cache successfully', async () => {
+      const mockResponse = { message: 'Cache cleared successfully' };
+      
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResponse });
+
+      const data = await api.clearCache();
+      
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/cache/clear');
+      expect(data).toEqual(mockResponse);
+    });
+
+    it('should cancel sync successfully', async () => {
+      const mockResponse = { message: 'Sync cancelled' };
+      
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResponse });
+
+      const data = await api.cancelSync();
+      
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/sync/cancel');
+      expect(data).toEqual(mockResponse);
+    });
+
+    it('should get game constants successfully', async () => {
+      const mockConstants = { 
+        MAX_MEMORY_VALUE: 3,
+        ACT_MULTIPLIERS: { 1: 1, 2: 2, 3: 3 }
+      };
+      
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockConstants });
+
+      const data = await api.getGameConstants();
+      
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/game-constants');
+      expect(data).toEqual(mockConstants);
+    });
+  });
+});

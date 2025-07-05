@@ -1,0 +1,9 @@
+{
+  "name": "elements-loading",
+  "category": "entities",
+  "viewport": "desktop",
+  "timestamp": "2025-07-01T07-20-30-329Z",
+  "url": "http://localhost:3000/elements",
+  "entity": "elements",
+  "state": "loading"
+}

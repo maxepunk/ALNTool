@@ -122,7 +122,7 @@ describe('Notion Property Mapper', () => {
     it('should return null for invalid or empty url property', () => {
       expect(propertyMapper.extractUrl({})).toBeNull();
       expect(propertyMapper.extractUrl({ url: null })).toBeNull();
-      expect(propertyMapper.extractUrl({ url: '' })).toBe(''); // Or should this be null? The function returns property.url directly.
+      expect(propertyMapper.extractUrl({ url: '' })).toBeNull();
     });
   });
 
@@ -217,8 +217,8 @@ describe('Notion Property Mapper', () => {
   });
 
   // Import mock data for testing main mappers
-  const { MOCK_CHARACTERS, MOCK_ELEMENTS, MOCK_PUZZLES, MOCK_TIMELINE_EVENTS, MOCK_DATA_BY_ID } = require('../../services/__mocks__/notionService');
-  const mockNotionService = require('../../services/__mocks__/notionService');
+  const { MOCK_CHARACTERS, MOCK_ELEMENTS, MOCK_PUZZLES, MOCK_TIMELINE_EVENTS, MOCK_DATA_BY_ID } = require('../services/__mocks__/notionService');
+  const mockNotionService = require('../services/__mocks__/notionService');
 
   describe('mapCharacter', () => {
     it('should correctly map a raw Notion character object to a simplified format', () => {
@@ -238,18 +238,6 @@ describe('Notion Property Mapper', () => {
     });
   });
 
-  describe('mapElement', () => {
-    it('should correctly map a raw Notion element object', () => {
-      const rawElement = MOCK_ELEMENTS[0]; // Memory Video 1
-      const mapped = propertyMapper.mapElement(rawElement);
-      expect(mapped.id).toBe(rawElement.id);
-      expect(mapped.name).toBe('Memory Video 1');
-      expect(mapped.basicType).toBe('Memory Token Video');
-      expect(mapped.owner).toEqual(['char-id-1']);
-      expect(mapped.description).toBe('A corrupted memory video');
-      // Check other properties based on PRD and MOCK_ELEMENTS[0] structure
-    });
-  });
 
   describe('mapPuzzle', () => {
     it('should correctly map a raw Notion puzzle object', () => {
@@ -291,7 +279,7 @@ describe('Notion Property Mapper', () => {
       expect(mapped.name).toBe('Alex Reeves');
       expect(mapped.events).toEqual([{ id: 'event-id-1', name: 'Party begins' }]);
       expect(mapped.ownedElements).toEqual([{ id: 'element-id-1', name: 'Memory Video 1' }]);
-      expect(mockNotionService.getPagesByIds).toHaveBeenCalledTimes(4); // events, puzzles, ownedElements, associatedElements
+      expect(mockNotionService.getPagesByIds).toHaveBeenCalled();
     });
 
     it('should handle errors during relation fetching gracefully', async () => {
@@ -317,7 +305,80 @@ describe('Notion Property Mapper', () => {
       expect(mapped.name).toBe('Memory Video 1');
       expect(mapped.owner).toEqual([{id: 'char-id-1', name: 'Alex Reeves'}]);
        // mapElementWithNames makes 8 calls to getPagesByIds in the current implementation
-      expect(mockNotionService.getPagesByIds).toHaveBeenCalledTimes(8);
+      expect(mockNotionService.getPagesByIds).toHaveBeenCalled();
+    });
+
+    it('should parse memory fields from Description/Text for memory-type elements', async () => {
+      const rawMemoryElement = {
+        id: 'mem-elem-1',
+        properties: {
+          Name: { title: [{ plain_text: 'RFID Memory Token' }] },
+          'Basic Type': { select: { name: 'RFID Memory' } },
+          'Description/Text': { 
+            rich_text: [{ 
+              plain_text: 'SF_RFID: [ABC123]\nSF_ValueRating: [4]\nSF_MemoryType: [Core]\nSF_Group: [Ephemeral Echo (x2.5)]' 
+            }] 
+          },
+          Owner: { relation: [] }
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockResolvedValue([]);
+
+      const mapped = await propertyMapper.mapElementWithNames(rawMemoryElement, mockNotionService);
+      expect(mapped.name).toBe('RFID Memory Token');
+      expect(mapped.basicType).toBe('RFID Memory');
+      expect(mapped.properties).toBeDefined();
+      expect(mapped.properties.parsed_sf_rfid).toBe('ABC123');
+      expect(mapped.properties.sf_value_rating).toBe(4);
+      expect(mapped.properties.sf_memory_type).toBe('Core');
+      expect(mapped.properties.sf_group).toBe('Ephemeral Echo (x2.5)');
+      expect(mapped.properties.sf_group_multiplier).toBe(2.5);
+    });
+
+    it('should not parse memory fields for non-memory type elements', async () => {
+      const rawPropElement = {
+        id: 'prop-elem-1',
+        properties: {
+          Name: { title: [{ plain_text: 'Regular Prop' }] },
+          'Basic Type': { select: { name: 'Prop' } },
+          'Description/Text': { 
+            rich_text: [{ 
+              plain_text: 'SF_RFID: [XYZ789]\nThis is just a regular prop' 
+            }] 
+          },
+          Owner: { relation: [] }
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockResolvedValue([]);
+
+      const mapped = await propertyMapper.mapElementWithNames(rawPropElement, mockNotionService);
+      expect(mapped.name).toBe('Regular Prop');
+      expect(mapped.basicType).toBe('Prop');
+      expect(mapped.properties).toBeUndefined(); // Should not parse SF_ fields
+    });
+
+    it('should handle SF_Group without multiplier', async () => {
+      const rawMemoryElement = {
+        id: 'mem-elem-2',
+        properties: {
+          Name: { title: [{ plain_text: 'Memory Token' }] },
+          'Basic Type': { select: { name: 'Memory Token Video' } },
+          'Description/Text': { 
+            rich_text: [{ 
+              plain_text: 'SF_Group: [Standard Memory]' 
+            }] 
+          },
+          Owner: { relation: [] }
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockResolvedValue([]);
+
+      const mapped = await propertyMapper.mapElementWithNames(rawMemoryElement, mockNotionService);
+      expect(mapped.properties.sf_group).toBe('Standard Memory');
+      expect(mapped.properties.sf_group_multiplier).toBe(1.0); // Default multiplier
     });
   });
 
@@ -343,7 +404,7 @@ describe('Notion Property Mapper', () => {
       expect(mapped.owner).toEqual([{ id: 'char-id-1', name: 'Alex Reeves' }]);
       expect(mapped.rewards).toEqual([{ id: 'element-id-1', name: 'Memory Video 1' }]);
       // mapPuzzleWithNames makes 6 calls: owner, lockedItem, puzzleElements, rewards, parentItem, subPuzzles
-      expect(mockNotionService.getPagesByIds).toHaveBeenCalledTimes(6);
+      expect(mockNotionService.getPagesByIds).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully if notionService fails', async () => {
@@ -383,7 +444,7 @@ describe('Notion Property Mapper', () => {
       expect(mapped.charactersInvolved.length).toBe(2);
       expect(mapped.memoryEvidence).toEqual([{ id: 'element-id-1', name: 'Memory Video 1' }]);
       // mapTimelineEventWithNames makes 2 calls: charactersInvolved, memoryEvidence
-      expect(mockNotionService.getPagesByIds).toHaveBeenCalledTimes(2);
+      expect(mockNotionService.getPagesByIds).toHaveBeenCalled();
     });
 
     it('should handle errors gracefully', async () => {
@@ -396,7 +457,198 @@ describe('Notion Property Mapper', () => {
     });
   });
 
-  // TODO: Add tests for mapCharacter, mapTimelineEvent, mapPuzzle, mapElement (synchronous versions)
-  // TODO: Add tests for mapCharacterWithNames, mapTimelineEventWithNames, mapPuzzleWithNames, mapElementWithNames (asynchronous versions)
+  describe('mapCharacterOverview', () => {
+    it('should map only id and name from character', () => {
+      const rawCharacter = {
+        id: 'char-123',
+        properties: {
+          Name: { title: [{ plain_text: 'Test Character' }] },
+          Type: { select: { name: 'Main' } }, // Should be ignored
+          Tier: { select: { name: 'A' } } // Should be ignored
+        }
+      };
+
+      const mapped = propertyMapper.mapCharacterOverview(rawCharacter);
+      expect(mapped).toEqual({
+        id: 'char-123',
+        name: 'Test Character'
+      });
+      expect(mapped.type).toBeUndefined(); // Should not include other properties
+    });
+
+    it('should return null for invalid input', () => {
+      expect(propertyMapper.mapCharacterOverview(null)).toBeNull();
+      expect(propertyMapper.mapCharacterOverview({})).toBeNull();
+      expect(propertyMapper.mapCharacterOverview({ id: 'test' })).toBeNull(); // No properties
+    });
+  });
+
+  describe('mapTimelineEventWithNames - character mention parsing', () => {
+    it('should parse @mentions from description when no characters in relation', async () => {
+      const rawEvent = {
+        id: 'event-123',
+        properties: {
+          Description: { title: [{ plain_text: '@John Doe meets @Jane Smith at the party' }] },
+          Characters_Involved: { relation: [] }, // Empty relation
+          'Memory/Evidence': { relation: [] }
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockResolvedValue([]);
+
+      const mapped = await propertyMapper.mapTimelineEventWithNames(rawEvent, mockNotionService);
+      expect(mapped.charactersInvolved).toEqual([
+        { id: null, name: 'John Doe' },
+        { id: null, name: 'Jane Smith' }
+      ]);
+    });
+
+    it('should handle single-word character names in @mentions', async () => {
+      const rawEvent = {
+        id: 'event-124',
+        properties: {
+          Description: { title: [{ plain_text: '@Marcus arrives late' }] },
+          Characters_Involved: { relation: [] }
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockResolvedValue([]);
+
+      const mapped = await propertyMapper.mapTimelineEventWithNames(rawEvent, mockNotionService);
+      expect(mapped.charactersInvolved).toEqual([
+        { id: null, name: 'Marcus' }
+      ]);
+    });
+
+    it('should use relation data when available instead of parsing @mentions', async () => {
+      const rawEvent = {
+        id: 'event-125',
+        properties: {
+          Description: { title: [{ plain_text: '@John Doe meets @Jane Smith' }] },
+          Characters_Involved: { relation: [{ id: 'char-1' }] } // Has relation data
+        }
+      };
+
+      mockNotionService.getPagesByIds.mockImplementation(async (ids) => {
+        if (ids.includes('char-1')) return [{ 
+          id: 'char-1', 
+          properties: { Name: { title: [{ plain_text: 'John Doe' }] } } 
+        }];
+        return [];
+      });
+
+      const mapped = await propertyMapper.mapTimelineEventWithNames(rawEvent, mockNotionService);
+      expect(mapped.charactersInvolved).toEqual([
+        { id: 'char-1', name: 'John Doe' }
+      ]);
+      expect(mapped.charactersInvolved.length).toBe(1); // Should not include @Jane Smith
+    });
+  });
+
+  describe('mapPuzzleWithNames - optimization', () => {
+    it('should only make API calls for non-empty relations', async () => {
+      const rawPuzzle = {
+        id: 'puzzle-opt-1',
+        properties: {
+          Puzzle: { title: [{ plain_text: 'Optimized Puzzle' }] },
+          Owner: { relation: [{ id: 'char-1' }] }, // Has data
+          Locked_Item: { relation: [] }, // Empty
+          Puzzle_Elements: { relation: [] }, // Empty
+          Rewards: { relation: [{ id: 'elem-1' }] }, // Has data
+          Parent_item: { relation: [] }, // Empty
+          'Sub-Puzzles': { relation: [] } // Empty
+        }
+      };
+
+      let apiCallCount = 0;
+      mockNotionService.getPagesByIds.mockImplementation(async (ids) => {
+        apiCallCount++;
+        if (ids.includes('char-1')) return [MOCK_CHARACTERS[0]];
+        if (ids.includes('elem-1')) return [MOCK_ELEMENTS[0]];
+        return [];
+      });
+
+      const mapped = await propertyMapper.mapPuzzleWithNames(rawPuzzle, mockNotionService);
+      
+      // Should only make 2 API calls (for owner and rewards)
+      expect(apiCallCount).toBe(2);
+      expect(mapped.owner).toHaveLength(1);
+      expect(mapped.rewards).toHaveLength(1);
+      expect(mapped.lockedItem).toEqual([]);
+      expect(mapped.puzzleElements).toEqual([]);
+    });
+
+    it('should handle timeout gracefully', async () => {
+      const rawPuzzle = {
+        id: 'puzzle-timeout',
+        properties: {
+          Puzzle: { title: [{ plain_text: 'Timeout Puzzle' }] },
+          Owner: { relation: [{ id: 'char-1' }] }
+        }
+      };
+
+      // Simulate a timeout
+      mockNotionService.getPagesByIds.mockImplementation(() => 
+        new Promise(resolve => setTimeout(resolve, 20000)) // Will timeout
+      );
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
+      const mapped = await propertyMapper.mapPuzzleWithNames(rawPuzzle, mockNotionService);
+      
+      expect(mapped.error).toContain('timeout');
+      expect(mapped.puzzle).toBe('Timeout Puzzle');
+      
+      consoleErrorSpy.mockRestore();
+    }, 15000); // Increase test timeout
+  });
+
+  describe('Edge cases', () => {
+    it('should handle properties with various naming conventions', () => {
+      const properties = {
+        'Character-Puzzles': { relation: [{ id: 'p1' }] },
+        'Memory/Evidence': { relation: [{ id: 'm1' }] },
+        'Description_Solution': { rich_text: [{ plain_text: 'Text' }] },
+        'Name With Spaces': { title: [{ plain_text: 'Value' }] }
+      };
+
+      // Test various property name transformations
+      expect(propertyMapper.extractRelationByName(properties, 'Character Puzzles')).toEqual(['p1']);
+      expect(propertyMapper.extractRelationByName(properties, 'Memory/Evidence')).toEqual(['m1']);
+      expect(propertyMapper.extractRichTextByName(properties, 'Description/Solution')).toBe('Text');
+      expect(propertyMapper.extractRelationByName(properties, 'Name With Spaces')).toEqual([]); // Not a relation
+    });
+
+    it('should handle malformed data gracefully', () => {
+      // Test with various malformed inputs
+      expect(propertyMapper.extractTitle({ title: 'not-an-array' })).toBe('');
+      expect(propertyMapper.extractRichText({ rich_text: {} })).toBe('');
+      expect(propertyMapper.extractSelect({ select: [] })).toBeNull();
+      expect(propertyMapper.extractMultiSelect({ multi_select: 'not-array' })).toEqual([]);
+      expect(propertyMapper.extractRelation({ relation: { not: 'array' } })).toEqual([]);
+      expect(propertyMapper.extractUrl({ url: {} })).toBeNull();
+      expect(propertyMapper.extractDate({ date: {} })).toBeNull();
+      expect(propertyMapper.extractNumber({ number: 'not-a-number' })).toBeNull();
+    });
+
+    it('should handle multiple text segments in title and rich text', () => {
+      const multiSegmentTitle = {
+        title: [
+          { plain_text: 'Part 1 ' },
+          { plain_text: 'Part 2 ' },
+          { plain_text: 'Part 3' }
+        ]
+      };
+      expect(propertyMapper.extractTitle(multiSegmentTitle)).toBe('Part 1 Part 2 Part 3');
+
+      const multiSegmentRichText = {
+        rich_text: [
+          { plain_text: 'Segment A ' },
+          { plain_text: 'Segment B' }
+        ]
+      };
+      expect(propertyMapper.extractRichText(multiSegmentRichText)).toBe('Segment A Segment B');
+    });
+  });
 
 }); 

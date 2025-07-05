@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Pre-commit hook to enforce code quality and documentation accuracy
+
+echo "🔍 Running pre-commit quality checks..."
+
+# 1. Check for console.* statements
+echo "Checking for console statements..."
+if grep -r "console\." --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=__tests__ --exclude-dir=coverage storyforge/; then
+    echo "❌ Found console.* statements in code. Please use the production logger instead."
+    echo "   Run: npm run fix:console to automatically replace them"
+    exit 1
+fi
+
+# 2. Check test coverage if tests modified
+if git diff --cached --name-only | grep -q "\.test\.js\|\.test\.jsx"; then
+    echo "Running test coverage check..."
+    cd storyforge/backend
+    npm test -- --coverage --silent --coverageReporters=text-summary 2>/dev/null | grep "All files" | grep -E "[0-9]+\.[0-9]+%" || true
+    cd ../..
+fi
+
+# 3. Validate documentation claims
+echo "Validating documentation accuracy..."
+if [ -f "scripts/verify-docs.js" ]; then
+    node scripts/verify-docs.js --pre-commit
+    if [ $? -ne 0 ]; then
+        echo "❌ Documentation contains inaccurate claims. Please fix before committing."
+        exit 1
+    fi
+fi
+
+# 4. Check for future dates in documentation
+echo "Checking for future-dated claims..."
+current_year=$(date +%Y)
+current_month=$(date +%m)
+if grep -r "VERIFIED: 20[0-9][0-9]-[0-9][0-9]" --include="*.md" . | grep -v "node_modules" | while read -r line; do
+    date_str=$(echo "$line" | grep -oE "20[0-9][0-9]-[0-9][0-9]")
+    year=$(echo "$date_str" | cut -d'-' -f1)
+    month=$(echo "$date_str" | cut -d'-' -f2)
+    
+    if [ "$year" -gt "$current_year" ] || ([ "$year" -eq "$current_year" ] && [ "$month" -gt "$current_month" ]); then
+        echo "❌ Found future date in: $line"
+        return 1
+    fi
+done; then
+    echo "❌ Documentation contains future dates. Only use past or current dates."
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0

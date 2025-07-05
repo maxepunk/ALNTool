@@ -1,0 +1,21 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+For context and background on our tool, review our core documentation files: C:\Users\spide\Documents\GitHub\ALNTool\README.md, C:\Users\spide\Documents\GitHub\ALNTool\QUICK_STATUS.md, C:\Users\spide\Documents\GitHub\ALNTool\PRODUCTION_INTELLIGENCE_TOOL_PRD.md, C:\Users\spide\Documents\GitHub\ALNTool\DEVELOPMENT_PLAYBOOK.md **You MUST understand these files to function**
+For technical field mappings between Notion and SQL schemas, review: C:\Users\spide\Documents\GitHub\ALNTool\SCHEMA_MAPPING_GUIDE.md **You MUST understand these files to function**
+For deeper background on the game for which we are developing this tool to support our designers and writers, review: C:\Users\spide\Documents\GitHub\ALNTool\game design background\active_synthesis_streamlined.md, C:\Users\spide\Documents\GitHub\ALNTool\game design background\concept_evolution_streamlined.md, and C:\Users\spide\Documents\GitHub\ALNTool\game design background\questions_log_streamlined.md
+We are using Windows PowerShell for command line prompts.
+
+CRITICAL UNDERSTANDING: Computed fields (Act Focus, Resolution Paths, Narrative Threads, Linked Characters) are NOT optional - they are the intelligence layer that transforms raw Notion data into actionable insights. Without these, core PRD features like Balance Dashboard cannot function.
+
+ALWAYS keep these documents up to date after making any important discoveries, meaningful decisions, or changes to the codebase.
+
+NEVER start thinking about your next task without a full understanding of our core documentation files.
+
+**ALWAYS** read the code you are going to edit AS WELL AS THE KEY DEPENDANCIES of the file you are editing BEFORE you edit it. 
+
+MAINTAIN clean, well-organized project documentation. RESPECT the existing documentation architecture. 
+
+**REVIEW** documentation updates at the end of every turn to avoid build-up of redundant/conflicting notes/information over the course of multiple edits.
