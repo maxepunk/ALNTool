@@ -21,8 +21,16 @@ import {
 import { calculateNodeSize, calculateEdgeStyle } from '../utils/nodeSizeCalculator';
 
 // Import data hooks
-import { usePerformanceElements } from '../hooks/usePerformanceElements';
+import { useTransformedElements } from '../hooks/useTransformedElements';
 import { useCharacterJourney, useAllCharacters } from '../hooks/useCharacterJourney';
+import { 
+  transformCharacter, 
+  transformPuzzle, 
+  transformTimelineEvent,
+  createOwnershipEdges,
+  createContainerEdges,
+  createPuzzleEdges
+} from '../utils/dataTransformers';
 
 // Import sub-components (to be created)
 import ErrorBoundary from './JourneyIntelligence/ErrorBoundary';
@@ -93,13 +101,13 @@ const JourneyIntelligenceView = () => {
     enabled: !focusedCharacterId // Only fetch when not in character focus mode
   });
   
-  // Always fetch elements for intelligence analysis
+  // Always fetch elements for intelligence analysis - now with proper transformations
   const { 
     data: elements, 
     isLoading: isLoadingElements, 
     error: elementsError,
     refetch: refetchElements 
-  } = usePerformanceElements({
+  } = useTransformedElements({
     includeMemoryTokens: true
   });
   
@@ -175,14 +183,38 @@ const JourneyIntelligenceView = () => {
   const graphData = useMemo(() => {
     if (focusedCharacterId && journeyData) {
       // Use pre-computed journey graph from backend
-      // Apply edge styling to journey edges
-      const styledEdges = journeyData.graph.edges.map(edge => ({
+      // Map backend node types to our frontend types
+      const mappedNodes = journeyData.graph.nodes.map(node => {
+        // Map backend types to frontend types
+        let mappedType = node.type;
+        if (node.type === 'loreNode') {
+          mappedType = 'timeline_event';
+        } else if (node.type === 'discoveryNode') {
+          mappedType = 'element';
+        } else if (node.type === 'activityNode') {
+          mappedType = 'puzzle';
+        }
+        
+        return {
+          ...node,
+          type: mappedType
+        };
+      });
+      
+      // Filter out edges that reference non-existent nodes
+      const nodeIds = new Set(mappedNodes.map(n => n.id));
+      const validEdges = journeyData.graph.edges.filter(edge => 
+        nodeIds.has(edge.source) && nodeIds.has(edge.target)
+      );
+      
+      // Apply edge styling to valid journey edges
+      const styledEdges = validEdges.map(edge => ({
         ...edge,
         style: calculateEdgeStyle(edge)
       }));
       
       return {
-        nodes: journeyData.graph.nodes,
+        nodes: mappedNodes,
         edges: styledEdges,
         metadata: {
           characterInfo: journeyData.character_info,
@@ -207,11 +239,12 @@ const JourneyIntelligenceView = () => {
         }
         
         characters.forEach((char, index) => {
+          // Transform character data
+          const transformedChar = transformCharacter(char);
+          
           const nodeData = {
-            ...char,
+            ...transformedChar,
             label: char.name,
-            type: 'character',
-            entityCategory: 'character',
             relationshipCount: relationshipCounts[char.id] || 0
           };
           
@@ -261,15 +294,14 @@ const JourneyIntelligenceView = () => {
       // Add progressively loaded entities with temporary positions
       // Pre-layout will organize them properly
       if (loadedEntityTypes.includes('elements') && elements) {
+        // Elements are already transformed by useTransformedElements hook
         elements.forEach((elem, index) => {
           const node = {
             id: elem.id,
             type: 'element', // Use custom element node type
             data: {
               ...elem,
-              label: elem.name || `Element ${elem.id}`,
-              type: elem.type || 'element',
-              entityCategory: 'element'
+              label: elem.name || `Element ${elem.id}`
             },
             position: { x: 0, y: 0 } // Temporary, will be set by pre-layout
           };
@@ -279,18 +311,23 @@ const JourneyIntelligenceView = () => {
           
           nodes.push(node);
         });
+        
+        // Create ownership and container edges using utility functions
+        edges.push(...createOwnershipEdges(elements));
+        edges.push(...createContainerEdges(elements));
       }
       
       if (loadedEntityTypes.includes('puzzles') && puzzles) {
         puzzles.forEach((puzzle, index) => {
+          // Transform puzzle data
+          const transformedPuzzle = transformPuzzle(puzzle);
+          
           const node = {
             id: puzzle.id,
             type: 'puzzle', // Use custom puzzle node type
             data: {
-              ...puzzle,
-              label: puzzle.puzzle || puzzle.name || `Puzzle ${puzzle.id}`,
-              type: 'puzzle',
-              entityCategory: 'puzzle'
+              ...transformedPuzzle,
+              label: puzzle.puzzle || puzzle.name || `Puzzle ${puzzle.id}`
             },
             position: { x: 0, y: 0 } // Temporary, will be set by pre-layout
           };
@@ -300,6 +337,9 @@ const JourneyIntelligenceView = () => {
           
           nodes.push(node);
         });
+        
+        // Create puzzle edges using utility function
+        edges.push(...createPuzzleEdges(puzzles.map(transformPuzzle)));
       }
       
       if (loadedEntityTypes.includes('timelineEvents') && timelineEvents) {
@@ -340,9 +380,21 @@ const JourneyIntelligenceView = () => {
         }
       });
       
+      // Filter edges to only include those where both source and target nodes exist
+      const nodeIds = new Set(nodes.map(n => n.id));
+      const validEdges = edges.filter(edge => 
+        nodeIds.has(edge.source) && nodeIds.has(edge.target)
+      );
+      
+      // Log any edges that were filtered out for debugging
+      const filteredOutCount = edges.length - validEdges.length;
+      if (filteredOutCount > 0) {
+        logger.debug(`Filtered out ${filteredOutCount} edges with missing nodes`);
+      }
+      
       return {
         nodes,
-        edges,
+        edges: validEdges,
         metadata: {
           isOverviewMode: true,
           isCharactersOnly: loadedEntityTypes.length === 0,

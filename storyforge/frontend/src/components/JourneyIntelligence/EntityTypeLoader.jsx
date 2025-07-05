@@ -26,25 +26,31 @@ const EntityTypeLoader = ({
       label: 'Elements',
       icon: <ElementIcon />,
       count: hiddenEntities.elements?.length || 0,
-      color: '#10b981'
+      color: '#10b981',
+      isLoaded: loadedTypes.includes('elements')
     },
     {
       type: 'puzzles', 
       label: 'Puzzles',
       icon: <PuzzleIcon />,
       count: hiddenEntities.puzzles?.length || 0,
-      color: '#f59e0b'
+      color: '#f59e0b',
+      isLoaded: loadedTypes.includes('puzzles')
     },
     {
       type: 'timelineEvents',
       label: 'Timeline Events',
       icon: <TimelineIcon />,
       count: hiddenEntities.timelineEvents?.length || 0,
-      color: '#6366f1'
+      color: '#6366f1',
+      isLoaded: loadedTypes.includes('timelineEvents')
     }
   ];
   
-  const hiddenCount = totalEntities - totalCharacters;
+  // Calculate actual hidden count based on what's not loaded
+  const hiddenCount = entityTypes
+    .filter(type => !type.isLoaded)
+    .reduce((sum, type) => sum + type.count, 0);
   
   if (hiddenCount === 0) {
     return null; // No hidden entities to load
@@ -63,10 +69,9 @@ const EntityTypeLoader = ({
       <Typography variant="body2" color="text.secondary">
         Show more:
       </Typography>
-      {entityTypes.map(({ type, label, icon, count, color }) => {
+      {entityTypes.map(entityType => {
+        const { type, label, icon, count, color, isLoaded } = entityType;
         if (count === 0) return null;
-        
-        const isLoaded = loadedTypes.includes(type);
         
         return (
           <Button
@@ -102,7 +107,7 @@ const EntityTypeLoader = ({
         );
       })}
       <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-        {totalCharacters} characters shown • {hiddenCount} entities hidden
+        {totalCharacters} characters shown • {hiddenCount > 0 ? `${hiddenCount} entities available` : 'All entities loaded'}
       </Typography>
     </Box>
   );

@@ -7,16 +7,12 @@ import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const ElementNode = memo(({ data, selected }) => {
-  // Determine visual state based on node className
-  const isConnected = data.className?.includes('connected');
-  const isSecondaryConnected = data.className?.includes('secondary-connected');
-  const isBackground = data.className?.includes('background');
-  
-  // Calculate opacity based on visual hierarchy
-  let opacity = 1;
-  if (isBackground) opacity = 0.2;
-  else if (isSecondaryConnected) opacity = 0.6;
-  else if (isConnected) opacity = 0.9;
+  // Use visualState from data
+  const visualState = data.visualState || {};
+  const opacity = visualState.opacity || 1;
+  const scale = visualState.scale || 1;
+  const blur = visualState.blur || 0;
+  const isBackground = visualState.isBackground || false;
   
   // Get element type and icon
   const elementType = data.type || data.basicType || 'element';
@@ -33,19 +29,25 @@ const ElementNode = memo(({ data, selected }) => {
   // Memory value for display (if available)
   const memoryValue = data.calculated_memory_value || data.memory_value;
   
+  // Dynamic size based on scale
+  const baseSize = 120;
+  const nodeSize = baseSize * scale;
+  
   return (
     <div
       style={{
-        width: 120,
-        height: 120,
-        transform: 'rotate(45deg)',
-        border: `${selected ? 3 : 2}px solid #10b981`,
-        backgroundColor: '#1a1a1a',
-        boxShadow: selected ? '0 0 10px rgba(16, 185, 129, 0.8)' : 'none',
+        width: nodeSize,
+        height: nodeSize,
+        transform: `rotate(45deg) scale(${scale})`,
+        border: `${visualState.isSelected ? 3 : 2}px solid ${visualState.isSelected ? '#2e7d32' : visualState.isConnected ? '#4caf50' : '#10b981'}`,
+        backgroundColor: isBackground ? '#0a0a0a' : '#1a1a1a',
+        boxShadow: visualState.isSelected ? '0 0 20px rgba(46, 125, 50, 0.8)' : visualState.isConnected ? '0 0 10px rgba(76, 175, 80, 0.5)' : 'none',
         opacity,
+        filter: blur > 0 ? `blur(${blur}px)` : 'none',
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
-        position: 'relative'
+        cursor: isBackground ? 'default' : 'pointer',
+        position: 'relative',
+        pointerEvents: isBackground ? 'none' : 'auto'
       }}
     >
       {/* Handles - simplified without IDs */}
@@ -74,8 +76,9 @@ const ElementNode = memo(({ data, selected }) => {
         {/* Element type icon - using emoji */}
         <div
           style={{
-            fontSize: '24px',
-            marginBottom: 4
+            fontSize: `${24 * scale}px`,
+            marginBottom: 4,
+            opacity: isBackground ? 0.5 : 1
           }}
         >
           {icon}
@@ -84,14 +87,15 @@ const ElementNode = memo(({ data, selected }) => {
         {/* Element name */}
         <div
           style={{
-            fontSize: '12px',
+            fontSize: `${12 * scale}px`,
             textAlign: 'center',
-            maxWidth: 80,
+            maxWidth: 80 * scale,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             paddingLeft: 4,
-            paddingRight: 4
+            paddingRight: 4,
+            fontWeight: visualState.isSelected ? 'bold' : 'normal'
           }}
         >
           {data.label || data.name || 'Unknown'}

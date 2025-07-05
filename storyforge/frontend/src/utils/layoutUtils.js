@@ -12,6 +12,7 @@ import {
   forceX,
   forceY
 } from 'd3-force';
+import { quadtree } from 'd3-quadtree';
 import { getCollisionRadius } from './nodeSizeCalculator';
 
 /**
@@ -30,7 +31,8 @@ export function createForceSimulation(nodes, edges, options = {}) {
     linkDistance = 120, // Increased from 50 for 80px nodes
     centerForce = 0.05,
     collisionRadius = 40, // Base collision radius
-    alphaDecay = 0.02 // Slightly faster cooling
+    alphaDecay = 0.02, // Slightly faster cooling
+    useOwnershipClustering = true // Enable ownership-based clustering
   } = options;
 
   // CREATE SEPARATE DATA FOR SIMULATION
@@ -43,6 +45,9 @@ export function createForceSimulation(nodes, edges, options = {}) {
     entityCategory: node.data?.entityCategory || node.type,
     isAggregated: node.data?.isAggregated || false,
     isBackground: node.data?.isBackground || node.data?.className?.includes('background'),
+    owner_character_id: node.data?.owner_character_id,
+    // Add radius for clustering calculations
+    radius: getCollisionRadius(node),
     // Store original node reference for easy lookup
     __originalId: node.id
   }));
@@ -57,7 +62,8 @@ export function createForceSimulation(nodes, edges, options = {}) {
   const simulationEdges = edges.map(edge => ({
     source: edge.source, // Keep as string ID
     target: edge.target, // Keep as string ID
-    isBackground: edge.className === 'background'
+    isBackground: edge.className === 'background',
+    data: edge.data // Include edge data for type information
   }));
 
   // Create simulation with our separate node data
@@ -67,32 +73,81 @@ export function createForceSimulation(nodes, edges, options = {}) {
 
   // Add forces
   simulation
-    // Repulsion between nodes - much stronger for proper spacing
+    // Repulsion between nodes - MUCH stronger for characters
     .force('charge', forceManyBody()
       .strength(d => {
-        // Even stronger repulsion for aggregated nodes
-        if (d.isAggregated) {
-          return nodeRepulsion * 1.5;
+        // Characters need VERY strong repulsion to stay separated
+        if (d.entityCategory === 'character') {
+          return -2000; // Very strong repulsion
         }
-        // Weaker repulsion for background nodes to let them drift away
+        // Elements have weak repulsion (let clustering dominate)
+        if (d.entityCategory === 'element') {
+          return -100; // Weak repulsion
+        }
+        // Other nodes
         if (d.isBackground) {
           return nodeRepulsion * 0.3;
         }
         return nodeRepulsion;
       })
-      .distanceMax(400) // Increased range for better spread
+      .distanceMax(800) // Increased range for character separation
     )
     
-    // Collision detection to prevent overlap - based on actual visual sizes
-    .force('collide', forceCollide()
-      .radius(d => {
-        // Use the dynamic collision radius calculation
-        // This accounts for variable node sizes based on importance metrics
-        return getCollisionRadius(d);
-      })
-      .strength(0.9) // Strong collision avoidance
-      .iterations(3) // More iterations for better separation
-    )
+    // Cluster-aware collision detection
+    .force('collide', function collideForce(alpha) {
+      const padding = 1.5; // Separation between same-cluster nodes
+      const clusterPadding = 6; // Separation between different-cluster nodes
+      const tree = quadtree()
+        .x(d => d.x)
+        .y(d => d.y)
+        .addAll(simulationNodes);
+      
+      simulationNodes.forEach(node => {
+        const radius = getCollisionRadius(node);
+        const nx1 = node.x - radius;
+        const nx2 = node.x + radius;
+        const ny1 = node.y - radius;
+        const ny2 = node.y + radius;
+        
+        tree.visit((quad, x1, y1, x2, y2) => {
+          if (quad.data && quad.data !== node) {
+            const x = node.x - quad.data.x;
+            const y = node.y - quad.data.y;
+            const l = Math.sqrt(x * x + y * y);
+            
+            // Determine if nodes are in same cluster
+            const sameCluster = (node.owner_character_id && 
+                               node.owner_character_id === quad.data.owner_character_id) ||
+                              (node.entityCategory === 'character' && 
+                               quad.data.owner_character_id === node.id) ||
+                              (quad.data.entityCategory === 'character' && 
+                               node.owner_character_id === quad.data.id);
+            
+            // Much larger spacing between characters
+            let spacing;
+            if (node.entityCategory === 'character' && quad.data.entityCategory === 'character') {
+              spacing = 150; // Very large spacing between characters
+            } else if (sameCluster) {
+              spacing = padding;
+            } else {
+              spacing = clusterPadding;
+            }
+            
+            const r = radius + getCollisionRadius(quad.data) + spacing;
+            
+            if (l < r) {
+              const strength = 0.5 * alpha;
+              const force = (l - r) / l * strength;
+              node.x -= x * force;
+              node.y -= y * force;
+              quad.data.x += x * force;
+              quad.data.y += y * force;
+            }
+          }
+          return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+        });
+      });
+    })
     
     // Center force - gentle pull to keep graph centered
     .force('center', forceCenter(width / 2, height / 2)
@@ -109,6 +164,16 @@ export function createForceSimulation(nodes, edges, options = {}) {
           const sourceNode = typeof link.source === 'string' ? nodeMap.get(link.source) : link.source;
           const targetNode = typeof link.target === 'string' ? nodeMap.get(link.target) : link.target;
           
+          // Ownership links should be very short to create tight clusters
+          if (link.data?.type === 'character-element-ownership') {
+            return linkDistance * 0.3; // Even shorter for tighter clustering
+          }
+          
+          // Container links also short
+          if (link.data?.type === 'element-element-container') {
+            return linkDistance * 0.5;
+          }
+          
           // Variable link distance based on node types
           if (sourceNode?.isAggregated || targetNode?.isAggregated) {
             return linkDistance * 2; // Longer links for aggregated nodes
@@ -123,34 +188,118 @@ export function createForceSimulation(nodes, edges, options = {}) {
           return linkDistance;
         })
         .strength(link => {
+          // Very strong links for ownership relationships
+          if (link.data?.type === 'character-element-ownership') {
+            return 1.0; // Maximum strength for tight clustering
+          }
+          // Strong links for container relationships
+          if (link.data?.type === 'element-element-container') {
+            return 0.8;
+          }
+          // Moderate links for character relationships
+          if (link.data?.type === 'character-character') {
+            return 0.6;
+          }
           // Weaker links for background connections
           return link.isBackground ? 0.2 : 0.4;
         })
       : null
     );
 
+
   // Add boundary forces to spread nodes and use full viewport
   simulation
     .force('x', forceX()
       .x(d => {
+        // Constrain to viewport with padding
+        const padding = 80; // Increased padding for node size
+        const minX = padding;
+        const maxX = width - padding;
+        
+        // If already outside bounds, pull strongly to nearest edge
+        if (d.x < minX) return minX;
+        if (d.x > maxX) return maxX;
+        
         // Push background nodes toward edges
         if (d.isBackground) {
           return d.x < width / 2 ? width * 0.2 : width * 0.8;
         }
         return width / 2;
       })
-      .strength(d => d.isBackground ? 0.05 : 0.02)
+      .strength(d => {
+        // Strong force when outside bounds
+        const padding = 80;
+        if (d.x < padding || d.x > width - padding) return 0.8;
+        return d.isBackground ? 0.05 : 0.02;
+      })
     )
     .force('y', forceY()
       .y(d => {
+        // Constrain to viewport with padding
+        const padding = 80; // Increased padding for node size
+        const minY = padding;
+        const maxY = height - padding;
+        
+        // If already outside bounds, pull strongly to nearest edge
+        if (d.y < minY) return minY;
+        if (d.y > maxY) return maxY;
+        
         // Push background nodes toward edges
         if (d.isBackground) {
           return d.y < height / 2 ? height * 0.2 : height * 0.8;
         }
         return height / 2;
       })
-      .strength(d => d.isBackground ? 0.05 : 0.02)
+      .strength(d => {
+        // Strong force when outside bounds
+        const padding = 80;
+        if (d.y < padding || d.y > height - padding) return 0.8;
+        return d.isBackground ? 0.05 : 0.02;
+      })
     );
+
+  // Add ownership clustering force if enabled
+  if (useOwnershipClustering) {
+    // Track cluster centers for each character
+    const clusterCenters = new Map();
+    
+    // Initialize cluster centers with character positions
+    simulationNodes.forEach(node => {
+      if (node.entityCategory === 'character') {
+        clusterCenters.set(node.id, node);
+      }
+    });
+    
+    // Strong clustering force - only affects elements, not characters
+    simulation.force('cluster', function clusterForce(alpha) {
+      simulationNodes.forEach(node => {
+        if (node.owner_character_id && node.entityCategory === 'element') {
+          const cluster = clusterCenters.get(node.owner_character_id);
+          if (cluster === node) return; // Skip if node is its own cluster
+          
+          if (cluster) {
+            const x = node.x - cluster.x;
+            const y = node.y - cluster.y;
+            const l = Math.sqrt(x * x + y * y);
+            const r = node.radius + cluster.radius;
+            
+            if (l !== r) {
+              const strength = 0.8; // Much stronger than original 0.2
+              const force = (l - r) / l * alpha * strength;
+              
+              // Only move the element, not the character
+              node.vx -= x * force;
+              node.vy -= y * force;
+              // Don't move the cluster center (character) at all
+              // cluster.vx += x * force * 0.3;
+              // cluster.vy += y * force * 0.3;
+            }
+          }
+        }
+      });
+    });
+    
+  }
 
   return {
     simulation,
@@ -165,7 +314,7 @@ export function createForceSimulation(nodes, edges, options = {}) {
  * @param {Array} simulationNodes - Simulation nodes with updated positions
  * @returns {Array} New array of ReactFlow nodes with updated positions
  */
-export function applySimulationPositions(reactFlowNodes, simulationNodes) {
+export function applySimulationPositions(reactFlowNodes, simulationNodes, viewportBounds = null) {
   // Create a map of simulation positions for quick lookup
   const positionMap = new Map();
   simulationNodes.forEach(simNode => {
@@ -175,13 +324,26 @@ export function applySimulationPositions(reactFlowNodes, simulationNodes) {
     });
   });
 
+  // If no viewport bounds provided, calculate them
+  const bounds = viewportBounds || getViewportBounds(
+    window.innerWidth,
+    window.innerHeight - 100, // Account for UI elements
+    50 // padding
+  );
+
   // Return new array with updated positions (immutable update)
   return reactFlowNodes.map(node => {
     const newPosition = positionMap.get(node.id);
     if (newPosition && (node.position.x !== newPosition.x || node.position.y !== newPosition.y)) {
+      // Constrain position to viewport bounds
+      const constrainedPosition = {
+        x: Math.max(bounds.minX, Math.min(bounds.maxX, newPosition.x)),
+        y: Math.max(bounds.minY, Math.min(bounds.maxY, newPosition.y))
+      };
+      
       return {
         ...node,
-        position: newPosition
+        position: constrainedPosition
       };
     }
     return node;
@@ -222,24 +384,101 @@ export function generateInitialPositions(nodes, options = {}) {
     nodesByType[category].push(node);
   });
 
-  // Position characters in inner circle (they're most important)
+  // Position characters in a grid or circle with MUCH more spacing
   const characterCount = nodesByType.character.length;
   if (characterCount > 0) {
-    const characterRadius = Math.min(width, height) * 0.3; // 30% of viewport
-    const angleStep = (2 * Math.PI) / characterCount;
+    // For many characters, use a grid layout
+    if (characterCount > 12) {
+      const cols = Math.ceil(Math.sqrt(characterCount));
+      const rows = Math.ceil(characterCount / cols);
+      const cellWidth = width / (cols + 1);
+      const cellHeight = height / (rows + 1);
+      
+      nodesByType.character.forEach((node, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        positions[node.id] = {
+          x: cellWidth * (col + 1),
+          y: cellHeight * (row + 1)
+        };
+      });
+    } else {
+      // For fewer characters, use a large circle
+      const characterRadius = Math.min(width, height) * 0.4; // 40% of viewport - much larger
+      const angleStep = (2 * Math.PI) / characterCount;
+      
+      nodesByType.character.forEach((node, index) => {
+        const angle = index * angleStep - Math.PI / 2; // Start at top
+        positions[node.id] = {
+          x: centerX + characterRadius * Math.cos(angle),
+          y: centerY + characterRadius * Math.sin(angle)
+        };
+      });
+    }
+  }
+
+  // Special handling for elements - position near their owners in tight clusters
+  if (nodesByType.element.length > 0) {
+    const unownedElements = [];
+    const elementsByOwner = new Map();
     
-    nodesByType.character.forEach((node, index) => {
-      const angle = index * angleStep - Math.PI / 2; // Start at top
-      positions[node.id] = {
-        x: centerX + characterRadius * Math.cos(angle),
-        y: centerY + characterRadius * Math.sin(angle)
-      };
+    // Group elements by owner first
+    nodesByType.element.forEach(elem => {
+      if (elem.data?.owner_character_id && positions[elem.data.owner_character_id]) {
+        if (!elementsByOwner.has(elem.data.owner_character_id)) {
+          elementsByOwner.set(elem.data.owner_character_id, []);
+        }
+        elementsByOwner.get(elem.data.owner_character_id).push(elem);
+      } else {
+        unownedElements.push(elem);
+      }
     });
+    
+    // Position elements in tight clusters around their owners
+    elementsByOwner.forEach((elements, ownerId) => {
+      const ownerPos = positions[ownerId];
+      const elementCount = elements.length;
+      
+      if (elementCount === 1) {
+        // Single element - position close to owner
+        positions[elements[0].id] = {
+          x: ownerPos.x + 40,
+          y: ownerPos.y + 40
+        };
+      } else {
+        // Multiple elements - arrange in tight circle around owner
+        const clusterRadius = Math.max(50, 30 + elementCount * 8); // Scale with count
+        const angleStep = (2 * Math.PI) / elementCount;
+        const startAngle = Math.random() * 2 * Math.PI; // Random starting angle
+        
+        elements.forEach((elem, index) => {
+          const angle = startAngle + index * angleStep;
+          positions[elem.id] = {
+            x: ownerPos.x + clusterRadius * Math.cos(angle),
+            y: ownerPos.y + clusterRadius * Math.sin(angle)
+          };
+        });
+      }
+    });
+    
+    // Position unowned elements in outer ring
+    if (unownedElements.length > 0) {
+      const elementRadius = Math.min(width, height) * 0.5;
+      const angleStep = (2 * Math.PI) / unownedElements.length;
+      
+      unownedElements.forEach((node, index) => {
+        const angle = index * angleStep - Math.PI / 2;
+        positions[node.id] = {
+          x: centerX + elementRadius * Math.cos(angle),
+          y: centerY + elementRadius * Math.sin(angle)
+        };
+      });
+    }
   }
 
   // Position other entity types in outer rings
-  const otherTypes = ['element', 'puzzle', 'timeline_event', 'aggregated'];
-  let currentRadius = Math.min(width, height) * 0.45; // Start at 45% of viewport
+  const otherTypes = ['puzzle', 'timeline_event', 'aggregated'];
+  let currentRadius = Math.min(width, height) * 0.6; // Start at 60% of viewport
   
   otherTypes.forEach(type => {
     const nodes = nodesByType[type];

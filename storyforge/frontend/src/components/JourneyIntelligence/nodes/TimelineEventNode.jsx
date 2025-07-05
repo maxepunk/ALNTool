@@ -7,16 +7,12 @@ import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const TimelineEventNode = memo(({ data, selected }) => {
-  // Determine visual state based on node className
-  const isConnected = data.className?.includes('connected');
-  const isSecondaryConnected = data.className?.includes('secondary-connected');
-  const isBackground = data.className?.includes('background');
-  
-  // Calculate opacity based on visual hierarchy
-  let opacity = 1;
-  if (isBackground) opacity = 0.2;
-  else if (isSecondaryConnected) opacity = 0.6;
-  else if (isConnected) opacity = 0.9;
+  // Use visualState from data
+  const visualState = data.visualState || {};
+  const opacity = visualState.opacity || 1;
+  const scale = visualState.scale || 1;
+  const blur = visualState.blur || 0;
+  const isBackground = visualState.isBackground || false;
   
   // Get timeline metadata
   const actFocus = data.act_focus || data.actFocus || 'Unknown';
@@ -24,7 +20,8 @@ const TimelineEventNode = memo(({ data, selected }) => {
   const isPast = data.is_past !== undefined ? data.is_past : true;
   
   // Get dynamic size from node data, fallback to default
-  const nodeSize = data.size || 120;
+  const baseSize = data.size || 120;
+  const nodeSize = baseSize * scale;
   
   return (
     <div
@@ -32,19 +29,22 @@ const TimelineEventNode = memo(({ data, selected }) => {
         width: nodeSize,
         height: nodeSize,
         borderRadius: 12,
-        border: `${selected ? 3 : 2}px solid #8b5cf6`,
+        border: `${visualState.isSelected ? 3 : 2}px solid ${visualState.isSelected ? '#7c3aed' : visualState.isConnected ? '#9333ea' : '#8b5cf6'}`,
         borderStyle: 'dashed',
-        backgroundColor: '#1a1a1a',
-        boxShadow: selected ? '0 0 10px rgba(139, 92, 246, 0.8)' : 'none',
+        backgroundColor: isBackground ? '#0a0a0a' : '#1a1a1a',
+        boxShadow: visualState.isSelected ? '0 0 20px rgba(124, 58, 237, 0.8)' : visualState.isConnected ? '0 0 10px rgba(147, 51, 234, 0.5)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         opacity,
+        transform: `scale(${scale})`,
+        filter: blur > 0 ? `blur(${blur}px)` : 'none',
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
+        cursor: isBackground ? 'default' : 'pointer',
         position: 'relative',
-        color: '#ffffff'
+        color: '#ffffff',
+        pointerEvents: isBackground ? 'none' : 'auto'
       }}
     >
       {/* Handles - simplified without IDs */}
@@ -60,8 +60,9 @@ const TimelineEventNode = memo(({ data, selected }) => {
       {/* Timeline icon - use different emoji for past vs present */}
       <div
         style={{
-          fontSize: '28px',
-          marginBottom: 4
+          fontSize: `${28 * scale}px`,
+          marginBottom: 4,
+          opacity: isBackground ? 0.5 : 1
         }}
       >
         {isPast ? '⏰' : '📅'}
@@ -70,7 +71,7 @@ const TimelineEventNode = memo(({ data, selected }) => {
       {/* Event description (truncated) */}
       <div
         style={{
-          fontSize: '11px',
+          fontSize: `${11 * scale}px`,
           textAlign: 'center',
           maxWidth: nodeSize - 40,
           overflow: 'hidden',
@@ -81,7 +82,8 @@ const TimelineEventNode = memo(({ data, selected }) => {
           paddingLeft: 8,
           paddingRight: 8,
           lineHeight: 1.3,
-          marginBottom: 4
+          marginBottom: 4,
+          fontWeight: visualState.isSelected ? 'bold' : 'normal'
         }}
       >
         {data.label || data.description || 'Unknown Event'}

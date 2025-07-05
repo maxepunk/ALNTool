@@ -7,22 +7,19 @@ import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const CharacterNode = memo(({ data, selected }) => {
-  // Determine visual state based on node className
-  const isConnected = data.className?.includes('connected');
-  const isSecondaryConnected = data.className?.includes('secondary-connected');
-  const isBackground = data.className?.includes('background');
-  
-  // Calculate opacity based on visual hierarchy
-  let opacity = 1;
-  if (isBackground) opacity = 0.2;
-  else if (isSecondaryConnected) opacity = 0.6;
-  else if (isConnected) opacity = 0.9;
+  // Use visualState from data
+  const visualState = data.visualState || {};
+  const opacity = visualState.opacity || 1;
+  const scale = visualState.scale || 1;
+  const blur = visualState.blur || 0;
+  const isBackground = visualState.isBackground || false;
   
   // Relationship count for badge (if available)
   const relationshipCount = data.relationshipCount || 0;
   
   // Get dynamic size from node data, fallback to default
-  const nodeSize = data.size || 120;
+  const baseSize = data.size || 120;
+  const nodeSize = baseSize * scale;
   
   return (
     <div
@@ -30,18 +27,21 @@ const CharacterNode = memo(({ data, selected }) => {
         width: nodeSize,
         height: nodeSize,
         borderRadius: '50%',
-        border: `${selected ? 3 : 2}px solid #3b82f6`,
-        backgroundColor: '#1a1a1a',
-        boxShadow: selected ? '0 0 10px rgba(59, 130, 246, 0.8)' : 'none',
+        border: `${visualState.isSelected ? 3 : 2}px solid ${visualState.isSelected ? '#1976d2' : visualState.isConnected ? '#42a5f5' : '#3b82f6'}`,
+        backgroundColor: isBackground ? '#0a0a0a' : '#1a1a1a',
+        boxShadow: visualState.isSelected ? '0 0 20px rgba(25, 118, 210, 0.8)' : visualState.isConnected ? '0 0 10px rgba(66, 165, 245, 0.5)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         opacity,
+        transform: `scale(${scale})`,
+        filter: blur > 0 ? `blur(${blur}px)` : 'none',
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
+        cursor: isBackground ? 'default' : 'pointer',
         position: 'relative',
-        color: '#ffffff'
+        color: '#ffffff',
+        pointerEvents: isBackground ? 'none' : 'auto'
       }}
     >
       {/* Handles - simplified without IDs */}
@@ -57,8 +57,9 @@ const CharacterNode = memo(({ data, selected }) => {
       {/* Character icon - using emoji instead of MUI icon */}
       <div
         style={{
-          fontSize: '28px',
-          marginBottom: 4
+          fontSize: `${28 * scale}px`,
+          marginBottom: 4,
+          opacity: isBackground ? 0.5 : 1
         }}
       >
         👤
@@ -67,14 +68,15 @@ const CharacterNode = memo(({ data, selected }) => {
       {/* Character name */}
       <div
         style={{
-          fontSize: '12px',
+          fontSize: `${12 * scale}px`,
           textAlign: 'center',
           maxWidth: nodeSize - 20,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           paddingLeft: 8,
-          paddingRight: 8
+          paddingRight: 8,
+          fontWeight: visualState.isSelected ? 'bold' : 'normal'
         }}
       >
         {data.label || data.name || 'Unknown'}

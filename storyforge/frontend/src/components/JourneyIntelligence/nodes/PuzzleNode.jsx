@@ -7,23 +7,20 @@ import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const PuzzleNode = memo(({ data, selected }) => {
-  // Determine visual state based on node className
-  const isConnected = data.className?.includes('connected');
-  const isSecondaryConnected = data.className?.includes('secondary-connected');
-  const isBackground = data.className?.includes('background');
-  
-  // Calculate opacity based on visual hierarchy
-  let opacity = 1;
-  if (isBackground) opacity = 0.2;
-  else if (isSecondaryConnected) opacity = 0.6;
-  else if (isConnected) opacity = 0.9;
+  // Use visualState from data
+  const visualState = data.visualState || {};
+  const opacity = visualState.opacity || 1;
+  const scale = visualState.scale || 1;
+  const blur = visualState.blur || 0;
+  const isBackground = visualState.isBackground || false;
   
   // Get puzzle metadata
   const difficulty = data.difficulty || 'Unknown';
   const rewardCount = data.rewardIds?.length || 0;
   
   // Get dynamic size from node data, fallback to default
-  const nodeSize = data.size || 120;
+  const baseSize = data.size || 120;
+  const nodeSize = baseSize * scale;
   
   return (
     <div
@@ -31,18 +28,21 @@ const PuzzleNode = memo(({ data, selected }) => {
         width: nodeSize,
         height: nodeSize,
         borderRadius: 8,
-        border: `${selected ? 3 : 2}px solid #f59e0b`,
-        backgroundColor: '#1a1a1a',
-        boxShadow: selected ? '0 0 10px rgba(245, 158, 11, 0.8)' : 'none',
+        border: `${visualState.isSelected ? 3 : 2}px solid ${visualState.isSelected ? '#f57c00' : visualState.isConnected ? '#ff9800' : '#f59e0b'}`,
+        backgroundColor: isBackground ? '#0a0a0a' : '#1a1a1a',
+        boxShadow: visualState.isSelected ? '0 0 20px rgba(245, 124, 0, 0.8)' : visualState.isConnected ? '0 0 10px rgba(255, 152, 0, 0.5)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         opacity,
+        transform: `scale(${scale})`,
+        filter: blur > 0 ? `blur(${blur}px)` : 'none',
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
+        cursor: isBackground ? 'default' : 'pointer',
         position: 'relative',
-        color: '#ffffff'
+        color: '#ffffff',
+        pointerEvents: isBackground ? 'none' : 'auto'
       }}
     >
       {/* Handles - simplified without IDs */}
@@ -58,8 +58,9 @@ const PuzzleNode = memo(({ data, selected }) => {
       {/* Puzzle icon - using emoji */}
       <div
         style={{
-          fontSize: '28px',
-          marginBottom: 4
+          fontSize: `${28 * scale}px`,
+          marginBottom: 4,
+          opacity: isBackground ? 0.5 : 1
         }}
       >
         🧩
@@ -68,14 +69,15 @@ const PuzzleNode = memo(({ data, selected }) => {
       {/* Puzzle name */}
       <div
         style={{
-          fontSize: '12px',
+          fontSize: `${12 * scale}px`,
           textAlign: 'center',
           maxWidth: nodeSize - 35,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           paddingLeft: 8,
-          paddingRight: 8
+          paddingRight: 8,
+          fontWeight: visualState.isSelected ? 'bold' : 'normal'
         }}
       >
         {data.label || data.puzzle || data.name || 'Unknown'}

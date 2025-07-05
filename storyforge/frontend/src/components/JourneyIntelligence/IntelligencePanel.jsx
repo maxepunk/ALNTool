@@ -158,6 +158,7 @@ const CharacterAnalysis = ({ entity, timelineEvents, elements, puzzles }) => {
     // Check if the event has a characters array and includes this character ID
     return event.characters && Array.isArray(event.characters) && event.characters.includes(entity.id);
   });
+  // Elements are already transformed with owner_character_id by useTransformedElements
   const ownedElements = (elements || []).filter(elem => 
     elem.owner_character_id === entity.id
   );
