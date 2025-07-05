@@ -13,6 +13,7 @@ router.get('/game-constants', notionController.getGameConstants);
 router.get('/characters', notionController.getCharacters);
 router.get('/characters/with-warnings', notionController.getCharactersWithWarnings);
 router.get('/characters/with-sociogram-data', notionController.getCharactersWithSociogramData); // New endpoint for Memory Economy
+router.get('/character-links', notionController.getAllCharacterLinks); // All character relationship links
 router.get('/characters/:id/graph', notionController.getCharacterGraph);
 router.get('/characters/:id', notionController.getCharacterById);
 

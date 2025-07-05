@@ -126,6 +126,26 @@ function getLinkedCharacters(characterId) {
   return links;
 }
 
+// Get all character links for the overview graph
+function getAllCharacterLinks() {
+  const db = getDB();
+  const links = db.prepare(`
+    SELECT 
+      character_a_id,
+      character_b_id,
+      link_type,
+      link_strength,
+      ca.name as character_a_name,
+      cb.name as character_b_name
+    FROM character_links cl
+    JOIN characters ca ON cl.character_a_id = ca.id
+    JOIN characters cb ON cl.character_b_id = cb.id
+    ORDER BY link_strength DESC
+  `).all();
+  
+  return links;
+}
+
 function getFullEntityDetails(entityIds) {
   const db = getDB();
   if (!entityIds || entityIds.length === 0) {
@@ -443,6 +463,7 @@ module.exports = {
   getElementsWithComputedFields,
   getAllCharacterIdsAndNames,
   getLinkedCharacters,
+  getAllCharacterLinks,
   getFullEntityDetails,
   getCharacterJourneyData,
   getElementById,

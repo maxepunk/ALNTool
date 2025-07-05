@@ -6,6 +6,9 @@
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Single QueryClient instance per test file to prevent memory leaks
+let globalQueryClient = null;
+
 /**
  * Creates a new QueryClient for testing with optimized settings
  * Disables retries and caching for faster, more predictable tests
@@ -39,6 +42,20 @@ export function createTestQueryClient() {
 }
 
 /**
+ * Get or create the global QueryClient for tests
+ * Reuses the same instance to prevent memory leaks
+ */
+function getGlobalQueryClient() {
+  if (!globalQueryClient) {
+    globalQueryClient = createTestQueryClient();
+  }
+  // Clear before each test
+  globalQueryClient.clear();
+  globalQueryClient.cancelQueries();
+  return globalQueryClient;
+}
+
+/**
  * Creates a wrapper component with QueryClient for testing hooks and components
  * @param {QueryClient} [queryClient] - Optional custom QueryClient
  * @returns {Function} Wrapper component for testing
@@ -56,7 +73,8 @@ export function createQueryWrapper(queryClient = createTestQueryClient()) {
  * Use this instead of @testing-library/react's render for components using TanStack Query
  */
 export function renderWithQuery(ui, options = {}) {
-  const { queryClient = createTestQueryClient(), ...renderOptions } = options;
+  // Use global client by default to prevent memory leaks
+  const { queryClient = getGlobalQueryClient(), ...renderOptions } = options;
   
   const wrapper = createQueryWrapper(queryClient);
   
@@ -160,4 +178,18 @@ export const mockGameConstants = {
 export async function waitForQueriesToSettle(queryClient) {
   await queryClient.cancelQueries();
   queryClient.clear();
+}
+
+/**
+ * Clean up the global QueryClient
+ * Call this in afterAll() to prevent memory leaks
+ */
+export function cleanupQueryClient() {
+  if (globalQueryClient) {
+    globalQueryClient.clear();
+    globalQueryClient.cancelQueries();
+    globalQueryClient.getQueryCache().clear();
+    globalQueryClient.getMutationCache().clear();
+    globalQueryClient = null;
+  }
 }

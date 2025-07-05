@@ -4,8 +4,13 @@ import logger from '../utils/logger';
 import { logApiResponse } from '../utils/apiLogger';
 
 // Create axios instance with base URL
+// In test environment, use absolute URL to work with MSW
+const baseURL = process.env.NODE_ENV === 'test' 
+  ? 'http://localhost/api' 
+  : '/api';
+
 const apiClient = axios.create({
-  baseURL: '/api', // Ensure this matches your BFF's proxy path if using Vite/CRA proxy
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -28,6 +33,11 @@ export const api = {
 
   getCharacterById: async (id) => {
     const response = await apiClient.get(`/characters/${id}`);
+    return response.data;
+  },
+  
+  getCharacterLinks: async () => {
+    const response = await apiClient.get('/character-links');
     return response.data;
   },
 

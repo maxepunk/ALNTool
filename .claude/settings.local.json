@@ -79,7 +79,12 @@
       "Bash(npm install:*)",
       "Bash(npx playwright test:*)",
       "Bash(time curl:*)",
-      "mcp__desktop-commander__create_directory"
+      "mcp__desktop-commander__create_directory",
+      "Bash(tmux new:*)",
+      "Bash(tmux send-keys:*)",
+      "mcp__playwright-generic__playwright_press_key",
+      "Bash(npx playwright screenshot:*)",
+      "mcp__duckduckgo__web-search"
     ],
     "deny": []
   },

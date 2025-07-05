@@ -4,28 +4,6 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Polyfill for MSW - Node.js environment doesn't have TransformStream
-if (typeof global.TransformStream === 'undefined') {
-  global.TransformStream = class TransformStream {
-    constructor() {
-      this.readable = {
-        pipeTo: jest.fn(),
-        getReader: jest.fn(() => ({
-          read: jest.fn(() => Promise.resolve({ done: true })),
-          releaseLock: jest.fn()
-        }))
-      };
-      this.writable = {
-        getWriter: jest.fn(() => ({
-          write: jest.fn(),
-          close: jest.fn(),
-          releaseLock: jest.fn()
-        }))
-      };
-    }
-  };
-}
-
 // Mock logger globally for all tests
 jest.mock('./utils/logger', () => ({
   __esModule: true,
@@ -43,15 +21,30 @@ jest.mock('./utils/logger', () => ({
   }
 }));
 
-// Temporarily disable MSW to fix test execution - we'll use manual mocks
-// This allows tests to run while we work on stabilization
-// TODO: Re-enable MSW after resolving Node.js compatibility issues
+// Mock apiLogger to avoid import.meta issues in tests
+jest.mock('./utils/apiLogger', () => ({
+  __esModule: true,
+  logApiResponse: jest.fn(),
+  logComponentData: jest.fn(),
+  wrapFetch: (fetch) => fetch
+}));
 
-// // MSW setup for API mocking in tests
-// import { setupMockServer } from './test-utils/mocks/server.js';
-// 
-// // Setup MSW server for all tests
-// setupMockServer();
+// MSW setup for API mocking in tests
+import { setupMockServer } from './test-utils/mocks/server.js';
+
+// Setup MSW server for all tests
+setupMockServer();
+
+// Mock the API service
+jest.mock('./services/api.js');
+
+// Mock ResizeObserver for ReactFlow
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 
 // Optional: Mock global browser APIs if needed (e.g., fetch, localStorage)
 /*

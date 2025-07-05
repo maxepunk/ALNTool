@@ -14,6 +14,7 @@ const { responseWrapper, errorHandler } = require('./middleware/responseWrapper'
 const notionRoutes = require('./routes/notion');
 const journeyRoutes = require('./routes/journeyRoutes');
 const syncRoutes = require('./routes/syncRoutes');
+const validationRoutes = require('./routes/validationRoutes');
 
 // Import database migration function
 const { initializeDatabase } = require('./db/database');
@@ -56,6 +57,7 @@ app.use('/api', responseWrapper);
 app.use('/api', notionRoutes); // Existing Notion routes
 app.use('/api', journeyRoutes); // New Journey Engine routes (e.g. /api/journeys/:characterId)
 app.use('/api/sync', syncRoutes); // Data sync routes (e.g. /api/sync/data, /api/sync/status)
+app.use('/api/validate', validationRoutes); // Validation routes for E2E testing
 
 // Health check endpoint
 app.get('/health', (req, res) => {

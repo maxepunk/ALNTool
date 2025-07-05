@@ -1,31 +1,13 @@
 import { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Container, CircularProgress, Typography, Button } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppLayout from './layouts/AppLayout';
-import Dashboard from './pages/Dashboard';
-import Characters from './pages/Characters';
-import CharacterDetail from './pages/CharacterDetail';
-import Timeline from './pages/Timeline';
-import TimelineDetail from './pages/TimelineDetail';
-import Puzzles from './pages/Puzzles';
-import PuzzleDetail from './pages/PuzzleDetail';
-import PuzzleFlowPageWrapper from './pages/PuzzleFlowPage'; // Correct import is already here
-import Elements from './pages/Elements';
-import ElementDetail from './pages/ElementDetail';
-import MemoryEconomyPage from './pages/MemoryEconomyPage';
-// import PuzzleFlowPage from './pages/PuzzleFlowPage'; // Remove redundant import
-import ElementPuzzleEconomyPage from './pages/ElementPuzzleEconomyPage';
-import CharacterSociogramPage from './pages/CharacterSociogramPage';
-import NarrativeThreadTrackerPage from './pages/NarrativeThreadTrackerPage';
-import ResolutionPathAnalyzerPage from './pages/ResolutionPathAnalyzerPage'; // Import ResolutionPathAnalyzerPage
+import JourneyIntelligenceView from './components/JourneyIntelligenceView';
 import NotFound from './pages/NotFound';
-import PlayerJourneyPage from './pages/PlayerJourneyPage'; // Import the new page
-import DualLensLayout from './components/Layout/DualLensLayout'; // Import DualLensLayout
-import TestErrorComponent from './components/TestErrorComponent'; // Import TestErrorComponent
 import { api } from './services/api';
-import { WorkflowProvider } from './contexts/WorkflowContext';
+// WorkflowContext removed - not used by Journey Intelligence
 
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
@@ -97,62 +79,36 @@ function App() {
   }
 
   return (
-    <WorkflowProvider>
-      <AppLayout>
-        <ErrorBoundary level="route">
-          <Routes>
-          <Route path="/" element={<Dashboard />} />
-          
-          {/* Characters routes */}
-          <Route path="/characters" element={<Characters />} />
-          <Route path="/characters/:id" element={<CharacterDetail />} />
-          
-          {/* Timeline routes */}
-          <Route path="/timelines" element={<Timeline />} />
-          <Route path="/timelines/:id" element={<TimelineDetail />} />
-          
-          {/* Puzzles routes */}
-          <Route path="/puzzles" element={<Puzzles />} />
-          <Route path="/puzzles/:id" element={<PuzzleDetail />} />
-          <Route path="/puzzles/:id/flow" element={<PuzzleFlowPageWrapper />} /> {/* Corrected to use Wrapper */}
-          
-          {/* Elements routes */}
-          <Route path="/elements" element={<Elements />} />
-          <Route path="/elements/:id" element={<ElementDetail />} />
-
-          {/* Memory Economy Page Route */}
-          <Route path="/memory-economy" element={<MemoryEconomyPage />} />
-          <Route path="/element-puzzle-economy" element={<ElementPuzzleEconomyPage />} />
-          <Route path="/character-sociogram" element={<CharacterSociogramPage />} />
-          <Route path="/narrative-thread-tracker" element={<NarrativeThreadTrackerPage />} />
-          <Route path="/resolution-path-analyzer" element={<ResolutionPathAnalyzerPage />} /> {/* New Route */}
-          
-          {/* Test route for error boundaries */}
-          <Route path="/test-error" element={<TestErrorComponent />} />
-          
-          {/* Route using DualLensLayout */}
-          <Route
-            path="/player-journey"
-            element={<PlayerJourneyPage />}
-          />
-
-          {/* Test route for DualLensLayout */}
-          <Route
-            path="/dual-view-test"
-            element={
-              <DualLensLayout
-                journeySpaceContent={<p style={{padding: '10px', backgroundColor: '#eee', border: '1px solid #ddd', borderRadius: '4px'}}>Journey Space Placeholder (Test Route)</p>}
-                systemSpaceContent={<p style={{padding: '10px', backgroundColor: '#e0e0e0', border: '1px solid #d0d0d0', borderRadius: '4px'}}>System Space Placeholder (Test Route)</p>}
-              />
-            }
-          />
-
-          {/* 404 route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+    <AppLayout>
+      <ErrorBoundary level="route">
+        <Routes>
+            {/* Journey Intelligence IS the application */}
+            <Route path="/" element={<JourneyIntelligenceView />} />
+            
+            {/* Redirect all old routes to Journey Intelligence */}
+            <Route path="/journey-intelligence" element={<Navigate to="/" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="/characters" element={<Navigate to="/" replace />} />
+            <Route path="/characters/:id" element={<Navigate to="/" replace />} />
+            <Route path="/timelines" element={<Navigate to="/" replace />} />
+            <Route path="/timelines/:id" element={<Navigate to="/" replace />} />
+            <Route path="/puzzles" element={<Navigate to="/" replace />} />
+            <Route path="/puzzles/:id" element={<Navigate to="/" replace />} />
+            <Route path="/puzzles/:id/flow" element={<Navigate to="/" replace />} />
+            <Route path="/elements" element={<Navigate to="/" replace />} />
+            <Route path="/elements/:id" element={<Navigate to="/" replace />} />
+            <Route path="/memory-economy" element={<Navigate to="/" replace />} />
+            <Route path="/element-puzzle-economy" element={<Navigate to="/" replace />} />
+            <Route path="/character-sociogram" element={<Navigate to="/" replace />} />
+            <Route path="/narrative-thread-tracker" element={<Navigate to="/" replace />} />
+            <Route path="/resolution-path-analyzer" element={<Navigate to="/" replace />} />
+            <Route path="/player-journey" element={<Navigate to="/" replace />} />
+            
+            {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </ErrorBoundary>
       </AppLayout>
-    </WorkflowProvider>
   );
 }
 

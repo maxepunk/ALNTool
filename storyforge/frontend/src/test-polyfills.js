@@ -28,13 +28,50 @@ if (typeof global.structuredClone === 'undefined') {
   };
 }
 
+// Polyfill TransformStream for MSW
+if (typeof global.TransformStream === 'undefined') {
+  global.TransformStream = class TransformStream {
+    constructor() {
+      this.readable = {
+        pipeTo: jest.fn(),
+        getReader: jest.fn(() => ({
+          read: jest.fn(() => Promise.resolve({ done: true })),
+          releaseLock: jest.fn()
+        }))
+      };
+      this.writable = {
+        getWriter: jest.fn(() => ({
+          write: jest.fn(),
+          close: jest.fn(),
+          releaseLock: jest.fn()
+        }))
+      };
+    }
+  };
+}
+
 // Mock import.meta for Jest compatibility with Vite
 Object.defineProperty(global, 'import.meta', {
   value: {
     env: {
       DEV: false,
-      VITE_API_URL: 'http://localhost:3001'
+      VITE_API_URL: 'http://localhost:3001',
+      MODE: 'test'
     }
   },
   writable: true
 });
+
+// Set up axios defaults for tests
+if (typeof window !== 'undefined') {
+  window.location = {
+    ...window.location,
+    origin: 'http://localhost',
+    href: 'http://localhost/',
+    protocol: 'http:',
+    host: 'localhost',
+    hostname: 'localhost',
+    port: '',
+    pathname: '/'
+  };
+}

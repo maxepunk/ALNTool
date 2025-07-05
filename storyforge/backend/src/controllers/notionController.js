@@ -156,6 +156,24 @@ const getCharactersWithSociogramData = catchAsync(async (req, res) => {
   res.json(enrichedCharacters);
 });
 
+const getAllCharacterLinks = catchAsync(async (req, res) => {
+  const dbQueries = require('../db/queries');
+  const links = dbQueries.getAllCharacterLinks();
+  
+  // Transform links for frontend consumption
+  const transformedLinks = links.map(link => ({
+    source: link.character_a_id,
+    target: link.character_b_id,
+    sourceName: link.character_a_name,
+    targetName: link.character_b_name,
+    type: link.link_type,
+    strength: link.link_strength
+  }));
+  
+  setCacheHeaders(res);
+  res.json(transformedLinks);
+});
+
 const getCharacterById = catchAsync(async (req, res) => {
   const { id } = req.params;
   const cacheKey = makeCacheKey('mapped-character-v1.1-sociogram', { id }); // Updated cache key
@@ -1011,6 +1029,7 @@ const getCharactersWithWarnings = catchAsync(async (req, res) => {
 module.exports = {
   getCharacters,
   getCharactersWithSociogramData,
+  getAllCharacterLinks,
   getCharacterById,
   getCharacterGraph,
   getTimelineEvents,

@@ -3,6 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import useJourneyStore from '../journeyStore';
 import useJourney from '../../hooks/useJourney';
+import { setupTestCleanup } from '../../test-utils/cleanup-utils';
+
+// Setup automatic cleanup
+setupTestCleanup();
 
 // Mock the useJourney hook
 jest.mock('../../hooks/useJourney');
