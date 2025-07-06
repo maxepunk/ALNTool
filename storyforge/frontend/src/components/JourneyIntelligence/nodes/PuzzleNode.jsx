@@ -22,8 +22,20 @@ const PuzzleNode = memo(({ data, selected }) => {
   const baseSize = data.size || 120;
   const nodeSize = baseSize * scale;
   
+  // Build tooltip content
+  const tooltipContent = [
+    `Name: ${data.puzzle || data.name || 'Unknown'}`,
+    `Difficulty: ${difficulty}`,
+    data.status ? `Status: ${data.status}` : null,
+    rewardCount > 0 ? `Rewards: ${rewardCount} items` : null,
+    data.requiredElements?.length > 0 ? `Required Elements: ${data.requiredElements.length}` : null,
+    data.requiredElements?.length > 1 ? 'Requires collaboration' : null,
+    data.description ? `Description: ${data.description}` : null
+  ].filter(Boolean).join('\n');
+  
   return (
     <div
+      title={tooltipContent}
       style={{
         width: nodeSize,
         height: nodeSize,
@@ -66,33 +78,37 @@ const PuzzleNode = memo(({ data, selected }) => {
         🧩
       </div>
       
-      {/* Puzzle name */}
-      <div
-        style={{
-          fontSize: `${12 * scale}px`,
-          textAlign: 'center',
-          maxWidth: nodeSize - 35,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          paddingLeft: 8,
-          paddingRight: 8,
-          fontWeight: visualState.isSelected ? 'bold' : 'normal'
-        }}
-      >
-        {data.label || data.puzzle || data.name || 'Unknown'}
-      </div>
-      
-      {/* Difficulty indicator */}
-      <div
-        style={{
-          color: '#94a3b8',
-          fontSize: '11px',
-          marginTop: 4
-        }}
-      >
-        {difficulty}
-      </div>
+      {/* Puzzle name - hide when hideLabel is true */}
+      {!data.hideLabel && (
+        <>
+          <div
+            style={{
+              fontSize: `${12 * scale}px`,
+              textAlign: 'center',
+              maxWidth: nodeSize - 35,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              paddingLeft: 8,
+              paddingRight: 8,
+              fontWeight: visualState.isSelected ? 'bold' : 'normal'
+            }}
+          >
+            {data.label || data.puzzle || data.name || 'Unknown'}
+          </div>
+          
+          {/* Difficulty indicator */}
+          <div
+            style={{
+              color: '#94a3b8',
+              fontSize: '11px',
+              marginTop: 4
+            }}
+          >
+            {difficulty}
+          </div>
+        </>
+      )}
       
       {/* Reward count badge */}
       {rewardCount > 0 && (

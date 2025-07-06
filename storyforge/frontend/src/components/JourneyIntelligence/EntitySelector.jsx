@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { Autocomplete, TextField, Box, Typography, Chip } from '@mui/material';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { Autocomplete, TextField, Box, Typography, Chip, CircularProgress } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import EventIcon from '@mui/icons-material/Event';
+import { FixedSizeList } from 'react-window';
+import debounce from 'lodash.debounce';
 import { useJourneyIntelligenceStore } from '../../stores/journeyIntelligenceStore';
-import { useAllCharacters } from '../../hooks/useCharacterJourney';
-import { usePerformanceElements } from '../../hooks/usePerformanceElements';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import logger from '../../utils/logger';
@@ -28,38 +28,86 @@ const ENTITY_COLORS = {
   timeline_event: '#9c27b0' // Purple
 };
 
+// Virtual list row renderer
+const ListboxComponent = React.forwardRef(function ListboxComponent(props, ref) {
+  const { children, ...other } = props;
+  const itemData = React.Children.toArray(children);
+  const itemCount = itemData.length;
+  const itemSize = 60; // Height of each item
+
+  return (
+    <div ref={ref}>
+      <div {...other}>
+        <FixedSizeList
+          height={Math.min(itemCount * itemSize, 400)}
+          width="100%"
+          itemSize={itemSize}
+          itemCount={itemCount}
+          overscanCount={5}
+          itemData={itemData}
+        >
+          {({ index, style, data }) => (
+            <div style={style}>
+              {data[index]}
+            </div>
+          )}
+        </FixedSizeList>
+      </div>
+    </div>
+  );
+});
+
 const EntitySelector = () => {
   const { selectedEntity, selectEntity } = useJourneyIntelligenceStore();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimeoutRef = useRef(null);
   
-  // Fetch all entity types
-  const { data: characters = [] } = useAllCharacters();
-  const { data: elements = [] } = usePerformanceElements();
-  const { data: puzzles = [] } = useQuery({
-    queryKey: ['puzzles'],
-    queryFn: () => api.getPuzzles(),
-    staleTime: 5 * 60 * 1000
-  });
-  const { data: timelineEvents = [] } = useQuery({
-    queryKey: ['timeline-events'],
-    queryFn: () => api.getTimelineEvents(),
-    staleTime: 5 * 60 * 1000
+  // Debounced search function
+  const debouncedSetSearch = useCallback(
+    debounce((value) => {
+      setDebouncedSearch(value);
+    }, 300),
+    []
+  );
+  
+  // Server-side search with pagination
+  const { data: searchResults, isLoading } = useQuery({
+    queryKey: ['entity-search', debouncedSearch],
+    queryFn: async () => {
+      if (!debouncedSearch) {
+        // Initial load - return limited set of recent/important entities
+        const [characters, elements, puzzles, timelineEvents] = await Promise.all([
+          api.getCharacters({ limit: 10 }),
+          api.getElements({ limit: 10 }),
+          api.getPuzzles({ limit: 10 }),
+          api.getTimelineEvents({ limit: 10 })
+        ]);
+        
+        return processEntities(characters, elements, puzzles, timelineEvents);
+      }
+      
+      // Search across all entity types
+      const [characters, elements, puzzles, timelineEvents] = await Promise.all([
+        api.searchCharacters(debouncedSearch),
+        api.searchElements(debouncedSearch),
+        api.searchPuzzles(debouncedSearch),
+        api.searchTimelineEvents(debouncedSearch)
+      ]);
+      
+      return processEntities(characters, elements, puzzles, timelineEvents);
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    keepPreviousData: true
   });
   
-  // Combine all entities into searchable options
-  const allEntities = useMemo(() => {
-    logger.debug('EntitySelector: Building entity list', {
-      characters: characters.length,
-      elements: elements.length,
-      puzzles: puzzles.length,
-      timelineEvents: timelineEvents.length
-    });
-    
+  // Process entities into unified format
+  const processEntities = (characters, elements, puzzles, timelineEvents) => {
     const entities = [];
     
     // Add characters
-    characters.forEach(char => {
+    characters?.forEach(char => {
       entities.push({
         id: char.id,
         name: char.name || 'Unnamed Character',
@@ -73,7 +121,7 @@ const EntitySelector = () => {
     });
     
     // Add elements
-    elements.forEach(elem => {
+    elements?.forEach(elem => {
       entities.push({
         id: elem.id,
         name: elem.name || 'Unnamed Element',
@@ -88,7 +136,7 @@ const EntitySelector = () => {
     });
     
     // Add puzzles
-    puzzles.forEach(puzzle => {
+    puzzles?.forEach(puzzle => {
       entities.push({
         id: puzzle.id,
         name: puzzle.name || 'Unnamed Puzzle',
@@ -102,7 +150,7 @@ const EntitySelector = () => {
     });
     
     // Add timeline events
-    timelineEvents.forEach(event => {
+    timelineEvents?.forEach(event => {
       entities.push({
         id: event.id,
         name: event.description || 'Unnamed Event',
@@ -116,22 +164,21 @@ const EntitySelector = () => {
     });
     
     return entities;
-  }, [characters, elements, puzzles, timelineEvents]);
+  };
   
-  // Filter options based on input
+  // Handle input change with debouncing
+  const handleInputChange = (event, newInputValue, reason) => {
+    setInputValue(newInputValue);
+    
+    if (reason === 'input') {
+      debouncedSetSearch(newInputValue);
+    }
+  };
+  
+  // Get option label
   const getOptionLabel = (option) => {
     if (!option) return '';
     return option.name || '';
-  };
-  
-  // Custom filter that searches across all entity fields
-  const filterOptions = (options, state) => {
-    const input = state.inputValue.toLowerCase();
-    if (!input) return options.slice(0, 50); // Show first 50 when no search
-    
-    return options
-      .filter(option => option.searchText.includes(input))
-      .slice(0, 50); // Limit results for performance
   };
   
   // Group entities by type
@@ -161,23 +208,30 @@ const EntitySelector = () => {
   
   // Current value for controlled component
   const currentValue = selectedEntity ? 
-    allEntities.find(e => e.id === selectedEntity.id) || null : 
+    searchResults?.find(e => e.id === selectedEntity.id) || 
+    { 
+      id: selectedEntity.id, 
+      name: selectedEntity.name || selectedEntity.description || 'Selected Entity',
+      type: selectedEntity.type || selectedEntity.entity_type || 'unknown',
+      raw: selectedEntity 
+    } : 
     null;
   
   return (
     <Autocomplete
       id="entity-search"
-      options={allEntities}
+      options={searchResults || []}
       value={currentValue}
       onChange={handleChange}
       inputValue={inputValue}
-      onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
+      onInputChange={handleInputChange}
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
       getOptionLabel={getOptionLabel}
-      filterOptions={filterOptions}
       groupBy={groupBy}
+      loading={isLoading}
+      ListboxComponent={ListboxComponent}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -187,11 +241,17 @@ const EntitySelector = () => {
           InputProps={{
             ...params.InputProps,
             startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+            endAdornment: (
+              <>
+                {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
           }}
         />
       )}
       renderOption={(props, option) => (
-        <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
           <Box sx={{ color: ENTITY_COLORS[option.type] }}>
             {ENTITY_ICONS[option.type]}
           </Box>
@@ -231,8 +291,8 @@ const EntitySelector = () => {
         paper: {
           elevation: 4,
           sx: {
-            maxHeight: 400,
             '& .MuiAutocomplete-listbox': {
+              padding: 0,
               '& .MuiAutocomplete-groupLabel': {
                 backgroundColor: 'grey.100',
                 fontWeight: 'bold',
@@ -248,4 +308,4 @@ const EntitySelector = () => {
   );
 };
 
-export default EntitySelector;
+export default React.memo(EntitySelector);

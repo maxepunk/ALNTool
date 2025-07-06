@@ -238,3 +238,77 @@ export function groupElementsByOwner(elements, characters) {
   
   return groups;
 }
+
+/**
+ * Create association edges between characters and their associated elements
+ * @param {Array} characters - Array of characters with associated_elements
+ * @returns {Array} Edge objects for ReactFlow
+ */
+export function createAssociationEdges(characters) {
+  const edges = [];
+  
+  if (!Array.isArray(characters)) {
+    return edges;
+  }
+  
+  characters.forEach(character => {
+    if (character.associated_elements && Array.isArray(character.associated_elements)) {
+      character.associated_elements.forEach(elementId => {
+        edges.push({
+          id: `assoc-${character.id}-${elementId}`,
+          source: character.id,
+          target: elementId,
+          type: 'smoothstep',
+          animated: false,
+          data: {
+            type: 'character-element-association'
+          },
+          style: {
+            stroke: '#8b5cf6',
+            strokeWidth: 1.5,
+            strokeDasharray: '2,2'
+          }
+        });
+      });
+    }
+  });
+  
+  return edges;
+}
+
+/**
+ * Create edges between characters and timeline events
+ * @param {Array} characters - Array of characters with timeline_events
+ * @returns {Array} Edge objects for ReactFlow
+ */
+export function createTimelineEdges(characters) {
+  const edges = [];
+  
+  if (!Array.isArray(characters)) {
+    return edges;
+  }
+  
+  characters.forEach(character => {
+    if (character.timeline_events && Array.isArray(character.timeline_events)) {
+      character.timeline_events.forEach(eventId => {
+        edges.push({
+          id: `timeline-${character.id}-${eventId}`,
+          source: character.id,
+          target: eventId,
+          type: 'smoothstep',
+          animated: true,
+          data: {
+            type: 'character-timeline-event'
+          },
+          style: {
+            stroke: '#3b82f6',
+            strokeWidth: 2,
+            strokeDasharray: '8,4'
+          }
+        });
+      });
+    }
+  });
+  
+  return edges;
+}

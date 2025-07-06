@@ -21,8 +21,18 @@ const CharacterNode = memo(({ data, selected }) => {
   const baseSize = data.size || 120;
   const nodeSize = baseSize * scale;
   
+  // Build tooltip content
+  const tooltipContent = [
+    `Name: ${data.name || 'Unknown'}`,
+    data.tier ? `Tier: ${data.tier}` : null,
+    data.logline ? `Logline: ${data.logline}` : null,
+    data.actorName ? `Actor: ${data.actorName}` : null,
+    relationshipCount > 0 ? `Relationships: ${relationshipCount}` : null
+  ].filter(Boolean).join('\n');
+  
   return (
     <div
+      title={tooltipContent}
       style={{
         width: nodeSize,
         height: nodeSize,
@@ -65,34 +75,38 @@ const CharacterNode = memo(({ data, selected }) => {
         👤
       </div>
       
-      {/* Character name */}
-      <div
-        style={{
-          fontSize: `${12 * scale}px`,
-          textAlign: 'center',
-          maxWidth: nodeSize - 20,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          paddingLeft: 8,
-          paddingRight: 8,
-          fontWeight: visualState.isSelected ? 'bold' : 'normal'
-        }}
-      >
-        {data.label || data.name || 'Unknown'}
-      </div>
-      
-      {/* Tier indicator if available */}
-      {data.tier && (
-        <div
-          style={{
-            color: '#94a3b8',
-            fontSize: '11px',
-            marginTop: 4
-          }}
-        >
-          Tier {data.tier}
-        </div>
+      {/* Character name - hide when hideLabel is true */}
+      {!data.hideLabel && (
+        <>
+          <div
+            style={{
+              fontSize: `${12 * scale}px`,
+              textAlign: 'center',
+              maxWidth: nodeSize - 20,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              paddingLeft: 8,
+              paddingRight: 8,
+              fontWeight: visualState.isSelected ? 'bold' : 'normal'
+            }}
+          >
+            {data.label || data.name || 'Unknown'}
+          </div>
+          
+          {/* Tier indicator if available */}
+          {data.tier && (
+            <div
+              style={{
+                color: '#94a3b8',
+                fontSize: '11px',
+                marginTop: 4
+              }}
+            >
+              Tier {data.tier}
+            </div>
+          )}
+        </>
       )}
       
       {/* Relationship count badge */}

@@ -192,6 +192,7 @@ module.exports = {
   notionCache,
   makeCacheKey,
   fetchPuzzleFlowDataStructure,
+  getDatabasesMetadata,
   // New functions for journey computation:
   getCharacterDetails,
   getAllCharacterOverviews,
@@ -329,4 +330,44 @@ async function getCharactersForList(filter) {
 async function getTimelineEventsForList(filter) {
   // Database-backed timeline events for dashboard
   return dbQueries.getTimelineEventsForList();
+}
+
+/**
+ * Get metadata about all databases
+ * Returns database IDs and basic info
+ */
+async function getDatabasesMetadata() {
+  try {
+    const metadata = {
+      databases: {
+        characters: {
+          id: DB_IDS.CHARACTERS,
+          name: 'Characters',
+          type: 'character'
+        },
+        elements: {
+          id: DB_IDS.ELEMENTS,
+          name: 'Elements',
+          type: 'element'
+        },
+        puzzles: {
+          id: DB_IDS.PUZZLES,
+          name: 'Puzzles',
+          type: 'puzzle'
+        },
+        timeline: {
+          id: DB_IDS.TIMELINE,
+          name: 'Timeline Events',
+          type: 'timeline_event'
+        }
+      },
+      lastSync: await dbQueries.getLastSyncTime(),
+      version: '1.0.0'
+    };
+    
+    return metadata;
+  } catch (error) {
+    logger.error('Error getting databases metadata:', error);
+    throw error;
+  }
 }

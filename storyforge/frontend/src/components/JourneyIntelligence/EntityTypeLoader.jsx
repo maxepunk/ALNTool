@@ -1,116 +1,125 @@
-/**
- * EntityTypeLoader - Progressive loading controls for different entity types
- * Allows users to selectively load elements, puzzles, and timeline events
- */
-
 import React from 'react';
-import { Box, Button, Chip, Typography } from '@mui/material';
-import { 
-  Extension as ElementIcon,
-  Construction as PuzzleIcon,
-  Event as TimelineIcon,
-  Visibility as ShowIcon,
-  VisibilityOff as HideIcon
-} from '@mui/icons-material';
+import { Paper, Typography, FormGroup, FormControlLabel, Checkbox, Chip, Box } from '@mui/material';
+import PersonIcon from '@mui/icons-material/Person';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import ExtensionIcon from '@mui/icons-material/Extension';
+import EventIcon from '@mui/icons-material/Event';
 
-const EntityTypeLoader = ({ 
-  metadata = {},
-  onLoadEntityType,
-  loadedTypes = []
-}) => {
-  const { hiddenEntities = {}, totalEntities = 0, totalCharacters = 0 } = metadata;
-  
-  const entityTypes = [
-    {
-      type: 'elements',
-      label: 'Elements',
-      icon: <ElementIcon />,
-      count: hiddenEntities.elements?.length || 0,
-      color: '#10b981',
-      isLoaded: loadedTypes.includes('elements')
-    },
-    {
-      type: 'puzzles', 
-      label: 'Puzzles',
-      icon: <PuzzleIcon />,
-      count: hiddenEntities.puzzles?.length || 0,
-      color: '#f59e0b',
-      isLoaded: loadedTypes.includes('puzzles')
-    },
-    {
-      type: 'timelineEvents',
-      label: 'Timeline Events',
-      icon: <TimelineIcon />,
-      count: hiddenEntities.timelineEvents?.length || 0,
-      color: '#6366f1',
-      isLoaded: loadedTypes.includes('timelineEvents')
-    }
-  ];
-  
-  // Calculate actual hidden count based on what's not loaded
-  const hiddenCount = entityTypes
-    .filter(type => !type.isLoaded)
-    .reduce((sum, type) => sum + type.count, 0);
-  
-  if (hiddenCount === 0) {
-    return null; // No hidden entities to load
+const ENTITY_TYPES = [
+  { 
+    type: 'character', 
+    label: 'Characters', 
+    icon: <PersonIcon />,
+    color: '#2196f3',
+    defaultEnabled: true
+  },
+  { 
+    type: 'element', 
+    label: 'Elements', 
+    icon: <InventoryIcon />,
+    color: '#4caf50',
+    defaultEnabled: false
+  },
+  { 
+    type: 'puzzle', 
+    label: 'Puzzles', 
+    icon: <ExtensionIcon />,
+    color: '#ff9800',
+    defaultEnabled: false
+  },
+  { 
+    type: 'timeline_event', 
+    label: 'Timeline Events', 
+    icon: <EventIcon />,
+    color: '#9c27b0',
+    defaultEnabled: false
   }
-  
+];
+
+const EntityTypeLoader = React.memo(({ metadata, onLoadEntityType, loadedTypes }) => {
+  // Initialize with default enabled types on first render
+  React.useEffect(() => {
+    const defaultTypes = ENTITY_TYPES
+      .filter(et => et.defaultEnabled)
+      .map(et => et.type);
+    
+    defaultTypes.forEach(type => {
+      if (!loadedTypes.includes(type)) {
+        onLoadEntityType(type);
+      }
+    });
+  }, []); // Only run once on mount
+
+  const getCounts = (type) => {
+    if (!metadata) return 0;
+    switch (type) {
+      case 'character':
+        return metadata.characterCount || 0;
+      case 'element':
+        return metadata.elementCount || 0;
+      case 'puzzle':
+        return metadata.puzzleCount || 0;
+      case 'timeline_event':
+        return metadata.timelineEventCount || 0;
+      default:
+        return 0;
+    }
+  };
+
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: 2,
-      p: 1,
-      borderRadius: 1,
-      bgcolor: 'background.paper',
-      boxShadow: 1
+    <Paper sx={{ 
+      p: 2, 
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      minWidth: 200
     }}>
-      <Typography variant="body2" color="text.secondary">
-        Show more:
+      <Typography variant="subtitle2" gutterBottom>
+        Progressive Loading
       </Typography>
-      {entityTypes.map(entityType => {
-        const { type, label, icon, count, color, isLoaded } = entityType;
-        if (count === 0) return null;
-        
-        return (
-          <Button
-            key={type}
-            size="small"
-            variant={isLoaded ? "contained" : "outlined"}
-            startIcon={icon}
-            endIcon={isLoaded ? <HideIcon fontSize="small" /> : <ShowIcon fontSize="small" />}
-            onClick={() => onLoadEntityType(type)}
-            sx={{ 
-              minWidth: 120,
-              color: isLoaded ? 'white' : color,
-              bgcolor: isLoaded ? color : 'transparent',
-              borderColor: color,
-              '&:hover': {
-                bgcolor: isLoaded ? color : `${color}20`,
-                borderColor: color
+      <FormGroup>
+        {ENTITY_TYPES.map(({ type, label, icon, color }) => {
+          const count = getCounts(type);
+          const isLoaded = loadedTypes.includes(type);
+          
+          return (
+            <FormControlLabel
+              key={type}
+              control={
+                <Checkbox
+                  checked={isLoaded}
+                  onChange={() => onLoadEntityType(type)}
+                  size="small"
+                  sx={{ color, '&.Mui-checked': { color } }}
+                />
               }
-            }}
-          >
-            {label}
-            <Chip 
-              label={count} 
-              size="small" 
-              sx={{ 
-                ml: 0.5,
-                height: 18,
-                bgcolor: isLoaded ? 'rgba(255,255,255,0.2)' : 'transparent',
-                color: isLoaded ? 'white' : 'text.secondary'
-              }} 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {React.cloneElement(icon, { sx: { fontSize: 16, color } })}
+                  <Typography variant="body2">
+                    {label}
+                  </Typography>
+                  <Chip 
+                    label={count}
+                    size="small"
+                    sx={{ 
+                      height: 20,
+                      fontSize: '0.75rem',
+                      backgroundColor: isLoaded ? color : 'grey.300',
+                      color: 'white'
+                    }}
+                  />
+                </Box>
+              }
             />
-          </Button>
-        );
-      })}
-      <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-        {totalCharacters} characters shown • {hiddenCount > 0 ? `${hiddenCount} entities available` : 'All entities loaded'}
+          );
+        })}
+      </FormGroup>
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+        Load entity types progressively for better performance
       </Typography>
-    </Box>
+    </Paper>
   );
-};
+});
+
+EntityTypeLoader.displayName = 'EntityTypeLoader';
 
 export default EntityTypeLoader;

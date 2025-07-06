@@ -7,7 +7,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import BuildIcon from '@mui/icons-material/Build';
 import WarningIcon from '@mui/icons-material/Warning';
 
-const IntelligenceToggles = () => {
+const IntelligenceToggles = React.memo(() => {
   const { activeIntelligence, toggleIntelligence } = useJourneyIntelligenceStore();
 
   const intelligenceLayers = [
@@ -41,6 +41,8 @@ const IntelligenceToggles = () => {
       </ToggleButtonGroup>
     </Box>
   );
-};
+});
+
+IntelligenceToggles.displayName = 'IntelligenceToggles';
 
 export default IntelligenceToggles;

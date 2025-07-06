@@ -1,0 +1,160 @@
+version: 1
+swarm:
+  name: "ALNTool Phased Architecture Audit"
+  main: audit_orchestrator
+  before:
+    - "echo '🎭 Initializing phased architecture audit...'"
+    - "mkdir -p ./audit-reports/{phase1,phase2,final}"
+    - "cd storyforge/frontend && npm install --silent"
+    - "cd storyforge/backend && npm install --silent"
+  instances:
+    audit_orchestrator:
+      description: "Master orchestrator managing three-phase architecture audit with intelligent delegation"
+      directory: .
+      model: opus
+      connections: [
+        # Phase 1 connections
+        frontend_architect, backend_architect, database_specialist, code_quality_auditor,
+        # Phase 2 connections  
+        testing_strategist, integration_architect,
+        # Phase 3 connections
+        synthesis_specialist
+      ]
+      prompt: |
+        You are the Master Audit Orchestrator executing a THREE-PHASE architecture audit.
+        
+        PHASE 1: Domain Analysis (Parallel Execution)
+        - Delegate simultaneously to: frontend_architect, backend_architect, database_specialist, code_quality_auditor
+        - Collect all findings before proceeding
+        - Save reports to ./audit-reports/phase1/
+        
+        PHASE 2: Cross-Cutting Analysis (Sequential Execution)
+        - Brief testing_strategist with Phase 1 findings
+        - Brief integration_architect with Phase 1 findings
+        - These specialists need context from Phase 1 to work effectively
+        - Save reports to ./audit-reports/phase2/
+        
+        PHASE 3: Synthesis and Roadmap
+        - Delegate to synthesis_specialist with all findings
+        - Create final remediation roadmap
+        - Save to ./audit-reports/final/
+        
+        ⚠️ IMPORTANT: Wait for each phase to complete before starting the next.
+        Use write_file to persist findings between phases.
+      allowed_tools: [
+        mcp__desktop-commander__write_file,
+        mcp__desktop-commander__read_file,
+        mcp__desktop-commander__create_directory
+      ]
+      
+    # PHASE 1 SPECIALISTS (Independent Domain Experts)
+    frontend_architect:
+      description: "Frontend architecture specialist - Phase 1"
+      directory: ./storyforge/frontend  
+      model: opus
+      connections: []
+      prompt: |
+        Phase 1 Frontend Specialist: Analyze React architecture independently.
+        Return structured findings for integration analysis.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__desktop-commander__read_multiple_files,
+        mcp__desktop-commander__get_file_info,
+        mcp__playwright-generic__playwright_navigate,
+        mcp__playwright-generic__playwright_screenshot
+      ]
+      
+    backend_architect:
+      description: "Backend architecture specialist - Phase 1"
+      directory: ./storyforge/backend
+      model: opus
+      connections: []
+      prompt: |
+        Phase 1 Backend Specialist: Analyze Express/Node.js architecture independently.
+        Return structured findings for integration analysis.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__desktop-commander__read_multiple_files,
+        mcp__notion__notion_search
+      ]
+      
+    database_specialist:
+      description: "Database architecture specialist - Phase 1"
+      directory: ./storyforge/backend
+      model: sonnet
+      connections: []
+      prompt: |
+        Phase 1 Database Specialist: Analyze schema and migrations independently.
+        Return structured findings for test coverage analysis.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__desktop-commander__read_multiple_files,
+        mcp__desktop-commander__execute_command
+      ]
+      
+    code_quality_auditor:
+      description: "Code quality specialist - Phase 1"
+      directory: .
+      model: sonnet
+      connections: []
+      prompt: |
+        Phase 1 Quality Specialist: Analyze code standards independently.
+        Quantify technical debt for remediation planning.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__desktop-commander__get_file_info,
+        mcp__desktop-commander__execute_command
+      ]
+      
+    # PHASE 2 SPECIALISTS (Require Phase 1 Context)
+    testing_strategist:
+      description: "Testing architecture specialist - Phase 2"
+      directory: .
+      model: opus
+      connections: []
+      prompt: |
+        Phase 2 Testing Specialist: Design test strategy based on Phase 1 findings.
+        You'll receive architectural issues that need test coverage.
+        Create TDD approach for remediation phase.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__desktop-commander__execute_command,
+        mcp__playwright-generic__playwright_navigate,
+        mcp__playwright-generic__playwright_click
+      ]
+      
+    integration_architect:
+      description: "Integration specialist - Phase 2"
+      directory: .
+      model: opus
+      connections: []
+      prompt: |
+        Phase 2 Integration Specialist: Validate cross-layer consistency.
+        You'll receive frontend and backend findings to analyze contracts.
+        Identify integration architecture violations.
+      allowed_tools: [
+        mcp__desktop-commander__search_code,
+        mcp__playwright-generic__playwright_navigate,
+        mcp__playwright-generic__playwright_console_logs
+      ]
+      
+    # PHASE 3 SPECIALIST (Requires All Previous Context)
+    synthesis_specialist:
+      description: "Synthesis specialist creating final roadmap - Phase 3"
+      directory: .
+      model: opus
+      connections: []
+      prompt: |
+        Phase 3 Synthesis Specialist: Create comprehensive remediation roadmap.
+        You'll receive all findings from Phases 1 and 2.
+        
+        Deliver:
+        1. Executive summary (business impact)
+        2. Technical roadmap (sprint-by-sprint)
+        3. Risk mitigation plan
+        4. Success metrics and checkpoints
+      allowed_tools: [
+        mcp__desktop-commander__write_file,
+        mcp__context7__resolve-library-id,
+        mcp__context7__get-library-docs
+      ]

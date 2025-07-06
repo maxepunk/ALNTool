@@ -17,29 +17,4 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// Add helper for creating a test app
-const express = require('express');
-const notionController = require('../src/controllers/notionController');
-
-// Factory to create a test app with direct controller bindings
-global.createTestApp = () => {
-  const app = express();
-  app.use(express.json());
-
-  // Attach controller methods directly
-  app.get('/api/puzzles', notionController.getPuzzles);
-  app.get('/api/puzzles/:id', notionController.getPuzzleById);
-  
-  app.get('/api/characters', notionController.getCharacters);
-  app.get('/api/characters/:id', notionController.getCharacterById);
-  
-  app.get('/api/timeline', notionController.getTimelineEvents);
-  app.get('/api/timeline/:id', notionController.getTimelineEventById);
-  
-  app.get('/api/elements', notionController.getElements);
-  app.get('/api/elements/:id', notionController.getElementById);
-  
-  app.get('/api/metadata', notionController.getDatabasesMetadata);
-  
-  return app;
-}; 
+// Remove the helper that was causing issues - tests will create their own express apps 

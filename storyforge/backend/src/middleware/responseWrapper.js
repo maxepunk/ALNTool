@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { AppError } = require('../utils/errors');
 
 /**
  * Response Wrapper Middleware
@@ -61,6 +62,16 @@ function responseWrapper(req, res, next) {
       return originalJson(errorResponse);
     }
 
+    // Check if this is a paginated response
+    if (data && typeof data === 'object' && 'data' in data && 'total' in data && 'limit' in data) {
+      // Keep pagination structure but wrap in success
+      const paginatedResponse = {
+        success: true,
+        ...data
+      };
+      return originalJson(paginatedResponse);
+    }
+
     // Standardize success response
     const successResponse = {
       success: true,
@@ -115,6 +126,58 @@ function errorHandler(err, req, res, next) {
     error: err.message,
     stack: err.stack
   });
+
+  // If response was already sent, delegate to default Express error handler
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  // Handle known operational errors
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      error: {
+        message: err.message,
+        code: err.constructor.name,
+        ...(err.errors && { errors: err.errors })
+      }
+    });
+  }
+
+  // Handle validation errors from express-validator
+  if (err.name === 'ValidationError' && err.errors) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        errors: err.errors
+      }
+    });
+  }
+
+  // Handle Notion API errors
+  if (err.name === 'NotionAPIError') {
+    return res.status(err.status || 503).json({
+      success: false,
+      error: {
+        message: 'Notion API error',
+        code: 'NOTION_API_ERROR',
+        details: err.message
+      }
+    });
+  }
+
+  // Handle database errors
+  if (err.code && err.code.startsWith('SQLITE')) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: 'Database operation failed',
+        code: 'DATABASE_ERROR'
+      }
+    });
+  }
 
   // Determine status code
   const statusCode = err.statusCode || err.status || 500;

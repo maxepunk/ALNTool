@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Entity Selection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .test-steps {
+            margin-left: 20px;
+        }
+        .expected {
+            color: green;
+            margin-top: 10px;
+        }
+        .issue {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Entity Selection, Aggregation, and Progressive Loading Test Plan</h1>
+    
+    <div class="test-section">
+        <div class="test-title">Test 1: Entity Selection Click Handler</div>
+        <div class="test-steps">
+            1. Open the application at http://localhost:3000<br>
+            2. Wait for characters to load in the overview<br>
+            3. Click on any character node (e.g., "Sarah Chen")<br>
+            <div class="expected">
+                ✓ Expected: Intelligence panel should show character details<br>
+                ✓ Expected: Character name and properties should match the clicked character<br>
+                <span class="issue">✗ Previous Issue: Nothing happened or wrong data shown</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Test 2: Aggregation Logic (50+ nodes)</div>
+        <div class="test-steps">
+            1. From the overview, click "Elements" button to load elements<br>
+            2. Click "Puzzles" button to load puzzles<br>
+            3. Click "Timeline Events" button to load timeline events<br>
+            4. Observe the graph with all entities loaded<br>
+            <div class="expected">
+                ✓ Expected: If total nodes < 50, no aggregation should occur<br>
+                ✓ Expected: If total nodes > 50, aggregation shows type-based groups<br>
+                ✓ Expected: Labels should be "X Memory Tokens", "Y Props", etc.<br>
+                <span class="issue">✗ Previous Issue: Aggregated even under 50 nodes, showed "Sarah's Elements"</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Test 3: Progressive Loading Counts</div>
+        <div class="test-steps">
+            1. Start fresh (refresh the page)<br>
+            2. Observe the progressive loading buttons<br>
+            3. Note the counts on each button<br>
+            4. Click "Elements" to load elements<br>
+            5. Observe the updated counts<br>
+            <div class="expected">
+                ✓ Expected: Initial counts show total entities per type<br>
+                ✓ Expected: After loading, button shows as "loaded" state<br>
+                ✓ Expected: "X entities available" count decreases correctly<br>
+                <span class="issue">✗ Previous Issue: Incorrect counts, didn't update properly</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">Test 4: Aggregation Thresholds</div>
+        <div class="test-steps">
+            1. Load entities progressively to stay under 50 total<br>
+            2. Observe that at least 5 of each type are shown before aggregating<br>
+            3. Small groups (< 3 remaining) should not be aggregated<br>
+            <div class="expected">
+                ✓ Expected: Shows samples of each type (min 5)<br>
+                ✓ Expected: Only aggregates when necessary<br>
+                ✓ Expected: Small groups shown individually<br>
+            </div>
+        </div>
+    </div>
+
+    <h2>Manual Testing Instructions</h2>
+    <p>Open this file alongside the application and go through each test case. Document any issues found.</p>
+    
+    <h2>Test Results</h2>
+    <div class="test-section">
+        <p>Date: <input type="date" id="test-date"></p>
+        <p>Tester: <input type="text" id="tester-name"></p>
+        <p>Results:</p>
+        <textarea rows="10" cols="80" placeholder="Enter test results here..."></textarea>
+    </div>
+
+    <script>
+        document.getElementById('test-date').value = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>

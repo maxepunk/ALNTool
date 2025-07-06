@@ -1,10 +1,8 @@
 import axios from 'axios';
-
 import logger from '../utils/logger';
 import { logApiResponse } from '../utils/apiLogger';
 
 // Create axios instance with base URL
-// In test environment, use absolute URL to work with MSW
 const baseURL = process.env.NODE_ENV === 'test' 
   ? 'http://localhost/api' 
   : '/api';
@@ -14,184 +12,242 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // Increased timeout to 15 seconds
+  timeout: 15000,
 });
 
-// API endpoints
-export const api = {
-  // Metadata
-  getDatabasesMetadata: async () => {
-    const response = await apiClient.get('/metadata');
+// ===========================
+// GENERIC ENTITY OPERATIONS (5)
+// ===========================
+
+const entityAPI = {
+  /**
+   * List entities with optional filters
+   * @param {string} entityType - Type of entity (characters, elements, puzzles, timeline)
+   * @param {Object} params - Query parameters for filtering
+   */
+  list: async (entityType, params = {}) => {
+    const response = await apiClient.get(`/${entityType}`, { params });
     return response.data;
   },
 
-  // Characters
-  getCharacters: async (filters = {}) => {
-    const response = await apiClient.get('/characters', { params: filters });
+  /**
+   * Get a single entity by ID
+   * @param {string} entityType - Type of entity
+   * @param {string} id - Entity ID
+   */
+  get: async (entityType, id) => {
+    const response = await apiClient.get(`/${entityType}/${id}`);
     return response.data;
   },
 
-  getCharacterById: async (id) => {
-    const response = await apiClient.get(`/characters/${id}`);
-    return response.data;
-  },
-  
-  getCharacterLinks: async () => {
-    const response = await apiClient.get('/character-links');
-    return response.data;
-  },
-
-  getJourneyByCharacterId: async (characterId) => {
-    if (!characterId) {
-      // Optionally, throw an error or return a specific response if characterId is missing
-      // For now, let the backend handle missing/invalid ID, or rely on caller validation
-      logger.warn('getJourneyByCharacterId called without a characterId');
-    }
-    const response = await apiClient.get(`/journeys/${characterId}`);
+  /**
+   * Create a new entity
+   * @param {string} entityType - Type of entity
+   * @param {Object} data - Entity data
+   */
+  create: async (entityType, data) => {
+    const response = await apiClient.post(`/${entityType}`, data);
     return response.data;
   },
 
-  getCharacterGraph: async (id, depth = 2) => {
-    const response = await apiClient.get(`/characters/${id}/graph`, { params: { depth } });
+  /**
+   * Update an existing entity
+   * @param {string} entityType - Type of entity
+   * @param {string} id - Entity ID
+   * @param {Object} data - Updated entity data
+   */
+  update: async (entityType, id, data) => {
+    const response = await apiClient.put(`/${entityType}/${id}`, data);
     return response.data;
   },
 
-  // Timeline
-  getTimelineEvents: async (filters = {}) => {
-    // Using /timeline endpoint to match backend API
-    const response = await apiClient.get('/timeline', { params: filters });
+  /**
+   * Delete an entity
+   * @param {string} entityType - Type of entity
+   * @param {string} id - Entity ID
+   */
+  delete: async (entityType, id) => {
+    const response = await apiClient.delete(`/${entityType}/${id}`);
     return response.data;
-  },
+  }
+};
 
-  getTimelineEventsList: async (filters = {}) => {
-    // Database-backed timeline events for dashboard
-    const response = await apiClient.get('/timeline/list', { params: filters });
-    return response.data;
-  },
+// ===========================
+// SPECIALIZED ENDPOINTS (10)
+// ===========================
 
-  getTimelineEventById: async (id) => {
-    // Using /timeline endpoint to match backend API
-    const response = await apiClient.get(`/timeline/${id}`);
-    return response.data;
-  },
-
-  // Puzzles
-  getPuzzles: async (filters = {}) => {
-    const response = await apiClient.get('/puzzles', { params: filters });
-    return response.data;
-  },
-
-  getPuzzleById: async (id) => {
-    const response = await apiClient.get(`/puzzles/${id}`);
-    return response.data;
-  },
-
-  // Elements
-  getElements: async (filters = {}) => {
-    const response = await apiClient.get('/elements', { params: filters });
-    return response.data;
-  },
-
-  getElementById: async (id) => {
-    const response = await apiClient.get(`/elements/${id}`);
-    return response.data;
-  },
-
-  // Global search
-  globalSearch: async (query) => {
-    const response = await apiClient.get('/search', { params: { q: query } });
-    return response.data;
-  },
-
-  getElementGraph: async (id, depth = 2) => {
-    const url = `/elements/${id}/graph`;
-    const params = { depth };
-    logger.debug('Attempting to fetch graph data:', { url, params });
-    const response = await apiClient.get(url, { params });
-    return response.data;
-  },
-
-  // Sync data from Notion
-  syncData: async () => {
+const specializedAPI = {
+  // 1. Sync Operations
+  syncNotionData: async () => {
     const response = await apiClient.post('/sync/data');
     return response.data;
   },
 
-  // Get sync status
   getSyncStatus: async () => {
     const response = await apiClient.get('/sync/status');
     return response.data;
   },
 
-  getPuzzleGraph: async (id, depth = 2) => {
-    const response = await apiClient.get(`/puzzles/${id}/graph`, { params: { depth } });
+  // 2. Journey & Graph Operations
+  getJourneyData: async (characterId) => {
+    if (!characterId) {
+      logger.warn('getJourneyData called without a characterId');
+    }
+    const response = await apiClient.get(`/journeys/${characterId}`);
     return response.data;
   },
 
-  getTimelineGraph: async (id, depth = 2) => {
-    const response = await apiClient.get(`/timeline/${id}/graph`, { params: { depth } });
+  getEntityGraph: async (entityType, id, depth = 2) => {
+    const response = await apiClient.get(`/${entityType}/${id}/graph`, { params: { depth } });
     return response.data;
   },
 
-  // New endpoints for "Needs Attention" data
-  getPuzzlesWithWarnings: async () => {
-    const response = await apiClient.get('/puzzles/with-warnings');
+  // 3. Performance & Filtered Data
+  getPerformanceElements: async (filterGroup) => {
+    const params = filterGroup ? { filterGroup } : {};
+    const response = await apiClient.get('/elements', { params });
     return response.data;
   },
 
-  getElementsWithWarnings: async () => {
-    const response = await apiClient.get('/elements/with-warnings');
+  // 4. Relationships & Links
+  getCharacterLinks: async () => {
+    const response = await apiClient.get('/character-links');
     return response.data;
   },
 
-  // Endpoint for Puzzle Flow data
+  // 5. Warning & Attention Data
+  getEntitiesWithWarnings: async (entityType) => {
+    const response = await apiClient.get(`/${entityType}/with-warnings`);
+    return response.data;
+  },
+
+  // 6. Search
+  globalSearch: async (query) => {
+    const response = await apiClient.get('/search', { params: { q: query } });
+    return response.data;
+  },
+
+  // 7. Metadata & Constants
+  getMetadata: async () => {
+    const response = await apiClient.get('/metadata');
+    return response.data;
+  },
+
+  getGameConstants: async () => {
+    const response = await apiClient.get('/game-constants');
+    return response.data;
+  }
+};
+
+// ===========================
+// CONSOLIDATED API OBJECT
+// ===========================
+
+export const api = {
+  // Generic entity operations
+  entities: entityAPI,
+
+  // Specialized operations
+  ...specializedAPI,
+
+  // Legacy compatibility layer (to be deprecated)
+  // Maps old method names to new structure
+  getCharacters: (filters) => entityAPI.list('characters', filters),
+  getCharacterById: (id) => entityAPI.get('characters', id),
+  getElements: (filters) => entityAPI.list('elements', filters),
+  getElementById: (id) => entityAPI.get('elements', id),
+  getPuzzles: (filters) => entityAPI.list('puzzles', filters),
+  getPuzzleById: (id) => entityAPI.get('puzzles', id),
+  getTimelineEvents: (filters) => entityAPI.list('timeline', filters),
+  getTimelineEventById: (id) => entityAPI.get('timeline', id),
+  
+  // Map specialized legacy methods
+  syncData: () => specializedAPI.syncNotionData(),
+  getJourneyByCharacterId: (id) => specializedAPI.getJourneyData(id),
+  getCharacterGraph: (id, depth) => specializedAPI.getEntityGraph('characters', id, depth),
+  getElementGraph: (id, depth) => specializedAPI.getEntityGraph('elements', id, depth),
+  getPuzzleGraph: (id, depth) => specializedAPI.getEntityGraph('puzzles', id, depth),
+  getTimelineGraph: (id, depth) => specializedAPI.getEntityGraph('timeline', id, depth),
+  
+  getCharactersWithWarnings: () => specializedAPI.getEntitiesWithWarnings('characters'),
+  getElementsWithWarnings: () => specializedAPI.getEntitiesWithWarnings('elements'),
+  getPuzzlesWithWarnings: () => specializedAPI.getEntitiesWithWarnings('puzzles'),
+  
+  getDatabasesMetadata: () => specializedAPI.getMetadata(),
+  
+  // Search endpoints with pagination support
+  searchCharacters: async (query, limit = 20) => {
+    const response = await apiClient.get('/characters', { 
+      params: { search: query, limit } 
+    });
+    return response.data;
+  },
+  
+  searchElements: async (query, limit = 20) => {
+    const response = await apiClient.get('/elements', { 
+      params: { search: query, limit } 
+    });
+    return response.data;
+  },
+  
+  searchPuzzles: async (query, limit = 20) => {
+    const response = await apiClient.get('/puzzles', { 
+      params: { search: query, limit } 
+    });
+    return response.data;
+  },
+  
+  searchTimelineEvents: async (query, limit = 20) => {
+    const response = await apiClient.get('/timeline-events', { 
+      params: { search: query, limit } 
+    });
+    return response.data;
+  },
+  
+  // Keep these specialized endpoints as-is for now
   getPuzzleFlow: async (puzzleId) => {
     if (!puzzleId) throw new Error("Puzzle ID is required for getPuzzleFlow");
     const response = await apiClient.get(`/puzzles/${puzzleId}/flow`);
     return response.data;
   },
-
-  // Endpoint for Character Sociogram data
+  
+  getPuzzleFlowGraph: async (id) => {
+    const response = await apiClient.get(`/puzzles/${id}/flowgraph`);
+    return response.data;
+  },
+  
   getAllCharactersWithSociogramData: async () => {
     const response = await apiClient.get('/characters/with-sociogram-data');
     return response.data;
   },
-
-
-  // Endpoint for Characters with Warnings
-  getCharactersWithWarnings: async () => {
-    const response = await apiClient.get('/characters/with-warnings');
-    return response.data;
-  },
-  getPuzzleFlowGraph: async (id) => { // For graph visualization of puzzle flow
-    const response = await apiClient.get(`/puzzles/${id}/flowgraph`);
-    return response.data;
-  },
+  
   getUniqueNarrativeThreads: async () => {
-    const response = await apiClient.get('/narrative-threads'); // Path from B023/B027
+    const response = await apiClient.get('/narrative-threads');
     return response.data;
   },
-
-  // Cache management
+  
+  getTimelineEventsList: async (filters = {}) => {
+    const response = await apiClient.get('/timeline/list', { params: filters });
+    return response.data;
+  },
+  
+  // Cache and sync management
   clearCache: async () => {
     const response = await apiClient.post('/cache/clear');
     return response.data;
   },
-
-  // Sync management
+  
   cancelSync: async () => {
     const response = await apiClient.post('/sync/cancel');
     return response.data;
-  },
-
-  // Game constants
-  getGameConstants: async () => {
-    const response = await apiClient.get('/game-constants');
-    return response.data;
-  },
+  }
 };
 
-// Response interceptor for logging successful responses
+// ===========================
+// INTERCEPTORS
+// ===========================
+
+// Response interceptor for logging and standardized format handling
 apiClient.interceptors.response.use(
   (response) => {
     // Log successful API responses
@@ -208,10 +264,8 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log more detailed error information
+    // Log error details
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       logger.error('API Error Response:', {
         data: error.response.data,
         status: error.response.status,
@@ -220,17 +274,14 @@ apiClient.interceptors.response.use(
         params: error.config.params,
       });
     } else if (error.request) {
-      // The request was made but no response was received
       logger.error('API No Response:', error.request, error.config.url);
     } else {
-      // Something happened in setting up the request that triggered an Error
       logger.error('API Request Setup Error:', error.message, error.config.url);
     }
     
     // Handle standardized error format
     let customError;
     if (error.response?.data?.success === false && error.response?.data?.error) {
-      // Use the standardized error format from backend
       customError = {
         message: error.response.data.error.message || 'An unexpected error occurred',
         status: error.response.data.error.code || error.response.status,
@@ -238,7 +289,6 @@ apiClient.interceptors.response.use(
         data: error.response.data,
       };
     } else {
-      // Fallback for non-standardized errors
       customError = {
         message: error.response?.data?.message || error.message || 'An unexpected error occurred',
         status: error.response?.status,
@@ -250,6 +300,5 @@ apiClient.interceptors.response.use(
   }
 );
 
-
-export { apiClient }; // Named export for apiClient
-export default api; // Default export the api object with methods
+export { apiClient };
+export default api;

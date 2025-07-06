@@ -84,7 +84,10 @@
       "Bash(tmux send-keys:*)",
       "mcp__playwright-generic__playwright_press_key",
       "Bash(npx playwright screenshot:*)",
-      "mcp__duckduckgo__web-search"
+      "mcp__duckduckgo__web-search",
+      "mcp__tavily__tavily-search",
+      "mcp__tavily__tavily-extract",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   },

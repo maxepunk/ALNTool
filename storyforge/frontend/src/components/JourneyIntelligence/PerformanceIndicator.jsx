@@ -4,7 +4,7 @@ import { useJourneyIntelligenceStore } from '../../stores/journeyIntelligenceSto
 import SpeedIcon from '@mui/icons-material/Speed';
 import WarningIcon from '@mui/icons-material/Warning';
 
-const PerformanceIndicator = () => {
+const PerformanceIndicator = React.memo(() => {
   const { performanceMode, visibleNodeCount } = useJourneyIntelligenceStore();
   
   const isWarning = visibleNodeCount >= 47;
@@ -36,6 +36,8 @@ const PerformanceIndicator = () => {
       )}
     </Box>
   );
-};
+});
+
+PerformanceIndicator.displayName = 'PerformanceIndicator';
 
 export default PerformanceIndicator;

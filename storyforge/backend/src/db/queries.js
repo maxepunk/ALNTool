@@ -454,6 +454,76 @@ function getSyncStatus() {
   }
 }
 
+/**
+ * Get the last successful sync time
+ * @returns {string|null} ISO timestamp of last sync or null
+ */
+function getLastSyncTime() {
+  const db = getDB();
+  try {
+    const result = db.prepare(`
+      SELECT timestamp as last_sync 
+      FROM sync_log 
+      WHERE status = 'success'
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `).get();
+    
+    return result?.last_sync || null;
+  } catch (error) {
+    // Fallback if sync_log doesn't exist
+    return null;
+  }
+}
+
+// Get all elements with their associated character IDs
+function getElementsWithCharacterAssociations() {
+  const db = getDB();
+  const elements = db.prepare(`
+    SELECT 
+      e.*,
+      c.name as owner_name,
+      ce.name as container_name,
+      GROUP_CONCAT(DISTINCT cae.character_id) as associated_character_ids
+    FROM elements e
+    LEFT JOIN characters c ON e.owner_id = c.id
+    LEFT JOIN elements ce ON e.container_id = ce.id
+    LEFT JOIN character_associated_elements cae ON e.id = cae.element_id
+    GROUP BY e.id
+    ORDER BY e.name
+  `).all();
+  
+  // Parse the concatenated character IDs into arrays
+  return elements.map(element => ({
+    ...element,
+    associated_character_ids: element.associated_character_ids 
+      ? element.associated_character_ids.split(',') 
+      : []
+  }));
+}
+
+// Get all timeline events with their character IDs
+function getTimelineEventsWithCharacters() {
+  const db = getDB();
+  const events = db.prepare(`
+    SELECT 
+      te.*,
+      GROUP_CONCAT(DISTINCT cte.character_id) as character_ids
+    FROM timeline_events te
+    LEFT JOIN character_timeline_events cte ON te.id = cte.timeline_event_id
+    GROUP BY te.id
+    ORDER BY te.date ASC
+  `).all();
+  
+  // Parse the concatenated character IDs into arrays
+  return events.map(event => ({
+    ...event,
+    character_ids: event.character_ids 
+      ? event.character_ids.split(',') 
+      : []
+  }));
+}
+
 module.exports = {
   getCharacterById,
   getCharacterRelations,
@@ -461,6 +531,7 @@ module.exports = {
   getAllPuzzles,
   getAllElements,
   getElementsWithComputedFields,
+  getElementsWithCharacterAssociations,
   getAllCharacterIdsAndNames,
   getLinkedCharacters,
   getAllCharacterLinks,
@@ -469,12 +540,14 @@ module.exports = {
   getElementById,
   getCharactersForList,
   getTimelineEventsForList,
+  getTimelineEventsWithCharacters,
   // Journey caching functions
   getCachedJourneyGraph,
   saveCachedJourneyGraph,
   invalidateJourneyCache,
   clearExpiredJourneyCache,
   // Sync status
-  getSyncStatus
+  getSyncStatus,
+  getLastSyncTime
 };
 

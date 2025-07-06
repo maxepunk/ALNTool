@@ -33,8 +33,20 @@ const ElementNode = memo(({ data, selected }) => {
   const baseSize = 120;
   const nodeSize = baseSize * scale;
   
+  // Build tooltip content
+  const tooltipContent = [
+    `Name: ${data.name || 'Unknown'}`,
+    `Type: ${elementType}`,
+    data.owner ? `Owner: ${data.owner}` : null,
+    data.status ? `Status: ${data.status}` : null,
+    memoryValue && elementType === 'Memory Token' ? `Memory Value: $${memoryValue}` : null,
+    data.container_element_id ? 'Contains other elements' : null,
+    data.rfid_tag ? `RFID: ${data.rfid_tag}` : null
+  ].filter(Boolean).join('\n');
+  
   return (
     <div
+      title={tooltipContent}
       style={{
         width: nodeSize,
         height: nodeSize,
@@ -84,33 +96,37 @@ const ElementNode = memo(({ data, selected }) => {
           {icon}
         </div>
         
-        {/* Element name */}
-        <div
-          style={{
-            fontSize: `${12 * scale}px`,
-            textAlign: 'center',
-            maxWidth: 80 * scale,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            paddingLeft: 4,
-            paddingRight: 4,
-            fontWeight: visualState.isSelected ? 'bold' : 'normal'
-          }}
-        >
-          {data.label || data.name || 'Unknown'}
-        </div>
-        
-        {/* Element type label */}
-        <div
-          style={{
-            color: '#94a3b8',
-            fontSize: '11px',
-            marginTop: 2
-          }}
-        >
-          {elementType}
-        </div>
+        {/* Element name - hide when hideLabel is true */}
+        {!data.hideLabel && (
+          <>
+            <div
+              style={{
+                fontSize: `${12 * scale}px`,
+                textAlign: 'center',
+                maxWidth: 80 * scale,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                paddingLeft: 4,
+                paddingRight: 4,
+                fontWeight: visualState.isSelected ? 'bold' : 'normal'
+              }}
+            >
+              {data.label || data.name || 'Unknown'}
+            </div>
+            
+            {/* Element type label */}
+            <div
+              style={{
+                color: '#94a3b8',
+                fontSize: '11px',
+                marginTop: 2
+              }}
+            >
+              {elementType}
+            </div>
+          </>
+        )}
       </div>
       
       {/* Memory value badge for memory tokens */}

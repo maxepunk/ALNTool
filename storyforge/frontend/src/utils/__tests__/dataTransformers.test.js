@@ -7,7 +7,9 @@ import {
   createOwnershipEdges,
   createContainerEdges,
   createPuzzleEdges,
-  groupElementsByOwner
+  groupElementsByOwner,
+  createAssociationEdges,
+  createTimelineEdges
 } from '../dataTransformers';
 
 describe('dataTransformers', () => {
@@ -174,6 +176,251 @@ describe('dataTransformers', () => {
           expect.objectContaining({ id: 'elem-4' })
         ])
       });
+    });
+  });
+  
+  describe('createAssociationEdges', () => {
+    it('should create edges for characters with associated elements', () => {
+      const characters = [
+        { 
+          id: 'char-1', 
+          name: 'Sarah Mitchell',
+          associated_elements: ['elem-1', 'elem-2'] 
+        },
+        { 
+          id: 'char-2', 
+          name: 'Marcus Sterling',
+          associated_elements: ['elem-3'] 
+        },
+        { 
+          id: 'char-3', 
+          name: 'Victoria Chen',
+          associated_elements: [] 
+        },
+        { 
+          id: 'char-4', 
+          name: 'Derek Hughes'
+          // No associated_elements property
+        }
+      ];
+      
+      const edges = createAssociationEdges(characters);
+      
+      expect(edges).toHaveLength(3);
+      
+      // Check first character's edges
+      expect(edges[0]).toMatchObject({
+        id: 'assoc-char-1-elem-1',
+        source: 'char-1',
+        target: 'elem-1',
+        type: 'smoothstep',
+        animated: false,
+        data: { type: 'character-element-association' },
+        style: {
+          stroke: '#8b5cf6',
+          strokeWidth: 1.5,
+          strokeDasharray: '2,2'
+        }
+      });
+      
+      expect(edges[1]).toMatchObject({
+        id: 'assoc-char-1-elem-2',
+        source: 'char-1',
+        target: 'elem-2',
+        data: { type: 'character-element-association' }
+      });
+      
+      // Check second character's edge
+      expect(edges[2]).toMatchObject({
+        id: 'assoc-char-2-elem-3',
+        source: 'char-2',
+        target: 'elem-3',
+        data: { type: 'character-element-association' }
+      });
+    });
+    
+    it('should handle empty array input', () => {
+      const edges = createAssociationEdges([]);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle null input', () => {
+      const edges = createAssociationEdges(null);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle undefined input', () => {
+      const edges = createAssociationEdges(undefined);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle non-array input', () => {
+      const edges = createAssociationEdges('not an array');
+      expect(edges).toEqual([]);
+    });
+    
+    it('should skip characters with null associated_elements', () => {
+      const characters = [
+        { id: 'char-1', associated_elements: null },
+        { id: 'char-2', associated_elements: ['elem-1'] }
+      ];
+      
+      const edges = createAssociationEdges(characters);
+      
+      expect(edges).toHaveLength(1);
+      expect(edges[0].source).toBe('char-2');
+    });
+    
+    it('should create unique edge IDs', () => {
+      const characters = [
+        { id: 'char-1', associated_elements: ['elem-1', 'elem-2', 'elem-3'] },
+        { id: 'char-2', associated_elements: ['elem-1', 'elem-4'] }
+      ];
+      
+      const edges = createAssociationEdges(characters);
+      const edgeIds = edges.map(e => e.id);
+      
+      // Check all IDs are unique
+      expect(new Set(edgeIds).size).toBe(edgeIds.length);
+      
+      // Check ID format
+      expect(edgeIds).toContain('assoc-char-1-elem-1');
+      expect(edgeIds).toContain('assoc-char-2-elem-1');
+    });
+  });
+  
+  describe('createTimelineEdges', () => {
+    it('should create edges for characters with timeline events', () => {
+      const characters = [
+        { 
+          id: 'char-1', 
+          name: 'Sarah Mitchell',
+          timeline_events: ['timeline-1', 'timeline-2'] 
+        },
+        { 
+          id: 'char-2', 
+          name: 'Marcus Sterling',
+          timeline_events: ['timeline-3'] 
+        },
+        { 
+          id: 'char-3', 
+          name: 'Victoria Chen',
+          timeline_events: [] 
+        },
+        { 
+          id: 'char-4', 
+          name: 'Derek Hughes'
+          // No timeline_events property
+        }
+      ];
+      
+      const edges = createTimelineEdges(characters);
+      
+      expect(edges).toHaveLength(3);
+      
+      // Check first character's edges
+      expect(edges[0]).toMatchObject({
+        id: 'timeline-char-1-timeline-1',
+        source: 'char-1',
+        target: 'timeline-1',
+        type: 'smoothstep',
+        animated: true,
+        data: { type: 'character-timeline-event' },
+        style: {
+          stroke: '#3b82f6',
+          strokeWidth: 2,
+          strokeDasharray: '8,4'
+        }
+      });
+      
+      expect(edges[1]).toMatchObject({
+        id: 'timeline-char-1-timeline-2',
+        source: 'char-1',
+        target: 'timeline-2',
+        data: { type: 'character-timeline-event' }
+      });
+      
+      // Check second character's edge
+      expect(edges[2]).toMatchObject({
+        id: 'timeline-char-2-timeline-3',
+        source: 'char-2',
+        target: 'timeline-3',
+        data: { type: 'character-timeline-event' }
+      });
+    });
+    
+    it('should handle empty array input', () => {
+      const edges = createTimelineEdges([]);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle null input', () => {
+      const edges = createTimelineEdges(null);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle undefined input', () => {
+      const edges = createTimelineEdges(undefined);
+      expect(edges).toEqual([]);
+    });
+    
+    it('should handle non-array input', () => {
+      const edges = createTimelineEdges({ not: 'an array' });
+      expect(edges).toEqual([]);
+    });
+    
+    it('should skip characters with null timeline_events', () => {
+      const characters = [
+        { id: 'char-1', timeline_events: null },
+        { id: 'char-2', timeline_events: ['timeline-1'] }
+      ];
+      
+      const edges = createTimelineEdges(characters);
+      
+      expect(edges).toHaveLength(1);
+      expect(edges[0].source).toBe('char-2');
+    });
+    
+    it('should create unique edge IDs', () => {
+      const characters = [
+        { id: 'char-1', timeline_events: ['timeline-1', 'timeline-2', 'timeline-3'] },
+        { id: 'char-2', timeline_events: ['timeline-1', 'timeline-4'] }
+      ];
+      
+      const edges = createTimelineEdges(characters);
+      const edgeIds = edges.map(e => e.id);
+      
+      // Check all IDs are unique
+      expect(new Set(edgeIds).size).toBe(edgeIds.length);
+      
+      // Check ID format
+      expect(edgeIds).toContain('timeline-char-1-timeline-1');
+      expect(edgeIds).toContain('timeline-char-2-timeline-1');
+    });
+    
+    it('should set animated property to true for timeline edges', () => {
+      const characters = [
+        { id: 'char-1', timeline_events: ['timeline-1', 'timeline-2'] }
+      ];
+      
+      const edges = createTimelineEdges(characters);
+      
+      edges.forEach(edge => {
+        expect(edge.animated).toBe(true);
+      });
+    });
+    
+    it('should have different visual styles than association edges', () => {
+      const characters = [
+        { id: 'char-1', timeline_events: ['timeline-1'] }
+      ];
+      
+      const timelineEdges = createTimelineEdges(characters);
+      
+      // Timeline edges should have blue color and larger dash pattern
+      expect(timelineEdges[0].style.stroke).toBe('#3b82f6');
+      expect(timelineEdges[0].style.strokeDasharray).toBe('8,4');
+      expect(timelineEdges[0].style.strokeWidth).toBe(2);
     });
   });
 });

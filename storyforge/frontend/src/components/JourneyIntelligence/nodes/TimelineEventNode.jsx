@@ -23,8 +23,27 @@ const TimelineEventNode = memo(({ data, selected }) => {
   const baseSize = data.size || 120;
   const nodeSize = baseSize * scale;
   
+  // Format date for tooltip
+  const formattedDate = date ? new Date(date).toLocaleDateString('en-US', { 
+    year: 'numeric',
+    month: 'long', 
+    day: 'numeric' 
+  }) : null;
+  
+  // Build tooltip content
+  const tooltipContent = [
+    `Description: ${data.description || 'Unknown Event'}`,
+    formattedDate ? `Date: ${formattedDate}` : null,
+    `Act: ${actFocus}`,
+    `Time Period: ${isPast ? 'Past' : 'Present'}`,
+    data.location ? `Location: ${data.location}` : null,
+    data.participants ? `Participants: ${data.participants}` : null,
+    data.narrative_threads?.length > 0 ? `Narrative Threads: ${data.narrative_threads.join(', ')}` : null
+  ].filter(Boolean).join('\n');
+  
   return (
     <div
+      title={tooltipContent}
       style={{
         width: nodeSize,
         height: nodeSize,
@@ -68,26 +87,28 @@ const TimelineEventNode = memo(({ data, selected }) => {
         {isPast ? '⏰' : '📅'}
       </div>
       
-      {/* Event description (truncated) */}
-      <div
-        style={{
-          fontSize: `${11 * scale}px`,
-          textAlign: 'center',
-          maxWidth: nodeSize - 40,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          paddingLeft: 8,
-          paddingRight: 8,
-          lineHeight: 1.3,
-          marginBottom: 4,
-          fontWeight: visualState.isSelected ? 'bold' : 'normal'
-        }}
-      >
-        {data.label || data.description || 'Unknown Event'}
-      </div>
+      {/* Event description (truncated) - hide when hideLabel is true */}
+      {!data.hideLabel && (
+        <div
+          style={{
+            fontSize: `${11 * scale}px`,
+            textAlign: 'center',
+            maxWidth: nodeSize - 40,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            paddingLeft: 8,
+            paddingRight: 8,
+            lineHeight: 1.3,
+            marginBottom: 4,
+            fontWeight: visualState.isSelected ? 'bold' : 'normal'
+          }}
+        >
+          {data.label || data.description || 'Unknown Event'}
+        </div>
+      )}
       
       {/* Act focus indicator */}
       {actFocus !== 'Unknown' && (
@@ -108,8 +129,8 @@ const TimelineEventNode = memo(({ data, selected }) => {
         </div>
       )}
       
-      {/* Date indicator if available */}
-      {date && (
+      {/* Date indicator if available - hide when hideLabel is true */}
+      {date && !data.hideLabel && (
         <div
           style={{
             position: 'absolute',

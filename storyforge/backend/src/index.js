@@ -9,12 +9,14 @@ const rateLimit = require('express-rate-limit');
 
 // Import middleware
 const { responseWrapper, errorHandler } = require('./middleware/responseWrapper');
+const { applyDeprecationWarnings } = require('./middleware/deprecationWarning');
 
 // Import routes
 const notionRoutes = require('./routes/notion');
 const journeyRoutes = require('./routes/journeyRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const validationRoutes = require('./routes/validationRoutes');
+const apiV2Routes = require('./routes/apiV2');
 
 // Import database migration function
 const { initializeDatabase } = require('./db/database');
@@ -53,11 +55,19 @@ if (process.env.NODE_ENV === 'production') {
 // Apply response wrapper middleware to all /api routes
 app.use('/api', responseWrapper);
 
-// Routes
-app.use('/api', notionRoutes); // Existing Notion routes
-app.use('/api', journeyRoutes); // New Journey Engine routes (e.g. /api/journeys/:characterId)
-app.use('/api/sync', syncRoutes); // Data sync routes (e.g. /api/sync/data, /api/sync/status)
-app.use('/api/validate', validationRoutes); // Validation routes for E2E testing
+// Mount new v2 API routes
+app.use('/api/v2', apiV2Routes);
+
+// Legacy routes with deprecation warnings
+const legacyRouter = express.Router();
+applyDeprecationWarnings(legacyRouter);
+legacyRouter.use('/', notionRoutes); // Existing Notion routes
+legacyRouter.use('/', journeyRoutes); // Journey Engine routes
+legacyRouter.use('/sync', syncRoutes); // Data sync routes
+legacyRouter.use('/validate', validationRoutes); // Validation routes
+
+// Mount legacy routes
+app.use('/api', legacyRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

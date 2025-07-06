@@ -1,13 +1,30 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Container, CircularProgress, Typography, Button } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppLayout from './layouts/AppLayout';
-import JourneyIntelligenceView from './components/JourneyIntelligenceView';
-import NotFound from './pages/NotFound';
 import { api } from './services/api';
-// WorkflowContext removed - not used by Journey Intelligence
+
+// Lazy load components for code splitting
+const JourneyIntelligenceView = lazy(() => import('./components/JourneyIntelligenceView'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+// Loading component for Suspense
+const RouteLoading = () => (
+  <Box 
+    sx={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh' 
+    }}
+  >
+    <CircularProgress size={40} sx={{ mb: 2 }} />
+    <Typography variant="body1">Loading...</Typography>
+  </Box>
+);
 
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
@@ -81,7 +98,8 @@ function App() {
   return (
     <AppLayout>
       <ErrorBoundary level="route">
-        <Routes>
+        <Suspense fallback={<RouteLoading />}>
+          <Routes>
             {/* Journey Intelligence IS the application */}
             <Route path="/" element={<JourneyIntelligenceView />} />
             
@@ -107,9 +125,10 @@ function App() {
             {/* 404 route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </ErrorBoundary>
-      </AppLayout>
+        </Suspense>
+      </ErrorBoundary>
+    </AppLayout>
   );
 }
 
-export default App; 
+export default App;

@@ -213,7 +213,7 @@ export function calculateEdgeStyle(edge) {
     case 'computed': // From character-links API
     case 'knows':
     case 'related':
-      baseStyle.stroke = '#3b82f6'; // Blue
+      baseStyle.stroke = '#10b981'; // Green
       break;
       
     // Ownership/possession
