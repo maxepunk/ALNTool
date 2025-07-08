@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A design decision support system for the "About Last Night" murder mystery game. Transforms 18 separate database views into a unified interface where game designers can select any entity (character, element, puzzle, timeline event) and instantly see complete impact analysis across story, social, economic, and production dimensions.
 
-**Current Phase**: Phase 1 implementation - COMPLETE (All 11 days finished)
+**Current Status**: Phase 1 implemented - Core functionality working
 **Architecture**: Single-page React app with Node.js/Express backend
+**Documentation**: Consolidated on 2025-01-07 - See `/docs/` for accurate information
 
 ## Quick Start
 
@@ -228,6 +229,7 @@ When an entity is selected, 5 intelligence layers provide analysis:
 
 ### Critical Issues (Must Fix First)
 - ✅ **Entity Selection Bug**: Fixed ID preservation in AdaptiveGraphCanvas.onNodeClick - no longer overwrites entity ID (2025-01-15)
+  - Updated (2025-01-06): Enhanced to properly extract entity data excluding graph-specific fields (visualState, size, label, relationshipCount)
 - ✅ **Aggregation Logic**: Removed aggregation entirely, replaced with visual hierarchy using opacity/scale (2025-01-15)
 - ✅ **Progressive Loading**: Fixed viewport zoom issue - removed automatic fitView on re-renders, now only fits on initial load and focus mode changes (2025-01-15)
 - ✅ **API Field Mismatch**: Fixed type/basicType field inconsistency with compatibility helper (2025-01-15)
@@ -294,6 +296,7 @@ When an entity is selected, 5 intelligence layers provide analysis:
 - ✅ API pagination added to all entity endpoints
 - ✅ Throttled updates for large datasets
 - ✅ Hover states (tooltips implemented for all node types)
+  - Enhanced (2025-01-06): Added onNodeMouseEnter/Leave handlers with tooltip showing entity name and type
 - ⚠️ Bundle size: 770KB (target was 500KB, but acceptable)
 - ❌ Intelligence layer data visualization (deferred to Phase 2)
 - ❌ Keyboard shortcuts (deferred to Phase 2)

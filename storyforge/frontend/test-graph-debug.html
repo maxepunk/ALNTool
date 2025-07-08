@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph Debug Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0a0a0a;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .debug-panel {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    pre {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Graph Rendering Debug</h1>
+  
+  <div class="debug-panel">
+    <h2>Instructions</h2>
+    <p>1. Open the app in another tab</p>
+    <p>2. Navigate to the Journey Intelligence view</p>
+    <p>3. Open browser console (F12)</p>
+    <p>4. Click the buttons below to debug</p>
+  </div>
+
+  <div class="debug-panel">
+    <h2>Debug Actions</h2>
+    <button onclick="checkReactFlow()">Check ReactFlow</button>
+    <button onclick="checkNodes()">Check Nodes</button>
+    <button onclick="checkViewport()">Check Viewport</button>
+    <button onclick="checkStyles()">Check Styles</button>
+    <button onclick="forceRender()">Force Render</button>
+  </div>
+
+  <div class="debug-panel">
+    <h2>Output</h2>
+    <pre id="output">Click a button to see debug info...</pre>
+  </div>
+
+  <script>
+    function log(data) {
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function checkReactFlow() {
+      const result = {
+        reactFlowContainer: !!document.querySelector('.react-flow'),
+        reactFlowViewport: !!document.querySelector('.react-flow__viewport'),
+        reactFlowRenderer: !!document.querySelector('.react-flow__renderer'),
+        reactFlowEdges: !!document.querySelector('.react-flow__edges'),
+        reactFlowNodes: document.querySelectorAll('.react-flow__node').length
+      };
+      
+      const container = document.querySelector('.react-flow');
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        result.containerDimensions = {
+          width: rect.width,
+          height: rect.height,
+          top: rect.top,
+          left: rect.left
+        };
+        
+        const computed = window.getComputedStyle(container);
+        result.containerStyles = {
+          background: computed.backgroundColor,
+          display: computed.display,
+          position: computed.position,
+          overflow: computed.overflow
+        };
+      }
+      
+      log(result);
+    }
+
+    function checkNodes() {
+      const nodes = document.querySelectorAll('.react-flow__node');
+      const result = {
+        totalNodes: nodes.length,
+        nodes: []
+      };
+      
+      nodes.forEach((node, i) => {
+        if (i < 5) { // Only show first 5
+          const rect = node.getBoundingClientRect();
+          const computed = window.getComputedStyle(node);
+          const transform = computed.transform;
+          
+          result.nodes.push({
+            id: node.getAttribute('data-id'),
+            boundingRect: {
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              left: rect.left
+            },
+            transform: transform,
+            display: computed.display,
+            visibility: computed.visibility,
+            opacity: computed.opacity,
+            position: computed.position
+          });
+        }
+      });
+      
+      log(result);
+    }
+
+    function checkViewport() {
+      const viewport = document.querySelector('.react-flow__viewport');
+      const result = {
+        viewportExists: !!viewport
+      };
+      
+      if (viewport) {
+        const computed = window.getComputedStyle(viewport);
+        result.transform = computed.transform;
+        
+        // Parse transform matrix
+        const matrix = computed.transform.match(/matrix\(([^)]+)\)/);
+        if (matrix) {
+          const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+          result.parsedTransform = {
+            scaleX: values[0],
+            skewY: values[1],
+            skewX: values[2],
+            scaleY: values[3],
+            translateX: values[4],
+            translateY: values[5]
+          };
+        }
+        
+        // Check SVG
+        const svg = viewport.querySelector('svg');
+        if (svg) {
+          result.svg = {
+            exists: true,
+            viewBox: svg.getAttribute('viewBox'),
+            width: svg.getAttribute('width'),
+            height: svg.getAttribute('height'),
+            childElementCount: svg.childElementCount
+          };
+        }
+      }
+      
+      log(result);
+    }
+
+    function checkStyles() {
+      const result = {
+        stylesheets: []
+      };
+      
+      // Check for ReactFlow styles
+      Array.from(document.styleSheets).forEach(sheet => {
+        try {
+          if (sheet.href && sheet.href.includes('react-flow')) {
+            result.reactFlowStylesheet = {
+              href: sheet.href,
+              loaded: true
+            };
+          }
+        } catch (e) {
+          // Cross-origin stylesheet
+        }
+      });
+      
+      // Check specific elements
+      const testElements = [
+        '.react-flow',
+        '.react-flow__renderer',
+        '.react-flow__viewport',
+        '.react-flow__node',
+        '.react-flow__edge'
+      ];
+      
+      result.elementStyles = {};
+      testElements.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) {
+          const computed = window.getComputedStyle(el);
+          result.elementStyles[selector] = {
+            backgroundColor: computed.backgroundColor,
+            color: computed.color,
+            display: computed.display,
+            position: computed.position,
+            zIndex: computed.zIndex
+          };
+        }
+      });
+      
+      log(result);
+    }
+
+    function forceRender() {
+      // Try to trigger a re-render
+      const result = {
+        actions: []
+      };
+      
+      // Try to find ReactFlow instance
+      const container = document.querySelector('.react-flow');
+      if (container) {
+        // Dispatch resize event
+        window.dispatchEvent(new Event('resize'));
+        result.actions.push('Dispatched resize event');
+        
+        // Try to find fitView button and click it
+        const fitViewBtn = document.querySelector('.react-flow__controls-fitview');
+        if (fitViewBtn) {
+          fitViewBtn.click();
+          result.actions.push('Clicked fit view button');
+        }
+        
+        // Force reflow
+        container.style.display = 'none';
+        container.offsetHeight; // Force reflow
+        container.style.display = '';
+        result.actions.push('Forced reflow');
+      }
+      
+      log(result);
+    }
+  </script>
+</body>
+</html>

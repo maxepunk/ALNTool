@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Layout Test</title>
+</head>
+<body>
+    <h1>Force-Directed Layout Test</h1>
+    <p>Open the Journey Intelligence View at <a href="http://localhost:3000/journey-intelligence" target="_blank">http://localhost:3000/journey-intelligence</a></p>
+    
+    <h2>Expected Behavior:</h2>
+    <ul>
+        <li>When the graph loads, nodes should spread out automatically</li>
+        <li>Characters should be well-separated (>150px apart)</li>
+        <li>Elements owned by characters should cluster near their owners</li>
+        <li>The simulation should run for a few seconds then stabilize</li>
+    </ul>
+    
+    <h2>To Test:</h2>
+    <ol>
+        <li>Open the Journey Intelligence View</li>
+        <li>Wait for nodes to load</li>
+        <li>Watch the nodes spread out with force-directed physics</li>
+        <li>Open browser console and paste the test script from test-force-layout.js</li>
+        <li>Check the console output for node movement and clustering metrics</li>
+    </ol>
+    
+    <h2>Visual Indicators:</h2>
+    <ul>
+        <li>Characters (circles) should be far apart</li>
+        <li>Elements (diamonds) should group near their owner characters</li>
+        <li>The layout should look organic, not grid-like</li>
+        <li>No nodes should overlap</li>
+    </ul>
+    
+    <h2>Debugging:</h2>
+    <p>If nodes aren't moving, check:</p>
+    <ul>
+        <li>Browser console for errors</li>
+        <li>Network tab to ensure data is loaded</li>
+        <li>React DevTools to check if useGraphLayout hook is active</li>
+    </ul>
+</body>
+</html>

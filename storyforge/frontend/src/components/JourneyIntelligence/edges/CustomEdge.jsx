@@ -32,7 +32,7 @@ const CustomEdge = ({
   
   // Extract styling from the style object (already calculated in JourneyIntelligenceView)
   const {
-    stroke = '#64748b',
+    stroke = '#90caf9', // Brighter default color
     strokeWidth = 2,
     opacity = 0.8,
     strokeDasharray,

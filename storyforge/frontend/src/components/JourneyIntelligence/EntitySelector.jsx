@@ -9,7 +9,7 @@ import { FixedSizeList } from 'react-window';
 import debounce from 'lodash.debounce';
 import { useJourneyIntelligenceStore } from '../../stores/journeyIntelligenceStore';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api';
+import { api } from '../../services/api';
 import logger from '../../utils/logger';
 
 // Icons for entity types

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Focus Mode Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Focus Mode Implementation Test</h1>
+    
+    <div class="test-section">
+        <h2 class="success">✅ Implementation Complete</h2>
+        <p>The focus mode zoom/center functionality has been successfully implemented with the following features:</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Features Implemented:</h3>
+        <ol>
+            <li><strong>Entity Selection Focus:</strong> When an entity is selected, the graph automatically centers and zooms on that node</li>
+            <li><strong>Connected Nodes View:</strong> When focusing on an entity with connections, the view fits all connected nodes</li>
+            <li><strong>Smooth Animations:</strong> 800ms smooth transitions for all focus changes</li>
+            <li><strong>Escape Key:</strong> Press ESC to deselect entity and return to overview</li>
+            <li><strong>Click Empty Space:</strong> Click on empty graph area to deselect</li>
+            <li><strong>Visual Indicator:</strong> Blue indicator shows "Focused on: [Entity Name] (ESC to exit)"</li>
+            <li><strong>Appropriate Zoom Levels:</strong> 
+                <ul>
+                    <li>Single node: 40% padding, max zoom 1.5</li>
+                    <li>Multiple nodes: 20% padding to show all connections</li>
+                    <li>Overview mode: 10% padding to show full graph</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>Testing Instructions:</h3>
+        <div class="instructions">
+            <p><strong>To test the focus mode functionality:</strong></p>
+            <ol>
+                <li>Open the application at <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+                <li>Navigate to the Journey Intelligence View</li>
+                <li>Click on any node (character, element, puzzle, or timeline event)</li>
+                <li>Observe:
+                    <ul>
+                        <li>Graph smoothly zooms and centers on the selected node</li>
+                        <li>Blue indicator appears showing the selected entity name</li>
+                        <li>Connected nodes remain visible with appropriate zoom</li>
+                    </ul>
+                </li>
+                <li>To deselect:
+                    <ul>
+                        <li>Press the ESC key, OR</li>
+                        <li>Click on empty space in the graph</li>
+                    </ul>
+                </li>
+                <li>Observe the smooth transition back to overview mode</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Code Changes Made:</h3>
+        <ul>
+            <li><strong>AdaptiveGraphCanvas.jsx:</strong>
+                <ul>
+                    <li>Added useEffect hook to watch selectedEntity and viewMode changes</li>
+                    <li>Implemented fitView logic for focusing on selected nodes</li>
+                    <li>Added keyboard event listener for ESC key</li>
+                    <li>Added onPaneClick handler for empty space clicks</li>
+                    <li>Added visual focus mode indicator component</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Technical Implementation Details:</h3>
+        <ul>
+            <li>Uses ReactFlow's fitView API with custom options for smooth animations</li>
+            <li>Calculates connected nodes dynamically based on edge relationships</li>
+            <li>Handles both single node focus and multi-node connected views</li>
+            <li>Integrates with existing Zustand store for state management</li>
+            <li>Maintains performance with throttled updates for large graphs</li>
+        </ul>
+    </div>
+</body>
+</html>

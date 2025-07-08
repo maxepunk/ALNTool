@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Container, CircularProgress, Typography, Button } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { api } from './services/api';
 // Lazy load components for code splitting
 const JourneyIntelligenceView = lazy(() => import('./components/JourneyIntelligenceView'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const TestGraph = lazy(() => import('./components/JourneyIntelligence/TestGraph'));
 
 // Loading component for Suspense
 const RouteLoading = () => (
@@ -30,7 +31,7 @@ function App() {
   const [initialLoading, setInitialLoading] = useState(true);
   
   // Fetch database metadata on app load
-  const { data: metadata, error: metadataError } = useQuery({
+  const { data: metadata, error: metadataError, isSuccess, isError } = useQuery({
     queryKey: ['metadata'],
     queryFn: () => api.getDatabasesMetadata(),
     retry: (failureCount, error) => {
@@ -43,11 +44,31 @@ function App() {
     },
     retryDelay: 2000, // Wait 2 seconds between retries
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (v4 uses gcTime)
-    onSettled: () => {
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+  });
+
+  // Handle query completion
+  useEffect(() => {
+    if (isSuccess) {
+      console.log('Metadata loaded successfully:', metadata);
+      setInitialLoading(false);
+    } else if (isError) {
+      console.error('Metadata query failed:', metadataError);
       setInitialLoading(false);
     }
-  });
+  }, [isSuccess, isError, metadata, metadataError]);
+
+  // Add timeout fallback in case the query hangs
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (initialLoading) {
+        console.warn('Metadata query timeout - forcing load');
+        setInitialLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
+  }, [initialLoading]);
 
   // If metadata fails to load after retries, show a more persistent error
   if (metadataError && initialLoading === false) {
@@ -102,6 +123,9 @@ function App() {
           <Routes>
             {/* Journey Intelligence IS the application */}
             <Route path="/" element={<JourneyIntelligenceView />} />
+            
+            {/* Debug route for testing graph */}
+            <Route path="/test-graph" element={<TestGraph />} />
             
             {/* Redirect all old routes to Journey Intelligence */}
             <Route path="/journey-intelligence" element={<Navigate to="/" replace />} />

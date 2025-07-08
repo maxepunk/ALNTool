@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../services/api';
+import { api } from '../services/api';
 
 /**
  * Custom hook to fetch and cache game constants from the backend
@@ -14,10 +14,7 @@ import { apiClient } from '../services/api';
 export function useGameConstants() {
   return useQuery({
     queryKey: ['gameConstants'],
-    queryFn: async () => {
-      const response = await apiClient.get('/game-constants');
-      return response.data;
-    },
+    queryFn: () => api.getGameConstants(),
     // Cache for 24 hours since game constants rarely change
     staleTime: 24 * 60 * 60 * 1000,
     cacheTime: 24 * 60 * 60 * 1000,

@@ -4,7 +4,8 @@ import {
   createOwnershipEdges, 
   createContainerEdges, 
   createAssociationEdges, 
-  createPuzzleEdges 
+  createPuzzleEdges,
+  createTimelineEdges
 } from './dataTransformers';
 import { calculateNodeSize, calculateEdgeStyle } from './nodeSizeCalculator';
 import { generateInitialPositions } from './layoutUtils';
@@ -119,8 +120,20 @@ export function processGraphData({
     }
     
     // Add character relationship edges
+    logger.debug('processGraphData: Processing character links', {
+      hasCharacterLinks: !!characterLinks,
+      characterLinksLength: characterLinks?.length || 0,
+      characterCount: characters?.length || 0
+    });
+    
     if (characterLinks && characterLinks.length > 0) {
       characterLinks.forEach(link => {
+        logger.debug('processGraphData: Creating edge', {
+          linkId: link.id,
+          source: link.source,
+          target: link.target
+        });
+        
         const edge = {
           id: link.id,
           source: link.source,
@@ -174,21 +187,27 @@ export function processGraphData({
       
       // Create association edges between characters and elements
       // Build association data from elements that have associated_character_ids
-      const associations = [];
+      // First, create a map of character associations
+      const characterAssociations = {};
       elements.forEach(element => {
         if (element.associated_character_ids && Array.isArray(element.associated_character_ids)) {
           element.associated_character_ids.forEach(charId => {
-            associations.push({
-              character_id: charId,
-              element_id: element.id
-            });
+            if (!characterAssociations[charId]) {
+              characterAssociations[charId] = [];
+            }
+            characterAssociations[charId].push(element.id);
           });
         }
       });
       
-      if (associations.length > 0) {
-        edges.push(...createAssociationEdges(characters, elements, associations));
-      }
+      // Enrich characters with their associated elements
+      const charactersWithAssociations = characters.map(char => ({
+        ...char,
+        associated_elements: characterAssociations[char.id] || []
+      }));
+      
+      // Now create the association edges
+      edges.push(...createAssociationEdges(charactersWithAssociations));
     }
     
     if (loadedEntityTypes.includes('puzzles') && puzzles) {
@@ -237,29 +256,27 @@ export function processGraphData({
       });
       
       // Create timeline edges using the character_ids from events
-      const timelineEdges = [];
+      // First, create a map of character timeline events
+      const characterTimelineEvents = {};
       timelineEvents.forEach(event => {
         if (event.character_ids && Array.isArray(event.character_ids)) {
           event.character_ids.forEach(charId => {
-            timelineEdges.push({
-              id: `timeline-${charId}-${event.id}`,
-              source: charId,
-              target: event.id,
-              type: 'smoothstep',
-              animated: true,
-              data: {
-                type: 'character-timeline'
-              },
-              style: {
-                stroke: '#3b82f6',
-                strokeWidth: 2,
-                strokeDasharray: '5,3'
-              }
-            });
+            if (!characterTimelineEvents[charId]) {
+              characterTimelineEvents[charId] = [];
+            }
+            characterTimelineEvents[charId].push(event.id);
           });
         }
       });
-      edges.push(...timelineEdges);
+      
+      // Enrich characters with their timeline events
+      const charactersWithTimeline = characters.map(char => ({
+        ...char,
+        timeline_events: characterTimelineEvents[char.id] || []
+      }));
+      
+      // Now create the timeline edges using the utility function
+      edges.push(...createTimelineEdges(charactersWithTimeline));
     }
     
     // Apply pre-layout positions to prevent clustering
@@ -290,6 +307,19 @@ export function processGraphData({
     if (filteredOutCount > 0) {
       logger.debug(`Filtered out ${filteredOutCount} edges with missing nodes`);
     }
+    
+    // Final debug logging
+    logger.debug('processGraphData: Final graph data', {
+      totalNodes: nodes.length,
+      totalEdges: validEdges.length,
+      sampleEdge: validEdges[0],
+      nodeIds: nodes.map(n => n.id).slice(0, 5),
+      edgeSourceTargets: validEdges.slice(0, 5).map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target
+      }))
+    });
     
     return {
       nodes,

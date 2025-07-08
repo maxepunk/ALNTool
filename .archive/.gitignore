@@ -1,0 +1,10 @@
+# Archive .gitignore
+# This directory contains historical documentation that should not be used
+# All files here are archived for reference only
+
+# Ignore everything in this directory from AI tools
+*
+
+# But track this .gitignore file
+!.gitignore
+!README.md

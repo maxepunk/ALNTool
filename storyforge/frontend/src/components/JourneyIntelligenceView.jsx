@@ -136,7 +136,11 @@ const JourneyIntelligenceView = () => {
               height: '100%', 
               position: 'relative',
               width: '100%',
-              minHeight: 0
+              minHeight: 0,
+              backgroundColor: '#0a0a0a', // Ensure graph area has background
+              '& .react-flow': {
+                backgroundColor: '#0a0a0a'
+              }
             }}
             role="region"
             aria-label="Journey Graph"
@@ -183,6 +187,38 @@ const JourneyIntelligenceView = () => {
             </Paper>
           )}
         </Box>
+        
+        {/* Debug Panel - Remove in production */}
+        <Paper 
+          sx={{ 
+            position: 'fixed', 
+            bottom: 20, 
+            left: 20, 
+            p: 2, 
+            maxWidth: 400,
+            maxHeight: 300,
+            overflow: 'auto',
+            bgcolor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            zIndex: 9999
+          }}
+        >
+          <Typography variant="caption" display="block">Debug Info</Typography>
+          <Typography variant="caption" display="block">
+            Graph Nodes: {graphData?.nodes?.length || 0}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Graph Edges: {graphData?.edges?.length || 0}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Character Links: {characterLinks?.length || 0}
+          </Typography>
+          {characterLinks?.length > 0 && (
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              First Link: {JSON.stringify(characterLinks[0])}
+            </Typography>
+          )}
+        </Paper>
       </Box>
     </ReactFlowProvider>
   );

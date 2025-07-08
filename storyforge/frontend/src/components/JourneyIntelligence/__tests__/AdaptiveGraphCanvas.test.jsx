@@ -24,7 +24,7 @@ jest.mock('@xyflow/react', () => {
   
   return {
     __esModule: true,
-    ReactFlow: ({ children, nodes, edges, onNodesChange, onEdgesChange, onNodeClick, onPaneClick, className }) => {
+    ReactFlow: ({ children, nodes, edges, onNodesChange, onEdgesChange, onNodeClick, onNodeMouseEnter, onNodeMouseLeave, onPaneClick, className }) => {
       // Update current state whenever props change
       currentNodes = nodes || [];
       currentEdges = edges || [];
@@ -44,7 +44,9 @@ jest.mock('@xyflow/react', () => {
             'data-testid': `node-${node.id}`,
             className: node.className || '',
             style: node.style || {},
-            onClick: () => onNodeClick?.(null, node)
+            onClick: () => onNodeClick?.(null, node),
+            onMouseEnter: (e) => onNodeMouseEnter?.(e, node),
+            onMouseLeave: () => onNodeMouseLeave?.()
           }, node.data?.label || node.data?.name || node.id)
         ),
         currentEdges.map(edge =>
@@ -90,7 +92,15 @@ jest.mock('@xyflow/react', () => {
         setEdges((eds) => eds);
       }, []);
       return [edges, setEdges, onEdgesChange];
-    }
+    },
+    useReactFlow: () => ({
+      fitView: jest.fn(),
+      getViewport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
+      getNodes: jest.fn(() => []),
+      getEdges: jest.fn(() => [])
+    }),
+    useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
+    useStore: () => ({ x: 0, y: 0, zoom: 1 }) // Mock viewport state
   };
 });
 

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Character Links API</title>
+</head>
+<body>
+    <h1>Character Links API Test</h1>
+    <button onclick="testAPI()">Test Character Links API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing...';
+            
+            try {
+                // Test the character-links endpoint
+                const response = await fetch('/api/character-links');
+                const data = await response.json();
+                
+                output.textContent = `
+Response Status: ${response.status}
+Response OK: ${response.ok}
+Data Type: ${typeof data}
+Is Array: ${Array.isArray(data)}
+Data Length: ${data?.length || 'N/A'}
+Sample Data: ${JSON.stringify(data?.slice(0, 2), null, 2)}
+                `;
+                
+                // Also test if data has correct fields
+                if (Array.isArray(data) && data.length > 0) {
+                    const firstLink = data[0];
+                    output.textContent += `
+
+First Link Fields:
+${Object.keys(firstLink).join(', ')}
+
+First Link Data:
+${JSON.stringify(firstLink, null, 2)}
+                    `;
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Auto-run on load
+        window.onload = testAPI;
+    </script>
+</body>
+</html>

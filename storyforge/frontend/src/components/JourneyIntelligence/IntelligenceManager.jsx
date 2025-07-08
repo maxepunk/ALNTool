@@ -18,11 +18,11 @@ const IntelligenceLayerManager = ({ nodes }) => {
   // Render active intelligence layers
   return (
     <>
-      {activeIntelligence.economic && <EconomicLayer nodes={nodes} />}
-      {activeIntelligence.story && <StoryIntelligenceLayer nodes={nodes} />}
-      {activeIntelligence.social && <SocialIntelligenceLayer nodes={nodes} />}
-      {activeIntelligence.production && <ProductionIntelligenceLayer nodes={nodes} />}
-      {activeIntelligence.contentGaps && <ContentGapsLayer nodes={nodes} />}
+      {activeIntelligence.includes('economic') && <EconomicLayer nodes={nodes} />}
+      {activeIntelligence.includes('story') && <StoryIntelligenceLayer nodes={nodes} />}
+      {activeIntelligence.includes('social') && <SocialIntelligenceLayer nodes={nodes} />}
+      {activeIntelligence.includes('production') && <ProductionIntelligenceLayer nodes={nodes} />}
+      {activeIntelligence.includes('gaps') && <ContentGapsLayer nodes={nodes} />}
     </>
   );
 };

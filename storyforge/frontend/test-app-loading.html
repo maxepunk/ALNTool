@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test App Loading</title>
+</head>
+<body>
+    <h1>Testing ALNTool App Loading</h1>
+    <p>Open browser console and check the following:</p>
+    <ol>
+        <li>Navigate to http://localhost:3002/</li>
+        <li>Check console for "Metadata loaded successfully" message</li>
+        <li>Check if app loads past "Loading StoryForge..." spinner</li>
+        <li>Verify JourneyIntelligenceView component renders</li>
+    </ol>
+    
+    <h2>Expected Results:</h2>
+    <ul>
+        <li>Within 5 seconds, the loading spinner should disappear</li>
+        <li>Console should show metadata loaded message</li>
+        <li>JourneyIntelligenceView should render with entity selector and graph</li>
+    </ul>
+    
+    <h2>Fix Applied:</h2>
+    <ul>
+        <li>Replaced onSettled with useEffect watching isSuccess/isError</li>
+        <li>Kept cacheTime (not gcTime) as that's what the codebase uses</li>
+        <li>Added 5-second timeout fallback</li>
+        <li>React Query v5 no longer supports onSuccess/onError in query options</li>
+    </ul>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Runtime Error Test</title>
+</head>
+<body>
+    <h1>Testing for runtime errors...</h1>
+    <pre id="results"></pre>
+    
+    <script>
+        fetch('http://localhost:3000')
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('results').textContent = 'Frontend is serving HTML. Check browser console for JavaScript errors.';
+                
+                // Try to fetch the main JS bundle
+                return fetch('http://localhost:3000/src/main.jsx');
+            })
+            .then(res => res.text())
+            .then(js => {
+                document.getElementById('results').textContent += '\n\nMain.jsx is loading. The issue might be in the React app initialization.';
+            })
+            .catch(err => {
+                document.getElementById('results').textContent = 'Error: ' + err.message;
+            });
+    </script>
+</body>
+</html>

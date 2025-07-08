@@ -7,28 +7,21 @@ import EventIcon from '@mui/icons-material/Event';
 
 const ENTITY_TYPES = [
   { 
-    type: 'character', 
-    label: 'Characters', 
-    icon: <PersonIcon />,
-    color: '#2196f3',
-    defaultEnabled: true
-  },
-  { 
-    type: 'element', 
+    type: 'elements', 
     label: 'Elements', 
     icon: <InventoryIcon />,
     color: '#4caf50',
     defaultEnabled: false
   },
   { 
-    type: 'puzzle', 
+    type: 'puzzles', 
     label: 'Puzzles', 
     icon: <ExtensionIcon />,
     color: '#ff9800',
     defaultEnabled: false
   },
   { 
-    type: 'timeline_event', 
+    type: 'timelineEvents', 
     label: 'Timeline Events', 
     icon: <EventIcon />,
     color: '#9c27b0',
@@ -53,13 +46,11 @@ const EntityTypeLoader = React.memo(({ metadata, onLoadEntityType, loadedTypes }
   const getCounts = (type) => {
     if (!metadata) return 0;
     switch (type) {
-      case 'character':
-        return metadata.characterCount || 0;
-      case 'element':
+      case 'elements':
         return metadata.elementCount || 0;
-      case 'puzzle':
+      case 'puzzles':
         return metadata.puzzleCount || 0;
-      case 'timeline_event':
+      case 'timelineEvents':
         return metadata.timelineEventCount || 0;
       default:
         return 0;
@@ -75,6 +66,25 @@ const EntityTypeLoader = React.memo(({ metadata, onLoadEntityType, loadedTypes }
       <Typography variant="subtitle2" gutterBottom>
         Progressive Loading
       </Typography>
+      
+      {/* Show characters as always visible */}
+      <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <PersonIcon sx={{ fontSize: 16, color: '#2196f3' }} />
+        <Typography variant="body2" color="text.secondary">
+          Characters ({metadata?.characterCount || 0})
+        </Typography>
+        <Chip 
+          label="Always Visible"
+          size="small"
+          sx={{ 
+            height: 18,
+            fontSize: '0.7rem',
+            backgroundColor: '#2196f3',
+            color: 'white'
+          }}
+        />
+      </Box>
+      
       <FormGroup>
         {ENTITY_TYPES.map(({ type, label, icon, color }) => {
           const count = getCounts(type);

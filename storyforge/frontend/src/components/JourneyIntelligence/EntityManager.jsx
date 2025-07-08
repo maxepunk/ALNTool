@@ -6,7 +6,7 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useJourneyIntelligenceStore } from '../../stores/journeyIntelligenceStore';
-import api from '../../services/api';
+import { api } from '../../services/api';
 import { useCharacterJourney, useAllCharacters } from '../../hooks/useCharacterJourney';
 import { useTransformedElements } from '../../hooks/useTransformedElements';
 import logger from '../../utils/logger';
@@ -79,10 +79,27 @@ const useEntityManager = () => {
   } = useQuery({
     queryKey: ['character-links'],
     queryFn: async () => {
-      const links = await api.getCharacterLinks();
+      const response = await api.getCharacterLinks();
+      
+      // Handle both direct array and wrapped response
+      const links = Array.isArray(response) ? response : (response?.data || response || []);
+      
+      logger.debug('EntityManager: Raw character links from API', {
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        hasData: !!response?.data,
+        linksCount: links?.length || 0,
+        sampleLink: links?.[0]
+      });
+      
+      // Map backend field names to frontend expectations
       return links.map((link, index) => ({
         ...link,
-        id: `link-${link.source}-${link.target}-${index}`
+        id: `link-${link.character_a_id}-${link.character_b_id}-${index}`,
+        source: link.character_a_id,
+        target: link.character_b_id,
+        strength: link.link_strength || 1,
+        type: link.link_type || 'character-character'
       }));
     },
     enabled: !focusedCharacterId,
@@ -133,7 +150,9 @@ const useEntityManager = () => {
     elementsCount: elements?.length || 0,
     puzzlesCount: puzzles?.length || 0,
     timelineEventsCount: timelineEvents?.length || 0,
-    focusedCharacterId
+    characterLinksCount: characterLinks?.length || 0,
+    focusedCharacterId,
+    sampleCharacterLink: characterLinks?.[0]
   });
   
   return {

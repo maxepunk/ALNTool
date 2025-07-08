@@ -87,7 +87,9 @@
       "mcp__duckduckgo__web-search",
       "mcp__tavily__tavily-search",
       "mcp__tavily__tavily-extract",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "mcp__playwright-generic__start_codegen_session",
+      "Bash(diff:*)"
     ],
     "deny": []
   },

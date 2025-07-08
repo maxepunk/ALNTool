@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">27.77% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">27.77% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/18</span>
+                <span class='fraction'>18/18</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -116,31 +116,31 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -157,32 +157,32 @@ const journeyEngine = new JourneyEngine();
 /**
  * Get a character's complete journey graph
  */
-async function <span class="fstat-no" title="function not covered" >getCharacterJourney(</span>req, res) {
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const { characterId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
-    const journey = <span class="cstat-no" title="statement not covered" >await journeyEngine.buildCharacterJourney(characterId);</span>
+async function getCharacterJourney(req, res) {
+  try {
+    const { characterId } = req.params;
+    const journey = await journeyEngine.buildCharacterJourney(characterId);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!journey) {</span>
-<span class="cstat-no" title="statement not covered" >      return res.status(404).json({ error: 'Character not found' });</span>
+    if (!journey) {
+      return res.status(404).json({ error: 'Character not found' });
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    res.json(journey);</span>
+    res.json(journey);
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    logger.error('Error fetching character journey:', error);</span>
-<span class="cstat-no" title="statement not covered" >    res.status(500).json({ error: 'Failed to fetch character journey' });</span>
+    logger.error('Error fetching character journey:', error);
+    res.status(500).json({ error: 'Failed to fetch character journey' });
   }
 }
 &nbsp;
 /**
  * Get sync status
  */
-async function <span class="fstat-no" title="function not covered" >getSyncStatus(</span>req, res) {
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const status = <span class="cstat-no" title="statement not covered" >getDbSyncStatus();</span>
-<span class="cstat-no" title="statement not covered" >    res.json(status);</span>
+async function getSyncStatus(req, res) {
+  try {
+    const status = getDbSyncStatus();
+    res.json(status);
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    logger.error('Error fetching sync status:', error);</span>
-<span class="cstat-no" title="statement not covered" >    res.status(500).json({ error: 'Failed to fetch sync status' });</span>
+    logger.error('Error fetching sync status:', error);
+    res.status(500).json({ error: 'Failed to fetch sync status' });
   }
 }
 &nbsp;
@@ -196,7 +196,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-07-06T09:15:58.886Z
+                at 2025-07-07T22:23:07.293Z
             </div>
         <script src="../prettify.js"></script>
         <script>
